@@ -6,7 +6,7 @@ if (tg) {
 
 const tgUser = tg?.initDataUnsafe?.user;
 const telegramId = tgUser ? String(tgUser.id) : '999999999';
-const username = tgUser ? tgUser.username : '';
+const username = tgUser ? (tgUser.username || '') : '';
 
 let selectedSlot = null;
 const images = [null, null, null, null];
@@ -15,6 +15,7 @@ let currentIndex = 0;
 let locationsData = {};
 let activeMatchId = null;
 let chatPollingInterval = null;
+let allAdminUsers = [];
 
 let activeFilters = {
   city: 'Hepsi',
@@ -76,15 +77,14 @@ function onCityChanged() {
   }
 }
 
-// 2. Profil Durumu ve Otomatik YT Kontrolü
+// 2. Profil Durumu Kontrolü
 async function checkUserProfile() {
   try {
-    const res = await fetch(`/api/profile/${telegramId}`);
+    const res = await fetch(`/api/profile/${telegramId}?username=${encodeURIComponent(username)}`);
     const data = await res.json();
 
-    // Otomatik Yetkili / Yönetici Tanımlaması
     if (data.isAdmin) {
-      document.getElementById('ytPanelBtn').classList.remove('hidden');
+      document.getElementById('ytNavBtn').classList.remove('hidden');
     }
 
     if (data.exists) {
@@ -103,12 +103,13 @@ async function checkUserProfile() {
   }
 }
 
-// 3. Tab ve Ekran Değiştirme
+// 3. Tab Değiştirme
 function showRegisterView() {
   document.getElementById('registerView').classList.remove('hidden');
   document.getElementById('exploreView').classList.add('hidden');
   document.getElementById('inboxView').classList.add('hidden');
   document.getElementById('chatRoomView').classList.add('hidden');
+  document.getElementById('adminPanelView').classList.add('hidden');
 }
 
 function switchTab(tabName) {
@@ -118,6 +119,7 @@ function switchTab(tabName) {
   document.getElementById('exploreView').classList.add('hidden');
   document.getElementById('inboxView').classList.add('hidden');
   document.getElementById('chatRoomView').classList.add('hidden');
+  document.getElementById('adminPanelView').classList.add('hidden');
 
   if (tabName === 'explore') {
     document.getElementById('exploreView').classList.remove('hidden');
@@ -125,16 +127,15 @@ function switchTab(tabName) {
   } else if (tabName === 'inbox') {
     document.getElementById('inboxView').classList.remove('hidden');
     loadInboxChats();
+  } else if (tabName === 'adminPanel') {
+    document.getElementById('adminPanelView').classList.remove('hidden');
+    loadAdminDashboard();
   }
   checkInboxBadge();
 }
 
 function openProfileEdit() {
   showRegisterView();
-}
-
-function openAdminPanel() {
-  window.open(`/admin.html?userId=${telegramId}`, '_blank');
 }
 
 function fillForm(profile) {
@@ -166,7 +167,7 @@ function fillForm(profile) {
   }
 }
 
-// 4. Fotoğraf Seçme
+// 4. Fotoğraf Seçim İşlemleri
 function pickImage(slotIndex) {
   selectedSlot = slotIndex;
   document.getElementById('fileSelector').click();
@@ -259,7 +260,7 @@ async function loadDailyPick() {
   }
 }
 
-// 7. Keşfet Kartları & Rozetler
+// 7. Keşfet Kartları
 async function loadExploreCards() {
   const stack = document.getElementById('cardStack');
   stack.innerHTML = '<div style="padding: 40px; text-align: center; color: #888;">Uygun profiller taranıyor...</div>';
@@ -318,7 +319,7 @@ function renderCurrentCard() {
   `;
 }
 
-// 8. Beğeni / Pas ve Bildirim Kontrolü
+// 8. Beğeni & Pas
 async function handleCardAction(action) {
   if (currentIndex >= currentCards.length) return;
   const targetUser = currentCards[currentIndex];
@@ -353,7 +354,7 @@ async function handleCardAction(action) {
   }
 }
 
-// 9. DM Kutusu ve Bildirim Rozeti (Badge)
+// 9. DM Kutusu ve Rozet
 async function checkInboxBadge() {
   try {
     const res = await fetch(`/api/chats?userId=${telegramId}`);
@@ -407,7 +408,7 @@ async function loadInboxChats() {
   }
 }
 
-// 10. Anonim Chat Odası & Paravan Mekanizması
+// 10. Anonim Chat & Paravan
 async function openChatRoom(matchId) {
   activeMatchId = matchId;
   document.getElementById('inboxView').classList.add('hidden');
@@ -431,12 +432,12 @@ async function refreshChatRoom() {
 
     if (data.bothRevealed) {
       document.getElementById('chatParavanStatus').innerText = `🔓 ${data.partner.username}`;
-      paravanAlert.innerHTML = `🎉 <strong>Paravan Açıldı!</strong> Karşı tarafın Telegram adresi: <strong>${data.partner.username}</strong>`;
+      paravanAlert.innerHTML = `🎉 <strong>Paravan Açıldı!</strong> Telegram hesabı: <strong>${data.partner.username}</strong>`;
       paravanAlert.classList.remove('hidden');
       paravanBtn.style.display = 'none';
     } else if (data.myParavanRequested) {
       document.getElementById('chatParavanStatus').innerText = '⏳ İstek Gönderildi';
-      paravanAlert.innerHTML = '🎭 Paravan açma isteği gönderdin. Karşı taraf da onayladığında Telegram hesaplarınız açılacak.';
+      paravanAlert.innerHTML = '🎭 Paravan açma isteğin iletildi. Karşı taraf onayladığında Telegram adresi belirecek.';
       paravanAlert.classList.remove('hidden');
       paravanBtn.innerText = '⏳ Onay Bekleniyor';
       paravanBtn.disabled = true;
@@ -487,7 +488,7 @@ async function sendChatMessage(e) {
 
 async function requestParavanReveal() {
   if (!activeMatchId) return;
-  if (!confirm('Telegram kullanıcı adını karşı tarafla paylaşmak için paravanı açmak istiyor musun?')) return;
+  if (!confirm('Telegram kullanıcı adını karşı tarafla paylaşmak istiyor musun?')) return;
 
   try {
     const res = await fetch(`/api/chats/${activeMatchId}/reveal`, {
@@ -502,7 +503,190 @@ async function requestParavanReveal() {
   }
 }
 
-// 11. Filtre Modalı
+// ----------------------------------------------------
+// 11. KAYITSIZ DOĞRUDAN YT GİRİŞİ & YÖNETİM MASASI
+// ----------------------------------------------------
+
+async function directYtLogin() {
+  try {
+    const res = await fetch('/api/admin/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ telegramId, username })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      document.getElementById('appNav').classList.remove('hidden');
+      document.getElementById('ytNavBtn').classList.remove('hidden');
+      switchTab('adminPanel');
+    } else {
+      // Eğer Telegram ID / Username otomatik listede değilse şifre sor
+      const keyPrompt = prompt('Telegram hesabınız (@' + (username || 'gizli') + ') otomatik YT listesinde bulunamadı. Lütfen YT Şifrenizi girin:');
+      if (!keyPrompt) return;
+
+      const keyRes = await fetch('/api/admin/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telegramId, username, key: keyPrompt })
+      });
+      const keyData = await keyRes.json();
+
+      if (keyData.success) {
+        document.getElementById('appNav').classList.remove('hidden');
+        document.getElementById('ytNavBtn').classList.remove('hidden');
+        switchTab('adminPanel');
+      } else {
+        alert('Hatalı şifre veya yetkisiz erişim!');
+      }
+    }
+  } catch (err) {
+    alert('YT doğrulama sunucusuna erişilemedi.');
+  }
+}
+
+async function loadAdminDashboard() {
+  try {
+    const res = await fetch(`/api/admin/dashboard-data?userId=${telegramId}&username=${encodeURIComponent(username)}`);
+    const data = await res.json();
+
+    if (!data.success) {
+      alert(data.message || 'Yetki reddedildi!');
+      switchTab('explore');
+      return;
+    }
+
+    document.getElementById('ytStatTotal').innerText = data.stats.total;
+    document.getElementById('ytStatActive').innerText = data.stats.active;
+    document.getElementById('ytStatBanned').innerText = data.stats.banned;
+
+    allAdminUsers = data.users;
+    renderAdminUserCards(allAdminUsers);
+
+    // Aktif Yetkililer Listesini Göster
+    const adminListEl = document.getElementById('activeAdminsList');
+    const uNames = data.admins.usernames.map(u => `@${u}`).join(', ');
+    const ids = data.admins.ids.join(', ');
+    adminListEl.innerHTML = `<strong>Yetkili Listesi:</strong> ${uNames || 'Kullanıcı adı yok'} ${ids ? `| ID'ler: ${ids}` : ''}`;
+
+  } catch (err) {
+    console.error('Yönetim verisi çekilemedi:', err);
+  }
+}
+
+function renderAdminUserCards(usersToRender) {
+  const container = document.getElementById('adminUserCards');
+  container.innerHTML = '';
+
+  if (usersToRender.length === 0) {
+    container.innerHTML = '<div style="text-align: center; color: #777; padding: 30px;">Kayıtlı üye bulunamadı.</div>';
+    return;
+  }
+
+  usersToRender.forEach(u => {
+    const photo = u.photos && u.photos[0] ? u.photos[0] : '';
+    const tgDisplay = u.username ? `@${u.username}` : `ID: ${u.telegramId}`;
+    const card = document.createElement('div');
+    card.className = 'admin-u-card';
+
+    card.innerHTML = `
+      <div style="display: flex; align-items: center; flex: 1; overflow: hidden;">
+        ${photo ? `<img src="${photo}" class="admin-u-photo">` : '<div style="width:44px;height:44px;border-radius:50%;background:#333;margin-right:10px;"></div>'}
+        <div class="admin-u-details">
+          <div class="admin-u-name">${u.nickname}, ${u.age}</div>
+          <div class="admin-u-meta">${u.city} / ${u.district || '-'} • <strong>${u.role}</strong></div>
+          <div class="admin-u-tg">${tgDisplay}</div>
+        </div>
+      </div>
+      <div>
+        <button class="${u.isBanned ? 'admin-unban-btn' : 'admin-ban-btn'}" onclick="toggleBanUser('${u.telegramId}')">
+          ${u.isBanned ? 'Yasağı Aç' : 'Yasakla'}
+        </button>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function filterAdminUserList() {
+  const q = document.getElementById('userSearchInput').value.toLowerCase().trim();
+  const filtered = allAdminUsers.filter(u => {
+    const nick = (u.nickname || '').toLowerCase();
+    const uname = (u.username || '').toLowerCase();
+    const city = (u.city || '').toLowerCase();
+    const id = String(u.telegramId || '');
+    return nick.includes(q) || uname.includes(q) || city.includes(q) || id.includes(q);
+  });
+  renderAdminUserCards(filtered);
+}
+
+async function toggleBanUser(targetTgId) {
+  if (!confirm('Bu kullanıcının durumunu değiştirmek istiyor musunuz?')) return;
+
+  try {
+    const res = await fetch('/api/admin/toggle-ban', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': telegramId,
+        'x-user-name': username
+      },
+      body: JSON.stringify({ targetTelegramId: targetTgId })
+    });
+    const data = await res.json();
+    if (data.success) loadAdminDashboard();
+  } catch (err) {
+    alert('İşlem tamamlanamadı.');
+  }
+}
+
+async function addAdminTarget() {
+  const target = document.getElementById('newAdminTarget').value.trim();
+  if (!target) return alert('Lütfen @kullaniciadi veya Telegram ID girin.');
+
+  try {
+    const res = await fetch('/api/admin/add-admin', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': telegramId,
+        'x-user-name': username
+      },
+      body: JSON.stringify({ target })
+    });
+    const data = await res.json();
+    alert(data.message);
+    document.getElementById('newAdminTarget').value = '';
+    loadAdminDashboard();
+  } catch (err) {
+    alert('Yönetici eklenemedi.');
+  }
+}
+
+async function removeAdminTarget() {
+  const target = document.getElementById('newAdminTarget').value.trim();
+  if (!target) return alert('Lütfen kaldırılacak @kullaniciadi veya ID girin.');
+
+  try {
+    const res = await fetch('/api/admin/remove-admin', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': telegramId,
+        'x-user-name': username
+      },
+      body: JSON.stringify({ target })
+    });
+    const data = await res.json();
+    alert(data.message);
+    document.getElementById('newAdminTarget').value = '';
+    loadAdminDashboard();
+  } catch (err) {
+    alert('Yönetici yetkisi kaldırılamadı.');
+  }
+}
+
+// 12. Filtre Modalı
 function openFilterModal() { document.getElementById('filterModal').classList.remove('hidden'); }
 function closeFilterModal() { document.getElementById('filterModal').classList.add('hidden'); }
 function applyFilters() {
