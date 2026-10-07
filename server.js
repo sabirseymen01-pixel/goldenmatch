@@ -22,19 +22,9 @@ app.get('/health', (req, res) => {
 const users = new Map();   // Profil verileri (tgId -> profil)
 const likes = new Map();   // Beğeniler (tgId -> Set(beğenilenTgIdler))
 
-// Render Değişkenleri
+// Kesinleşen Mini App URL ve Bot Token
 const BOT_TOKEN = process.env.BOT_TOKEN;
-let activeWebAppUrl = process.env.WEBAPP_URL || '';
-
-// Sunucuya gelen ilk istek üzerinden kendi adresini otomatik yakalama (Yedek Güvenlik)
-app.use((req, res, next) => {
-  if (!activeWebAppUrl && req.headers.host) {
-    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-    activeWebAppUrl = `${protocol}://${req.headers.host}`;
-    console.log('Mini App URL otomatik olarak tespit edildi:', activeWebAppUrl);
-  }
-  next();
-});
+const WEBAPP_URL = 'https://goldenmatch.onrender.com';
 
 // Telegram Bot Kurulumu
 if (!BOT_TOKEN) {
@@ -43,39 +33,23 @@ if (!BOT_TOKEN) {
 
 const bot = BOT_TOKEN ? new Telegraf(BOT_TOKEN) : null;
 
-function getValidAppUrl() {
-  return activeWebAppUrl || process.env.WEBAPP_URL;
-}
-
 if (bot) {
   // Kullanıcı bota özelden /start yazdığında
   bot.start((ctx) => {
-    const appUrl = getValidAppUrl();
-
-    if (!appUrl) {
-      return ctx.reply('⚠️ Mini App adresi henüz hazır değil. Lütfen birkaç saniye sonra tekrar /start yazın.');
-    }
-
     ctx.reply(
       `Merhaba ${ctx.from.first_name}! ✨\n\nGoldenMatch'e hoş geldin. Topluluktaki diğer üyelerle tanışmak ve profilleri keşfetmek için butona tıkla:`,
       Markup.inlineKeyboard([
-        Markup.button.webApp('🔥 GoldenMatch\'i Aç', appUrl)
+        Markup.button.webApp('🔥 GoldenMatch\'i Aç', WEBAPP_URL)
       ])
     );
   });
 
   // Grup veya kanallarda /match, /ara, /bul komutları verildiğinde
   bot.command(['match', 'ara', 'bul', 'tanis'], (ctx) => {
-    const appUrl = getValidAppUrl();
-
-    if (!appUrl) {
-      return ctx.reply('⚠️ Mini App adresi henüz hazır değil. Lütfen birkaç saniye sonra tekrar deneyin.');
-    }
-
     ctx.reply(
       `🔥 Yeni insanlarla tanışmak ve sohbet etmek için GoldenMatch'e katılın!`,
       Markup.inlineKeyboard([
-        Markup.button.webApp('✨ Eşleşmeye Başla', appUrl)
+        Markup.button.webApp('✨ Eşleşmeye Başla', WEBAPP_URL)
       ])
     );
   });
