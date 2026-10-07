@@ -9,11 +9,11 @@ const { verifyImageSafety } = require('./nsfwCheck');
 
 const app = express();
 
-// Güvenlik & Spam Koruması
+// Rate Limit: Dakikada max 180 istek
 const limiter = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: 150,
-  message: { success: false, message: 'Çok fazla istek yapıldı. Lütfen bekleyin.' }
+  max: 180,
+  message: { success: false, message: 'Çok fazla istek yapıldı. Lütfen biraz bekleyin.' }
 });
 app.use(limiter);
 
@@ -21,18 +21,19 @@ app.use(cors());
 app.use(express.json({ limit: '25mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// UptimeRobot / Canlılık Kontrolü
-app.get('/health', (req, res) => res.status(200).send('OLYMPUS_ALIVE'));
+app.get('/health', (req, res) => res.status(200).send('GOLDENMATCH_OK'));
 
-// Bellek İçi Veri Depoları
-const users = new Map();       // tgId -> profil nesnesi
-const likes = new Map();       // tgId -> Set(beğenilenler)
-const matches = new Map();     // matchId -> { user1, user2, paravan1, paravan2, messages }
-const dailyPicks = new Map();  // tgId -> { targetId, date }
+// Veri Havuzları
+const users = new Map();         // tgId -> profil nesnesi
+const likes = new Map();         // tgId -> Set(beğenilenler)
+const matches = new Map();       // matchId -> { id, user1, user2, paravan1, paravan2, messages: [], updatedAt }
+const dailyPicks = new Map();    // tgId -> { targetId, date }
 
-// Mini App ve Bot Yapılandırması
+// Otomatik Yetkili / Yönetici Listesi (Telegram ID'lerini virgülle ayırarak .env'ye yazabilirsin)
+// Örnek .env: ADMIN_IDS="123456789,987654321"
+const ADMIN_IDS = (process.env.ADMIN_IDS || '999999999').split(',').map(s => s.trim());
+const ADMIN_SECRET = process.env.ADMIN_SECRET || 'golden_admin_2026';
 const BOT_TOKEN = process.env.BOT_TOKEN;
-const ADMIN_SECRET = process.env.ADMIN_SECRET || 'olympus_admin_777';
 const WEBAPP_URL = 'https://goldenmatch.onrender.com';
 
 const bot = BOT_TOKEN ? new Telegraf(BOT_TOKEN) : null;
@@ -40,53 +41,54 @@ const bot = BOT_TOKEN ? new Telegraf(BOT_TOKEN) : null;
 if (bot) {
   bot.start((ctx) => {
     ctx.reply(
-      `🏛️ Hoş Geldin ${ctx.from.first_name}!\n\nGoldenMatch Panteonu'na adım attın. Kaderindeki eşleşmeyi bulmak ve Olimpos meclisine katılmak için butona dokun:`,
+      `Merhaba ${ctx.from.first_name}! ✨\n\nGoldenMatch'e hoş geldin. Topluluktaki diğer üyelerle tanışmak, anonim sohbet etmek ve profilleri keşfetmek için butona tıkla:`,
       Markup.inlineKeyboard([
-        Markup.button.webApp('⚡ GoldenMatch\'e Gir', WEBAPP_URL)
+        Markup.button.webApp("🔥 GoldenMatch'i Aç", WEBAPP_URL)
       ])
     );
   });
 
-  bot.command(['match', 'ara', 'tanis'], (ctx) => {
+  bot.command(['match', 'ara', 'bul', 'tanis'], (ctx) => {
     ctx.reply(
-      '🏛️ Altın Çağın Eşleşmeleri seni bekliyor:',
-      Markup.inlineKeyboard([Markup.button.webApp('✨ Keşfet', WEBAPP_URL)])
+      `🔥 Yeni insanlarla tanışmak için GoldenMatch Mini App'e katıl!`,
+      Markup.inlineKeyboard([Markup.button.webApp('✨ Eşleşmeye Başla', WEBAPP_URL)])
     );
   });
 
   bot.launch()
-    .then(() => console.log('⚡ Telegram Botu aktif.'))
+    .then(() => console.log('Telegram Botu aktif.'))
     .catch((err) => console.error('Bot başlatma hatası:', err));
 
   process.once('SIGINT', () => bot.stop('SIGINT'));
   process.once('SIGTERM', () => bot.stop('SIGTERM'));
 }
 
-// 1. API: Konumlar (Şehir ve Semtler)
+// 1. API: Konumlar
 app.get('/api/locations', (req, res) => {
   res.json({ success: true, locations: LOCATIONS_DATA });
 });
 
-// 2. API: Profil Kontrolü
+// 2. API: Profil Sorgula
 app.get('/api/profile/:id', (req, res) => {
   const profile = users.get(String(req.params.id));
-  if (profile) return res.json({ exists: true, profile });
-  return res.json({ exists: false });
+  const isAdmin = ADMIN_IDS.includes(String(req.params.id));
+  if (profile) return res.json({ exists: true, profile, isAdmin });
+  return res.json({ exists: false, isAdmin });
 });
 
-// 3. API: Profil Kaydetme & NSFW Denetimi
+// 3. API: Profil Kaydet
 app.post('/api/profile', async (req, res) => {
   try {
     const {
       telegramId, username, nickname, age, height, weight,
-      role, interestedRole, city, district, archetype, bio, photos
+      role, interestedRole, city, district, expression, bio, photos
     } = req.body;
 
     if (!telegramId || !city || !role) {
-      return res.status(400).json({ success: false, message: 'ID, şehir ve rol zorunludur.' });
+      return res.status(400).json({ success: false, message: 'Telegram ID, şehir ve rol zorunludur.' });
     }
 
-    // NSFW / Çıplaklık AI Denetimi
+    // NSFW / Çıplaklık Görsel Kontrolü
     if (photos && photos.length > 0) {
       for (const photo of photos) {
         const check = await verifyImageSafety(photo);
@@ -107,25 +109,24 @@ app.post('/api/profile', async (req, res) => {
       interestedRole: interestedRole || 'Hepsi',
       city,
       district: district || '',
-      archetype: archetype || 'Apollon', // Mistik Tema: Apollon, Afrodit, Ares, Hermes vb.
+      expression,
       bio,
       photos: photos || [],
       isBanned: false,
-      photoApproved: true,
       registeredAt: new Date().toISOString()
     };
 
     users.set(String(telegramId), newProfile);
-    console.log(`[Yeni Kayıt] ${nickname} (@${newProfile.username || 'gizli'}) - ${city}`);
+    console.log(`[Yeni Kayıt] ${nickname} (@${newProfile.username || 'gizli'}) [${telegramId}]`);
 
-    return res.json({ success: true, message: 'Kutsal profil mühürlendi!', profile: newProfile });
+    return res.json({ success: true, message: 'Profil başarıyla kaydedildi!', profile: newProfile });
   } catch (err) {
     console.error('Kayıt Hatası:', err);
     return res.status(500).json({ success: false, message: 'Sunucu hatası.' });
   }
 });
 
-// 4. API: Keşfet Kartları & İl/İlçe Koordinat Mesafesi
+// 4. API: Keşfet Kartları & KM Mesafe
 app.get('/api/cards', (req, res) => {
   const currentUserId = String(req.query.userId);
   const filterCity = req.query.city;
@@ -154,7 +155,7 @@ app.get('/api/cards', (req, res) => {
   res.json({ success: true, cards });
 });
 
-// 5. API: Günün Eşleşmesi (Daily Pick)
+// 5. API: Günün Eşleşmesi
 app.get('/api/daily-pick', (req, res) => {
   const userId = String(req.query.userId);
   const currentUser = users.get(userId);
@@ -186,7 +187,7 @@ app.get('/api/daily-pick', (req, res) => {
   return res.json({ success: true, dailyPick: { ...selected, distanceKm } });
 });
 
-// 6. API: Beğeni / Eşleşme
+// 6. API: Beğeni & Eşleşme
 app.post('/api/like', async (req, res) => {
   const { fromUserId, toUserId, action } = req.body;
   const fromId = String(fromUserId);
@@ -205,15 +206,23 @@ app.post('/api/like', async (req, res) => {
       matchId = [fromId, toId].sort().join('_');
 
       if (!matches.has(matchId)) {
-        matches.set(matchId, { user1: fromId, user2: toId, paravan1: false, paravan2: false });
+        matches.set(matchId, {
+          id: matchId,
+          user1: fromId,
+          user2: toId,
+          paravan1: false,
+          paravan2: false,
+          messages: [],
+          updatedAt: new Date().toISOString()
+        });
       }
 
       if (bot) {
         const u1 = users.get(fromId);
         const u2 = users.get(toId);
         try {
-          await bot.telegram.sendMessage(fromId, `🏛️ *Altın Kader Eşleşti!*\n*${u2?.nickname}* ile karşılıklı beğendiniz! Olimpos Meclisi'ne girip anonim sohbete başlayabilirsin.`, { parse_mode: 'Markdown' });
-          await bot.telegram.sendMessage(toId, `🏛️ *Altın Kader Eşleşti!*\n*${u1?.nickname}* ile karşılıklı beğendiniz! Olimpos Meclisi'ne girip anonim sohbete başlayabilirsin.`, { parse_mode: 'Markdown' });
+          await bot.telegram.sendMessage(fromId, `🎉 *Tebrikler, Eşleştiniz!*\n\n*${u2?.nickname || 'Biri'}* ile karşılıklı beğendiniz! GoldenMatch DM kutusundan anonim sohbete başlayabilirsin.`);
+          await bot.telegram.sendMessage(toId, `🎉 *Tebrikler, Eşleştiniz!*\n\n*${u1?.nickname || 'Biri'}* ile karşılıklı beğendiniz! GoldenMatch DM kutusundan anonim sohbete başlayabilirsin.`);
         } catch (e) {
           console.error('Bot bildirim hatası:', e.message);
         }
@@ -224,59 +233,155 @@ app.post('/api/like', async (req, res) => {
   res.json({ success: true, isMatch, matchId });
 });
 
-// 7. YÖNETİCİ (ADMIN) API'LERİ
-// Middleware: Admin Yetki Kontrolü
-function checkAdminAuth(req, res, next) {
-  const secret = req.headers['x-admin-key'] || req.query.key;
-  if (secret !== ADMIN_SECRET) {
-    return res.status(403).json({ success: false, message: 'Yönetici yetkisi reddedildi.' });
-  }
-  next();
-}
+// 7. API: DM Kutusu (Kullanıcının Tüm Sohbetleri ve Okunmamış Durumu)
+app.get('/api/chats', (req, res) => {
+  const userId = String(req.query.userId);
+  const userChats = [];
 
-// Admin: Genel Durum ve Kullanıcı Listesi
-app.get('/api/admin/dashboard', checkAdminAuth, (req, res) => {
-  const userList = Array.from(users.values());
-  const activeCount = userList.filter(u => !u.isBanned).length;
-  const bannedCount = userList.filter(u => u.isBanned).length;
+  for (const match of matches.values()) {
+    if (match.user1 === userId || match.user2 === userId) {
+      const partnerId = match.user1 === userId ? match.user2 : match.user1;
+      const partner = users.get(partnerId);
+
+      const isMyParavanOpen = match.user1 === userId ? match.paravan1 : match.paravan2;
+      const isPartnerParavanOpen = match.user1 === userId ? match.paravan2 : match.paravan1;
+      const bothRevealed = match.paravan1 && match.paravan2;
+
+      const lastMsg = match.messages.length > 0 ? match.messages[match.messages.length - 1] : null;
+
+      userChats.push({
+        matchId: match.id,
+        partner: {
+          telegramId: partnerId,
+          nickname: partner?.nickname || 'Kullanıcı',
+          avatar: partner?.photos?.[0] || '',
+          city: partner?.city || '',
+          district: partner?.district || '',
+          role: partner?.role || '',
+          username: bothRevealed ? (partner?.username ? `@${partner.username}` : `ID:${partnerId}`) : null
+        },
+        bothRevealed,
+        myParavanRequested: isMyParavanOpen,
+        partnerParavanRequested: isPartnerParavanOpen,
+        lastMessage: lastMsg ? lastMsg.text : 'Yeni eşleşme! Selam ver ✨',
+        lastMessageTime: lastMsg ? lastMsg.time : match.updatedAt,
+        unread: lastMsg ? (lastMsg.senderId !== userId && !lastMsg.read) : true
+      });
+    }
+  }
+
+  // En son mesaja göre sırala
+  userChats.sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
+
+  const totalUnread = userChats.filter(c => c.unread).length;
+  res.json({ success: true, chats: userChats, totalUnread });
+});
+
+// 8. API: Tekil Sohbet Mesajlarını Getir
+app.get('/api/chats/:matchId', (req, res) => {
+  const match = matches.get(req.params.matchId);
+  const userId = String(req.query.userId);
+  if (!match) return res.status(404).json({ success: false, message: 'Sohbet bulunamadı.' });
+
+  // Mesajları okundu olarak işaretle
+  match.messages.forEach(m => {
+    if (m.senderId !== userId) m.read = true;
+  });
+
+  const partnerId = match.user1 === userId ? match.user2 : match.user1;
+  const partner = users.get(partnerId);
+  const bothRevealed = match.paravan1 && match.paravan2;
+  const myParavanRequested = match.user1 === userId ? match.paravan1 : match.paravan2;
 
   res.json({
     success: true,
-    stats: {
-      totalUsers: userList.length,
-      activeUsers: activeCount,
-      bannedUsers: bannedCount,
-      totalMatches: matches.size
+    matchId: match.id,
+    partner: {
+      telegramId: partnerId,
+      nickname: partner?.nickname || 'Kullanıcı',
+      avatar: partner?.photos?.[0] || '',
+      username: bothRevealed ? (partner?.username ? `@${partner.username}` : `ID: ${partnerId}`) : null
     },
-    users: userList.map(u => ({
-      telegramId: u.telegramId,
-      username: u.username || 'Gizli',
-      nickname: u.nickname,
-      age: u.age,
-      city: u.city,
-      district: u.district,
-      role: u.role,
-      archetype: u.archetype,
-      photoCount: u.photos?.length || 0,
-      photos: u.photos,
-      isBanned: u.isBanned,
-      registeredAt: u.registeredAt
-    }))
+    bothRevealed,
+    myParavanRequested,
+    messages: match.messages
   });
 });
 
-// Admin: Kullanıcı Yasakla / Yasağı Kaldır
+// 9. API: Anonim Mesaj Gönder
+app.post('/api/chats/:matchId/message', (req, res) => {
+  const { senderId, text } = req.body;
+  const match = matches.get(req.params.matchId);
+  if (!match) return res.status(404).json({ success: false, message: 'Sohbet bulunamadı.' });
+  if (!text || !text.trim()) return res.status(400).json({ success: false, message: 'Mesaj boş olamaz.' });
+
+  const msg = {
+    id: Date.now().toString(),
+    senderId: String(senderId),
+    text: text.trim().slice(0, 500),
+    time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+    read: false
+  };
+
+  match.messages.push(msg);
+  match.updatedAt = new Date().toISOString();
+
+  res.json({ success: true, message: msg });
+});
+
+// 10. API: Paravanı Aç / İstek Gönder
+app.post('/api/chats/:matchId/reveal', (req, res) => {
+  const { userId } = req.body;
+  const match = matches.get(req.params.matchId);
+  if (!match) return res.status(404).json({ success: false, message: 'Sohbet bulunamadı.' });
+
+  if (match.user1 === String(userId)) match.paravan1 = true;
+  if (match.user2 === String(userId)) match.paravan2 = true;
+
+  const bothRevealed = match.paravan1 && match.paravan2;
+  const partnerId = match.user1 === String(userId) ? match.user2 : match.user1;
+  const partner = users.get(partnerId);
+
+  res.json({
+    success: true,
+    bothRevealed,
+    partnerUsername: bothRevealed ? (partner?.username ? `@${partner.username}` : `ID:${partnerId}`) : null
+  });
+});
+
+// 11. YÖNETİCİ (YT) PANELİ API'LERİ
+function checkAdminAuth(req, res, next) {
+  const requesterId = req.headers['x-user-id'] || req.query.userId;
+  const secretKey = req.headers['x-admin-key'] || req.query.key;
+
+  if (ADMIN_IDS.includes(String(requesterId)) || secretKey === ADMIN_SECRET) {
+    return next();
+  }
+  return res.status(403).json({ success: false, message: 'Yetkisiz Erişim. YT yetkisi bulunmuyor.' });
+}
+
+// YT: Tüm Kullanıcı Listesi ve Detaylı TG Bilgileri
+app.get('/api/admin/users', checkAdminAuth, (req, res) => {
+  const userList = Array.from(users.values());
+  res.json({
+    success: true,
+    total: userList.length,
+    active: userList.filter(u => !u.isBanned).length,
+    banned: userList.filter(u => u.isBanned).length,
+    users: userList
+  });
+});
+
+// YT: Kullanıcı Banla / Aç
 app.post('/api/admin/toggle-ban', checkAdminAuth, (req, res) => {
   const { targetTelegramId } = req.body;
   const user = users.get(String(targetTelegramId));
   if (!user) return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı.' });
 
   user.isBanned = !user.isBanned;
-  users.set(String(targetTelegramId), user);
-
-  res.json({ success: true, isBanned: user.isBanned, message: `Kullanıcı durumu: ${user.isBanned ? 'Yasaklandı' : 'Aktif'}` });
+  res.json({ success: true, isBanned: user.isBanned });
 });
 
-// Sunucuyu Dinle
+// Port Dinleme
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`⚡ GoldenMatch Olympus ${PORT} portunda aktif.`));
+app.listen(PORT, () => console.log(`GoldenMatch Sunucusu ${PORT} portunda aktif.`));
