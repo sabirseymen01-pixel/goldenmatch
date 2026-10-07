@@ -1,24 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Inter:wght@400;500;600;700&display=swap');
+
 :root {
-  --bg-color: var(--tg-theme-bg-color, #0f0f12);
-  --text-color: var(--tg-theme-text-color, #f5f5f7);
-  --accent-gold: #e5a93c;
-  --accent-gold-dark: #c78b27;
-  --surface-color: #1a1a22;
-  --border-color: #2b2b36;
+  --bg-dark: #0a0a0f;
+  --surface-mythic: #12131a;
+  --gold-olympus: #e5a93c;
+  --gold-glow: rgba(229, 169, 60, 0.4);
+  --gold-gradient: linear-gradient(135deg, #f7d070, #e5a93c, #9d6d1d);
+  --border-gold: rgba(229, 169, 60, 0.3);
+  --text-main: #f5f5f7;
+  --text-dim: #9ba1a6;
 }
 
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: 'Inter', -apple-system, sans-serif;
 }
 
 body {
-  background-color: var(--bg-color);
-  color: var(--text-color);
-  padding: 16px;
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  padding: 14px;
   user-select: none;
+  background-image: radial-gradient(circle at 50% 10%, rgba(229, 169, 60, 0.08), transparent 60%);
+  min-height: 100vh;
 }
 
 .container {
@@ -30,19 +36,31 @@ body {
   display: none !important;
 }
 
+/* Başlık ve Mistik Panteon Header */
+.header {
+  text-align: center;
+  margin-bottom: 18px;
+}
+
 .header h2 {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--accent-gold);
+  font-family: 'Cinzel', serif;
+  font-size: 24px;
+  font-weight: 900;
+  background: var(--gold-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 2px;
+  text-shadow: 0 0 20px var(--gold-glow);
 }
 
 .subtitle {
-  font-size: 13px;
-  color: #8c8c9a;
-  margin: 4px 0 16px 0;
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+  margin-top: 4px;
 }
 
-/* Fotoğraf Alanları */
+/* Fotoğraf Yuvaları */
 .photo-grid {
   display: grid;
   grid-template-columns: 2fr 1fr;
@@ -53,14 +71,16 @@ body {
 
 .photo-slot {
   position: relative;
-  background: var(--surface-color);
-  border: 1.5px dashed var(--border-color);
-  border-radius: 12px;
+  background: var(--surface-mythic);
+  border: 1.5px dashed var(--border-gold);
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   cursor: pointer;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.6);
+  transition: border-color 0.2s ease;
 }
 
 .photo-slot.main {
@@ -68,8 +88,8 @@ body {
 }
 
 .slot-icon {
-  font-size: 26px;
-  color: var(--accent-gold);
+  font-size: 28px;
+  color: var(--gold-olympus);
 }
 
 .slot-preview {
@@ -84,19 +104,21 @@ body {
 
 .main-tag {
   position: absolute;
-  bottom: 6px;
-  left: 6px;
-  background: rgba(0, 0, 0, 0.75);
-  color: var(--accent-gold);
-  font-size: 10px;
-  font-weight: 600;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(10, 10, 15, 0.85);
+  color: var(--gold-olympus);
+  border: 1px solid var(--border-gold);
+  font-size: 9px;
+  font-weight: 700;
   padding: 3px 6px;
   border-radius: 4px;
+  letter-spacing: 0.5px;
 }
 
 /* Form Elemanları */
 .field {
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .field-row {
@@ -107,109 +129,118 @@ body {
 
 label {
   display: block;
-  font-size: 12px;
-  color: #a0a0b0;
-  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--gold-olympus);
+  margin-bottom: 5px;
 }
 
 input, select, textarea {
   width: 100%;
-  padding: 10px 12px;
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
+  padding: 11px 12px;
+  background: var(--surface-mythic);
+  border: 1px solid var(--border-gold);
+  border-radius: 10px;
   color: #ffffff;
   font-size: 14px;
   outline: none;
+  transition: all 0.2s ease;
 }
 
 input:focus, select:focus, textarea:focus {
-  border-color: var(--accent-gold);
+  border-color: var(--gold-olympus);
+  box-shadow: 0 0 12px var(--gold-glow);
 }
 
+/* Butonlar */
 .main-btn {
   width: 100%;
-  padding: 13px;
-  background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dark));
+  padding: 14px;
+  background: var(--gold-gradient);
   border: none;
-  border-radius: 10px;
-  color: #000;
+  border-radius: 12px;
+  color: #0b0c10;
+  font-family: 'Cinzel', serif;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: 1px;
   cursor: pointer;
-  margin-top: 8px;
-  transition: opacity 0.2s ease;
+  box-shadow: 0 4px 20px var(--gold-glow);
+  margin-top: 10px;
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
 }
 
 .main-btn:active {
-  opacity: 0.85;
+  transform: scale(0.98);
 }
 
-/* Keşfet / Tinder Kartları Ekranı */
+/* Keşfet Ekranı */
 .explore-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .explore-header h3 {
+  font-family: 'Cinzel', serif;
   font-size: 20px;
-  color: var(--accent-gold);
+  color: var(--gold-olympus);
+  letter-spacing: 1.5px;
 }
 
 .icon-btn {
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
-  color: var(--text-color);
-  padding: 6px 12px;
+  background: var(--surface-mythic);
+  border: 1px solid var(--border-gold);
+  color: var(--text-main);
+  padding: 7px 12px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
 }
 
-/* Günün Eşleşmesi Vitrini */
+/* Günün Eşleşmesi Vitrini (Olimpos Yıldızı) */
 .daily-pick-card {
-  background: linear-gradient(135deg, rgba(229, 169, 60, 0.15), rgba(26, 26, 34, 0.95));
-  border: 1.5px solid var(--accent-gold);
-  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(229, 169, 60, 0.2), rgba(18, 19, 26, 0.95));
+  border: 1.5px solid var(--gold-olympus);
+  border-radius: 14px;
   padding: 12px;
-  margin-bottom: 16px;
-  box-shadow: 0 4px 15px rgba(229, 169, 60, 0.2);
+  margin-bottom: 14px;
+  box-shadow: 0 4px 18px var(--gold-glow);
+  backdrop-filter: blur(8px);
 }
 
 .daily-tag {
-  font-size: 11px;
-  font-weight: 800;
-  color: var(--accent-gold);
-  letter-spacing: 0.8px;
-  margin-bottom: 6px;
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  font-weight: 900;
+  color: var(--gold-olympus);
+  letter-spacing: 1.5px;
+  margin-bottom: 4px;
 }
 
-.daily-pick-body {
-  font-size: 13px;
-  color: #e0e0e0;
-}
-
-/* Kart Yığını & Profil Kartı */
+/* Tinder Kart Stack & Mistik Kart */
 .card-stack {
   position: relative;
   width: 100%;
-  height: 480px;
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
-  border-radius: 16px;
+  height: 490px;
+  background: var(--surface-mythic);
+  border: 1.5px solid var(--border-gold);
+  border-radius: 20px;
   overflow: hidden;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.8), 0 0 25px rgba(229, 169, 60, 0.15);
   display: flex;
   flex-direction: column;
 }
 
 .card-image-box {
   width: 100%;
-  height: 70%;
-  background: #000;
+  height: 72%;
   position: relative;
+  background: #000;
 }
 
 .card-image-box img {
@@ -218,56 +249,71 @@ input:focus, select:focus, textarea:focus {
   object-fit: cover;
 }
 
-/* KM Mesafe Rozeti */
+/* KM Rozeti */
 .distance-badge {
   position: absolute;
   top: 12px;
   right: 12px;
-  background: rgba(0, 0, 0, 0.75);
-  color: var(--accent-gold);
-  border: 1px solid var(--accent-gold);
-  backdrop-filter: blur(4px);
-  font-size: 12px;
+  background: rgba(10, 10, 15, 0.85);
+  color: var(--gold-olympus);
+  border: 1px solid var(--gold-olympus);
+  backdrop-filter: blur(6px);
+  font-size: 11px;
   font-weight: 700;
-  padding: 4px 8px;
+  padding: 5px 10px;
   border-radius: 20px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+}
+
+/* Tanrı/Tanrıça Arketip Rozeti */
+.archetype-badge {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  background: var(--gold-gradient);
+  color: #000;
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 4px 9px;
+  border-radius: 12px;
+  letter-spacing: 1px;
 }
 
 .card-info {
-  padding: 14px;
+  padding: 14px 16px;
   flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  background: linear-gradient(180deg, rgba(18, 19, 26, 0.9) 0%, rgba(10, 10, 15, 1) 100%);
 }
 
 .card-title {
-  font-size: 18px;
+  font-family: 'Cinzel', serif;
+  font-size: 20px;
   font-weight: 700;
   color: #ffffff;
 }
 
 .card-meta {
-  font-size: 13px;
-  color: var(--accent-gold);
-  margin-top: 2px;
+  font-size: 12px;
+  color: var(--gold-olympus);
+  font-weight: 600;
+  margin-top: 3px;
 }
 
 .card-bio {
   font-size: 13px;
-  color: #a0a0b0;
+  color: var(--text-dim);
   margin-top: 6px;
-  line-height: 1.3;
+  line-height: 1.35;
 }
 
 /* Aksiyon Butonları */
 .action-buttons {
   display: flex;
   justify-content: center;
-  gap: 30px;
+  gap: 25px;
   margin-top: 18px;
 }
 
@@ -281,50 +327,49 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-  transition: transform 0.1s ease;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+  transition: transform 0.12s ease, filter 0.2s ease;
 }
 
 .action-btn:active {
-  transform: scale(0.92);
+  transform: scale(0.9);
 }
 
 .action-btn.pass {
-  background: #2b1f24;
+  background: #1c1317;
   border: 2px solid #ff4757;
+  color: #ff4757;
 }
 
 .action-btn.like {
-  background: #1e2c22;
+  background: #122218;
   border: 2px solid #2ed573;
+  color: #2ed573;
+  box-shadow: 0 0 15px rgba(46, 213, 115, 0.3);
 }
 
-/* Filtreleme Modal Penceresi */
+/* Filtreleme Modal */
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 999;
-  padding: 16px;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(5px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; padding: 16px;
 }
 
 .modal-content {
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
-  border-radius: 16px;
-  width: 100%;
-  max-width: 380px;
-  padding: 20px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+  background: var(--surface-mythic);
+  border: 1.5px solid var(--border-gold);
+  border-radius: 18px;
+  width: 100%; max-width: 380px; padding: 22px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.9);
 }
 
 .modal-content h4 {
+  font-family: 'Cinzel', serif;
   font-size: 18px;
-  color: var(--accent-gold);
+  color: var(--gold-olympus);
+  text-align: center;
+  letter-spacing: 1.5px;
 }
