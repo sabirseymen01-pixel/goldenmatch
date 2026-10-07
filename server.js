@@ -9,10 +9,9 @@ const { verifyImageSafety } = require('./nsfwCheck');
 
 const app = express();
 
-// Rate Limit: Dakikada max 180 istek
 const limiter = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: 180,
+  max: 200,
   message: { success: false, message: 'Çok fazla istek yapıldı. Lütfen biraz bekleyin.' }
 });
 app.use(limiter);
@@ -29,9 +28,26 @@ const likes = new Map();         // tgId -> Set(beğenilenler)
 const matches = new Map();       // matchId -> { id, user1, user2, paravan1, paravan2, messages: [], updatedAt }
 const dailyPicks = new Map();    // tgId -> { targetId, date }
 
-// Otomatik Yetkili / Yönetici Listesi (Telegram ID'lerini virgülle ayırarak .env'ye yazabilirsin)
-// Örnek .env: ADMIN_IDS="123456789,987654321"
-const ADMIN_IDS = (process.env.ADMIN_IDS || '999999999').split(',').map(s => s.trim());
+// YÖNETİCİ (YT) LİSTELERİ - Dinamik Olarak Yönetilebilir Set Yapısı
+// .env içerisinde virgülle ayrılmış ID'ler veya kullanıcı adları belirtilebilir:
+// Örnek: ADMIN_IDS="123456789"
+// Örnek: ADMIN_USERNAMES="sabirseymen,baskabiryt"
+const initialAdminIds = (process.env.ADMIN_IDS || '999999999').split(',').map(s => s.trim().toLowerCase());
+const initialAdminUsernames = (process.env.ADMIN_USERNAMES || '').split(',').map(s => s.trim().toLowerCase().replace('@', ''));
+
+const adminIdSet = new Set(initialAdminIds.filter(Boolean));
+const adminUsernameSet = new Set(initialAdminUsernames.filter(Boolean));
+
+// Yönetici Yetki Doğrulama Fonksiyonu
+function isUserAdmin(telegramId, username) {
+  const tid = String(telegramId || '').trim().toLowerCase();
+  const uname = String(username || '').trim().toLowerCase().replace('@', '');
+
+  if (tid && adminIdSet.has(tid)) return true;
+  if (uname && adminUsernameSet.has(uname)) return true;
+  return false;
+}
+
 const ADMIN_SECRET = process.env.ADMIN_SECRET || 'golden_admin_2026';
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const WEBAPP_URL = 'https://goldenmatch.onrender.com';
@@ -70,8 +86,11 @@ app.get('/api/locations', (req, res) => {
 
 // 2. API: Profil Sorgula
 app.get('/api/profile/:id', (req, res) => {
-  const profile = users.get(String(req.params.id));
-  const isAdmin = ADMIN_IDS.includes(String(req.params.id));
+  const tid = String(req.params.id);
+  const username = req.query.username || '';
+  const profile = users.get(tid);
+  const isAdmin = isUserAdmin(tid, username);
+
   if (profile) return res.json({ exists: true, profile, isAdmin });
   return res.json({ exists: false, isAdmin });
 });
@@ -88,7 +107,6 @@ app.post('/api/profile', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Telegram ID, şehir ve rol zorunludur.' });
     }
 
-    // NSFW / Çıplaklık Görsel Kontrolü
     if (photos && photos.length > 0) {
       for (const photo of photos) {
         const check = await verifyImageSafety(photo);
@@ -233,7 +251,7 @@ app.post('/api/like', async (req, res) => {
   res.json({ success: true, isMatch, matchId });
 });
 
-// 7. API: DM Kutusu (Kullanıcının Tüm Sohbetleri ve Okunmamış Durumu)
+// 7. API: DM Kutusu
 app.get('/api/chats', (req, res) => {
   const userId = String(req.query.userId);
   const userChats = [];
@@ -270,20 +288,17 @@ app.get('/api/chats', (req, res) => {
     }
   }
 
-  // En son mesaja göre sırala
   userChats.sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
-
   const totalUnread = userChats.filter(c => c.unread).length;
   res.json({ success: true, chats: userChats, totalUnread });
 });
 
-// 8. API: Tekil Sohbet Mesajlarını Getir
+// 8. API: Tekil Sohbet
 app.get('/api/chats/:matchId', (req, res) => {
   const match = matches.get(req.params.matchId);
   const userId = String(req.query.userId);
   if (!match) return res.status(404).json({ success: false, message: 'Sohbet bulunamadı.' });
 
-  // Mesajları okundu olarak işaretle
   match.messages.forEach(m => {
     if (m.senderId !== userId) m.read = true;
   });
@@ -308,7 +323,7 @@ app.get('/api/chats/:matchId', (req, res) => {
   });
 });
 
-// 9. API: Anonim Mesaj Gönder
+// 9. API: Mesaj Gönder
 app.post('/api/chats/:matchId/message', (req, res) => {
   const { senderId, text } = req.body;
   const match = matches.get(req.params.matchId);
@@ -329,7 +344,7 @@ app.post('/api/chats/:matchId/message', (req, res) => {
   res.json({ success: true, message: msg });
 });
 
-// 10. API: Paravanı Aç / İstek Gönder
+// 10. API: Paravanı Aç
 app.post('/api/chats/:matchId/reveal', (req, res) => {
   const { userId } = req.body;
   const match = matches.get(req.params.matchId);
@@ -349,30 +364,52 @@ app.post('/api/chats/:matchId/reveal', (req, res) => {
   });
 });
 
-// 11. YÖNETİCİ (YT) PANELİ API'LERİ
+// ----------------------------------------------------
+// 11. YÖNETİCİ (YT) PANELİ VE DİNAMİK YETKİ UÇ NOKTALARI
+// ----------------------------------------------------
+
 function checkAdminAuth(req, res, next) {
   const requesterId = req.headers['x-user-id'] || req.query.userId;
+  const requesterUsername = req.headers['x-user-name'] || req.query.username;
   const secretKey = req.headers['x-admin-key'] || req.query.key;
 
-  if (ADMIN_IDS.includes(String(requesterId)) || secretKey === ADMIN_SECRET) {
+  if (isUserAdmin(requesterId, requesterUsername) || secretKey === ADMIN_SECRET) {
     return next();
   }
-  return res.status(403).json({ success: false, message: 'Yetkisiz Erişim. YT yetkisi bulunmuyor.' });
+  return res.status(403).json({ success: false, message: 'Erişim engellendi: Yetkili (YT) değilsiniz.' });
 }
 
-// YT: Tüm Kullanıcı Listesi ve Detaylı TG Bilgileri
-app.get('/api/admin/users', checkAdminAuth, (req, res) => {
+// YT Yetki Kontrolü (Kayıt olmadan kontrol eder)
+app.post('/api/admin/verify', (req, res) => {
+  const { telegramId, username, key } = req.body;
+  const authorized = isUserAdmin(telegramId, username) || key === ADMIN_SECRET;
+
+  if (authorized) {
+    return res.json({ success: true, message: 'Yönetici yetkisi onaylandı.' });
+  }
+  return res.status(403).json({ success: false, message: 'Bu Telegram hesabına ait YT yetkisi bulunmuyor.' });
+});
+
+// YT: Tüm Kullanıcıları, Sohbet Sayısını ve Yönetici Listesini Getir
+app.get('/api/admin/dashboard-data', checkAdminAuth, (req, res) => {
   const userList = Array.from(users.values());
   res.json({
     success: true,
-    total: userList.length,
-    active: userList.filter(u => !u.isBanned).length,
-    banned: userList.filter(u => u.isBanned).length,
-    users: userList
+    stats: {
+      total: userList.length,
+      active: userList.filter(u => !u.isBanned).length,
+      banned: userList.filter(u => u.isBanned).length,
+      matches: matches.size
+    },
+    users: userList,
+    admins: {
+      ids: Array.from(adminIdSet),
+      usernames: Array.from(adminUsernameSet)
+    }
   });
 });
 
-// YT: Kullanıcı Banla / Aç
+// YT: Kullanıcı Banla / Yasağı Kaldır
 app.post('/api/admin/toggle-ban', checkAdminAuth, (req, res) => {
   const { targetTelegramId } = req.body;
   const user = users.get(String(targetTelegramId));
@@ -382,6 +419,49 @@ app.post('/api/admin/toggle-ban', checkAdminAuth, (req, res) => {
   res.json({ success: true, isBanned: user.isBanned });
 });
 
-// Port Dinleme
+// YT: Yeni Yönetici Ekle (Kullanıcı adı veya ID ile)
+app.post('/api/admin/add-admin', checkAdminAuth, (req, res) => {
+  const { target } = req.body; // Örnek: "@ahmet" veya "123456789"
+  if (!target || !target.trim()) return res.status(400).json({ success: false, message: 'Hedef belirtilmelidir.' });
+
+  const clean = target.trim().toLowerCase();
+  if (clean.startsWith('@') || isNaN(clean)) {
+    const uName = clean.replace('@', '');
+    adminUsernameSet.add(uName);
+    console.log(`[YT Eklendi] Kullanıcı Adı: @${uName}`);
+  } else {
+    adminIdSet.add(clean);
+    console.log(`[YT Eklendi] Telegram ID: ${clean}`);
+  }
+
+  res.json({
+    success: true,
+    message: 'Yeni yönetici başarıyla eklendi.',
+    admins: { ids: Array.from(adminIdSet), usernames: Array.from(adminUsernameSet) }
+  });
+});
+
+// YT: Yönetici Çıkar (Yetkiyi Al)
+app.post('/api/admin/remove-admin', checkAdminAuth, (req, res) => {
+  const { target } = req.body;
+  if (!target || !target.trim()) return res.status(400).json({ success: false, message: 'Hedef belirtilmelidir.' });
+
+  const clean = target.trim().toLowerCase();
+  if (clean.startsWith('@') || isNaN(clean)) {
+    const uName = clean.replace('@', '');
+    adminUsernameSet.delete(uName);
+    console.log(`[YT Çıkarıldı] Kullanıcı Adı: @${uName}`);
+  } else {
+    adminIdSet.delete(clean);
+    console.log(`[YT Çıkarıldı] Telegram ID: ${clean}`);
+  }
+
+  res.json({
+    success: true,
+    message: 'Yönetici yetkisi kaldırıldı.',
+    admins: { ids: Array.from(adminIdSet), usernames: Array.from(adminUsernameSet) }
+  });
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`GoldenMatch Sunucusu ${PORT} portunda aktif.`));
