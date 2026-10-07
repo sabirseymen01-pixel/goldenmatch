@@ -3,26 +3,40 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>GoldenMatch • Olympus Edition</title>
+  <title>GoldenMatch ✨</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="container">
 
+    <!-- ÜST NAVİGASYON (KEŞFET, DM KUTUSU, PROFİL, YT PANELİ) -->
+    <header id="appNav" class="app-nav hidden">
+      <div class="brand-logo" onclick="switchTab('explore')">GoldenMatch ✨</div>
+      <div class="nav-actions">
+        <button id="ytPanelBtn" class="nav-btn hidden" onclick="openAdminPanel()" title="Yönetici Paneli">👑 YT</button>
+        <button class="nav-btn" onclick="openFilterModal()">🔍</button>
+        <button class="nav-btn dm-btn" onclick="switchTab('inbox')">
+          💬
+          <span id="unreadBadge" class="badge-dot hidden"></span>
+        </button>
+        <button class="nav-btn" onclick="openProfileEdit()">⚙️</button>
+      </div>
+    </header>
+
     <!-- 1. EKRAN: PROFİL DOLDURMA FORMU -->
     <div id="registerView" class="view-screen">
       <div class="header">
-        <h2>GOLDENMATCH 🏛️</h2>
-        <p class="subtitle">Kutsal profilini tamamla, kaderindeki ruh eşiyle tanış.</p>
+        <h2>GoldenMatch ✨</h2>
+        <p class="subtitle">Profilini tamamla, konumuna en yakın üyelerle eşleş.</p>
       </div>
 
       <!-- Fotoğraf Yuvaları -->
       <div class="photo-grid">
         <div class="photo-slot main" onclick="pickImage(0)" id="slot-0">
-          <span class="slot-icon">⚡</span>
+          <span class="slot-icon">+</span>
           <img class="slot-preview" alt="Ana Fotoğraf">
-          <span class="main-tag">BAŞ PROFİL</span>
+          <span class="main-tag">Ana Fotoğraf</span>
         </div>
         <div class="photo-slot" onclick="pickImage(1)" id="slot-1">
           <span class="slot-icon">+</span>
@@ -42,7 +56,7 @@
       <form id="regForm" onsubmit="handleFormSubmit(event)">
         <div class="field">
           <label>Rumuz / İsim</label>
-          <input type="text" id="nickname" placeholder="Mecliste görünecek adın" required>
+          <input type="text" id="nickname" placeholder="Görünecek adın" required>
         </div>
 
         <div class="field-row">
@@ -106,20 +120,6 @@
           </div>
         </div>
 
-        <!-- OLİMPOS ARKETİPİ -->
-        <div class="field">
-          <label>Olimpos Arketipi (Ruhunun Yansıması)</label>
-          <select id="archetype" required>
-            <option value="" disabled selected>Arketipini Seç</option>
-            <option value="Apollon (Işık, Sanat & Karizma)">Apollon (Işık, Sanat & Karizma)</option>
-            <option value="Afrodit (Güzellik, Arzu & Zarafet)">Afrodit (Güzellik, Arzu & Zarafet)</option>
-            <option value="Ares (Tutku, Güç & Cesaret)">Ares (Tutku, Güç & Cesaret)</option>
-            <option value="Hermes (Zeka, Hız & Macera)">Hermes (Zeka, Hız & Macera)</option>
-            <option value="Dionisos (Eğlence, Coşku & Özgürlük)">Dionisos (Eğlence, Coşku & Özgürlük)</option>
-            <option value="Athena (Bilgelik, Sadakat & Strateji)">Athena (Bilgelik, Sadakat & Strateji)</option>
-          </select>
-        </div>
-
         <div class="field">
           <label>Tarz / İfade</label>
           <select id="expression" required>
@@ -135,33 +135,23 @@
 
         <div class="field">
           <label>Hakkında</label>
-          <textarea id="bio" rows="3" placeholder="Kendinden, tutkularından ve aradığın ruh eşinden bahset..."></textarea>
+          <textarea id="bio" rows="3" placeholder="Kendinden ve aradığın özelliklerden kısaca bahset..."></textarea>
         </div>
 
-        <button type="submit" id="saveBtn" class="main-btn">Kutsal Profili Kaydet & Başla</button>
+        <button type="submit" id="saveBtn" class="main-btn">Profili Kaydet & Keşfet</button>
       </form>
     </div>
 
     <!-- 2. EKRAN: KEŞFET / TINDER KARTLARI -->
     <div id="exploreView" class="view-screen hidden">
-      <div class="explore-header">
-        <h3>PANTEON ✨</h3>
-        <div style="display: flex; gap: 8px;">
-          <button class="icon-btn" onclick="openFilterModal()">🔍 Filtrele</button>
-          <button class="icon-btn" onclick="openProfileEdit()">⚙️ Profil</button>
-        </div>
-      </div>
-
       <!-- Günün Eşleşmesi Vitrini -->
       <div id="dailyPickBanner" class="daily-pick-card hidden">
-        <div class="daily-tag">⭐ GÜNÜN KUTSAL SEÇİMİ</div>
+        <div class="daily-tag">⭐ GÜNÜN ÖZEL SEÇİMİ</div>
         <div id="dailyPickContent" class="daily-pick-body"></div>
       </div>
 
       <!-- Kaydırma Kartı -->
-      <div class="card-stack" id="cardStack">
-        <!-- Kartlar dinamik olarak app.js tarafından yerleştirilecek -->
-      </div>
+      <div class="card-stack" id="cardStack"></div>
 
       <!-- Aksiyon Butonları -->
       <div class="action-buttons">
@@ -170,10 +160,45 @@
       </div>
     </div>
 
+    <!-- 3. EKRAN: DM / SOHBET KUTUSU LİSTESİ -->
+    <div id="inboxView" class="view-screen hidden">
+      <div class="inbox-header">
+        <h3>Mesajlar & Eşleşmeler 💬</h3>
+        <button class="icon-btn" onclick="switchTab('explore')">← Keşfet'e Dön</button>
+      </div>
+      <div id="chatList" class="chat-list">
+        <div style="text-align: center; color: #888; padding: 40px;">Sohbetler yükleniyor...</div>
+      </div>
+    </div>
+
+    <!-- 4. EKRAN: BİREBİR ANONİM CHAT VE PARAVAN AÇMA -->
+    <div id="chatRoomView" class="view-screen hidden">
+      <div class="chat-room-header">
+        <button class="icon-btn" onclick="switchTab('inbox')">← Geri</button>
+        <div class="chat-partner-info">
+          <span id="chatPartnerName" class="partner-name">Kullanıcı</span>
+          <span id="chatParavanStatus" class="paravan-status">🎭 Anonim Sohbet</span>
+        </div>
+        <button id="paravanBtn" class="paravan-action-btn" onclick="requestParavanReveal()">🎭 Paravanı Aç</button>
+      </div>
+
+      <!-- Paravan Açılma Bilgi Kutusu -->
+      <div id="paravanAlert" class="paravan-alert hidden"></div>
+
+      <!-- Mesaj Akışı -->
+      <div id="messageStream" class="message-stream"></div>
+
+      <!-- Mesaj Gönderme Kutusu -->
+      <form class="chat-input-bar" onsubmit="sendChatMessage(event)">
+        <input type="text" id="chatInput" placeholder="Anonim bir mesaj yaz..." autocomplete="off">
+        <button type="submit" class="send-btn">➤</button>
+      </form>
+    </div>
+
     <!-- FİLTRELEME MODALI -->
     <div id="filterModal" class="modal-overlay hidden">
       <div class="modal-content">
-        <h4>🏛️ Arama Filtresi</h4>
+        <h4>Arama Filtresi</h4>
         <div class="field" style="margin-top: 14px;">
           <label>Şehir Filtresi</label>
           <select id="filterCity">
@@ -194,7 +219,7 @@
           </select>
         </div>
         <div style="display: flex; gap: 10px; margin-top: 18px;">
-          <button class="main-btn" style="background: #1f2833; color: #fff;" onclick="closeFilterModal()">Kapat</button>
+          <button class="main-btn" style="background: #2b2b36; color: #fff;" onclick="closeFilterModal()">Kapat</button>
           <button class="main-btn" onclick="applyFilters()">Uygula</button>
         </div>
       </div>
