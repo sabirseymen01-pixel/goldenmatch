@@ -10,11 +10,11 @@
 <body>
   <div class="container">
 
-    <!-- ÜST NAVİGASYON (KEŞFET, DM KUTUSU, PROFİL, YT PANELİ) -->
+    <!-- ÜST NAVİGASYON -->
     <header id="appNav" class="app-nav hidden">
       <div class="brand-logo" onclick="switchTab('explore')">GoldenMatch ✨</div>
       <div class="nav-actions">
-        <button id="ytPanelBtn" class="nav-btn hidden" onclick="openAdminPanel()" title="Yönetici Paneli">👑 YT</button>
+        <button id="ytNavBtn" class="nav-btn hidden" onclick="switchTab('adminPanel')" title="Yönetici Paneli" style="border-color: #e5a93c; color: #e5a93c;">👑 YT</button>
         <button class="nav-btn" onclick="openFilterModal()">🔍</button>
         <button class="nav-btn dm-btn" onclick="switchTab('inbox')">
           💬
@@ -140,20 +140,23 @@
 
         <button type="submit" id="saveBtn" class="main-btn">Profili Kaydet & Keşfet</button>
       </form>
+
+      <!-- KAYIT OLMADAN DOĞRUDAN YT GİRİŞİ YAPMA ALANI -->
+      <div class="yt-bypass-container">
+        <p style="font-size: 11px; color: #777; margin-bottom: 6px;">Yönetici (YT) misiniz?</p>
+        <button type="button" class="yt-bypass-btn" onclick="directYtLogin()">👑 Kayıt Olmadan YT Girişi Yap</button>
+      </div>
     </div>
 
     <!-- 2. EKRAN: KEŞFET / TINDER KARTLARI -->
     <div id="exploreView" class="view-screen hidden">
-      <!-- Günün Eşleşmesi Vitrini -->
       <div id="dailyPickBanner" class="daily-pick-card hidden">
         <div class="daily-tag">⭐ GÜNÜN ÖZEL SEÇİMİ</div>
         <div id="dailyPickContent" class="daily-pick-body"></div>
       </div>
 
-      <!-- Kaydırma Kartı -->
       <div class="card-stack" id="cardStack"></div>
 
-      <!-- Aksiyon Butonları -->
       <div class="action-buttons">
         <button class="action-btn pass" onclick="handleCardAction('pass')">❌</button>
         <button class="action-btn like" onclick="handleCardAction('like')">💚</button>
@@ -164,14 +167,14 @@
     <div id="inboxView" class="view-screen hidden">
       <div class="inbox-header">
         <h3>Mesajlar & Eşleşmeler 💬</h3>
-        <button class="icon-btn" onclick="switchTab('explore')">← Keşfet'e Dön</button>
+        <button class="icon-btn" onclick="switchTab('explore')">← Keşfet</button>
       </div>
       <div id="chatList" class="chat-list">
         <div style="text-align: center; color: #888; padding: 40px;">Sohbetler yükleniyor...</div>
       </div>
     </div>
 
-    <!-- 4. EKRAN: BİREBİR ANONİM CHAT VE PARAVAN AÇMA -->
+    <!-- 4. EKRAN: BİREBİR ANONİM CHAT -->
     <div id="chatRoomView" class="view-screen hidden">
       <div class="chat-room-header">
         <button class="icon-btn" onclick="switchTab('inbox')">← Geri</button>
@@ -182,17 +185,57 @@
         <button id="paravanBtn" class="paravan-action-btn" onclick="requestParavanReveal()">🎭 Paravanı Aç</button>
       </div>
 
-      <!-- Paravan Açılma Bilgi Kutusu -->
       <div id="paravanAlert" class="paravan-alert hidden"></div>
-
-      <!-- Mesaj Akışı -->
       <div id="messageStream" class="message-stream"></div>
 
-      <!-- Mesaj Gönderme Kutusu -->
       <form class="chat-input-bar" onsubmit="sendChatMessage(event)">
         <input type="text" id="chatInput" placeholder="Anonim bir mesaj yaz..." autocomplete="off">
         <button type="submit" class="send-btn">➤</button>
       </form>
+    </div>
+
+    <!-- 5. EKRAN: UYGULAMA İÇİ YÖNETİCİ (YT) PANELİ -->
+    <div id="adminPanelView" class="view-screen hidden">
+      <div class="inbox-header">
+        <h3 style="color: #e5a93c;">👑 GoldenMatch YT Masası</h3>
+        <button class="icon-btn" onclick="switchTab('explore')">← Çıkış</button>
+      </div>
+
+      <!-- İstatistik Sayaçları -->
+      <div class="yt-stats-grid">
+        <div class="yt-stat-card">
+          <span class="yt-stat-title">Toplam Kayıtlı</span>
+          <span id="ytStatTotal" class="yt-stat-num">0</span>
+        </div>
+        <div class="yt-stat-card">
+          <span class="yt-stat-title">Aktif Üye</span>
+          <span id="ytStatActive" class="yt-stat-num">0</span>
+        </div>
+        <div class="yt-stat-card">
+          <span class="yt-stat-title">Yasaklı (Ban)</span>
+          <span id="ytStatBanned" class="yt-stat-num">0</span>
+        </div>
+      </div>
+
+      <!-- Yeni YT Tanımlama / Çıkarma Alanı -->
+      <div class="yt-auth-manager">
+        <h4 style="font-size: 13px; color: #e5a93c; margin-bottom: 8px;">👑 Yönetici (YT) Tanımla / Yetki Al</h4>
+        <div style="display: flex; gap: 6px;">
+          <input type="text" id="newAdminTarget" placeholder="@kullaniciadi veya TG ID..." style="font-size: 12px; padding: 8px;">
+          <button class="main-btn" style="width: auto; padding: 8px 12px; margin: 0; font-size: 12px;" onclick="addAdminTarget()">Ekle</button>
+          <button class="main-btn" style="width: auto; padding: 8px 12px; margin: 0; font-size: 12px; background: #ff4757; color: #fff;" onclick="removeAdminTarget()">Çıkar</button>
+        </div>
+        <div id="activeAdminsList" style="font-size: 11px; color: #888; margin-top: 8px;"></div>
+      </div>
+
+      <!-- Kullanıcı Arama ve Listeleme -->
+      <div style="margin: 14px 0 10px 0;">
+        <input type="text" id="userSearchInput" onkeyup="filterAdminUserList()" placeholder="Rumuz, şehir veya Telegram ara..." style="font-size: 12px;">
+      </div>
+
+      <div id="adminUserCards" class="admin-user-cards">
+        <!-- Kullanıcı listesi app.js tarafından doldurulacak -->
+      </div>
     </div>
 
     <!-- FİLTRELEME MODALI -->
