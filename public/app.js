@@ -46,13 +46,11 @@ function populateCityDropdowns() {
   const cities = Object.keys(locationsData).sort((a, b) => a.localeCompare(b, 'tr'));
 
   cities.forEach(city => {
-    // Form için
     const opt = document.createElement('option');
     opt.value = city;
     opt.textContent = city;
     citySelect.appendChild(opt);
 
-    // Filtre modalı için
     const filterOpt = document.createElement('option');
     filterOpt.value = city;
     filterOpt.textContent = city;
@@ -121,6 +119,7 @@ function fillForm(profile) {
   document.getElementById('role').value = profile.role || '';
   document.getElementById('interestedRole').value = profile.interestedRole || 'Hepsi';
   document.getElementById('expression').value = profile.expression || '';
+  document.getElementById('archetype').value = profile.archetype || '';
   document.getElementById('bio').value = profile.bio || '';
 
   if (profile.city) {
@@ -192,6 +191,7 @@ async function handleFormSubmit(e) {
     district: document.getElementById('district').value,
     role: document.getElementById('role').value,
     interestedRole: document.getElementById('interestedRole').value,
+    archetype: document.getElementById('archetype').value,
     expression: document.getElementById('expression').value,
     bio: document.getElementById('bio').value,
     photos: images.filter(img => img !== null)
@@ -199,7 +199,7 @@ async function handleFormSubmit(e) {
 
   const btn = document.getElementById('saveBtn');
   btn.disabled = true;
-  btn.innerText = 'Fotoğraflar taranıyor ve kaydediliyor...';
+  btn.innerText = 'Kutsal Mühür İşleniyor...';
 
   try {
     const res = await fetch('/api/profile', {
@@ -210,7 +210,7 @@ async function handleFormSubmit(e) {
 
     const data = await res.json();
     btn.disabled = false;
-    btn.innerText = 'Profili Kaydet & Keşfet';
+    btn.innerText = 'Kutsal Profili Kaydet & Başla';
 
     if (data.success) {
       showExploreView();
@@ -223,7 +223,7 @@ async function handleFormSubmit(e) {
     console.error('Kayıt isteği hatası:', err);
     alert('Sunucuyla bağlantı kurulamadı.');
     btn.disabled = false;
-    btn.innerText = 'Profili Kaydet & Keşfet';
+    btn.innerText = 'Kutsal Profili Kaydet & Başla';
   }
 }
 
@@ -238,7 +238,8 @@ async function loadDailyPick() {
     if (data.success && data.dailyPick) {
       const p = data.dailyPick;
       const dist = p.distanceKm !== null ? `(${p.distanceKm === 0 ? 'Aynı Semt' : p.distanceKm + ' km'})` : '';
-      content.innerHTML = `<strong>${p.nickname}, ${p.age}</strong> • ${p.city} ${p.district ? '/' + p.district : ''} ${dist} • <em>${p.role}</em>`;
+      const archName = p.archetype ? p.archetype.split(' ')[0] : 'Olimpos';
+      content.innerHTML = `<strong>${p.nickname}, ${p.age}</strong> • ${p.city}${p.district ? '/' + p.district : ''} ${dist} • <span style="color:#e5a93c;">🏛️ ${archName}</span> • <em>${p.role}</em>`;
       banner.classList.remove('hidden');
     } else {
       banner.classList.add('hidden');
@@ -251,7 +252,7 @@ async function loadDailyPick() {
 // 7. Keşfet Kartlarını Getirme & Filtreleme
 async function loadExploreCards() {
   const stack = document.getElementById('cardStack');
-  stack.innerHTML = '<div style="padding: 40px; text-align: center; color: #888;">Uygun profiller taranıyor...</div>';
+  stack.innerHTML = '<div style="padding: 40px; text-align: center; color: #888;">Kader ağları taranıyor...</div>';
 
   let url = `/api/cards?userId=${telegramId}`;
   if (activeFilters.city !== 'Hepsi') url += `&city=${encodeURIComponent(activeFilters.city)}`;
@@ -266,7 +267,7 @@ async function loadExploreCards() {
       currentIndex = 0;
       renderCurrentCard();
     } else {
-      stack.innerHTML = '<div style="padding: 60px 20px; text-align: center; color: #aaa;">✨ Belirlediğin kriterlere uygun yeni profil kalmadı. Filtreleri genişletmeyi dene!</div>';
+      stack.innerHTML = '<div style="padding: 60px 20px; text-align: center; color: #aaa;">🏛️ Belirlediğin kriterlere uygun meclis üyesi kalmadı. Filtreleri genişletmeyi dene!</div>';
     }
   } catch (err) {
     console.error('Kart getirme hatası:', err);
@@ -274,12 +275,12 @@ async function loadExploreCards() {
   }
 }
 
-// 8. Kartı Ekrana Çizme & KM Rozeti
+// 8. Kartı Ekrana Çizme & KM ve Arketip Rozetleri
 function renderCurrentCard() {
   const stack = document.getElementById('cardStack');
 
   if (currentIndex >= currentCards.length) {
-    stack.innerHTML = '<div style="padding: 60px 20px; text-align: center; color: #aaa;">🎉 Tüm profilleri inceledin! Yeni kullanıcılar katıldığında burada görünecek.</div>';
+    stack.innerHTML = '<div style="padding: 60px 20px; text-align: center; color: #aaa;">✨ Olimpos\'taki tüm ruhları inceledin! Yeni tanrılar katıldığında burada belirecek.</div>';
     return;
   }
 
@@ -295,16 +296,19 @@ function renderCurrentCard() {
     distanceBadge = `<div class="distance-badge">${distText}</div>`;
   }
 
+  const archetypeTag = user.archetype ? `<div class="archetype-badge">🏛️ ${user.archetype.split(' ')[0]}</div>` : '';
+
   stack.innerHTML = `
     <div class="card-image-box">
       ${photoUrl ? `<img src="${photoUrl}" alt="${user.nickname}">` : '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#666;">Fotoğraf Yok</div>'}
       ${distanceBadge}
+      ${archetypeTag}
     </div>
     <div class="card-info">
       <div>
         <div class="card-title">${user.nickname}, ${user.age}</div>
         <div class="card-meta">${locationText} • ${user.role || ''} • ${user.expression || ''}${heightText}${weightText}</div>
-        <div class="card-bio">${user.bio || 'Henüz bir biyografi eklenmemiş.'}</div>
+        <div class="card-bio">${user.bio || 'Bu tanrısal varlık henüz bir destan yazmamış.'}</div>
       </div>
     </div>
   `;
@@ -333,12 +337,12 @@ async function handleCardAction(action) {
     if (data.isMatch) {
       if (tg?.showPopup) {
         tg.showPopup({
-          title: '🎉 Eşleştiniz!',
+          title: '🎉 Kutsal Eşleşme!',
           message: `${targetUser.nickname} ile karşılıklı eşleştiniz! Mini App üzerinden anonim sohbet başlatabilirsiniz.`,
           buttons: [{ type: 'ok' }]
         });
       } else {
-        alert(`Tebrikler! ${targetUser.nickname} ile eşleştiniz!`);
+        alert(`Tebrikler! ${targetUser.nickname} ile kutsal eşleşme gerçekleşti!`);
       }
     }
   } catch (err) {
