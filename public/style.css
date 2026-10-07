@@ -2,6 +2,7 @@
   --bg-color: var(--tg-theme-bg-color, #0f0f12);
   --text-color: var(--tg-theme-text-color, #f5f5f7);
   --accent-gold: #e5a93c;
+  --accent-gold-dark: #c78b27;
   --surface-color: #1a1a22;
   --border-color: #2b2b36;
 }
@@ -129,7 +130,7 @@ input:focus, select:focus, textarea:focus {
 .main-btn {
   width: 100%;
   padding: 13px;
-  background: linear-gradient(135deg, #e5a93c, #c78b27);
+  background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dark));
   border: none;
   border-radius: 10px;
   color: #000;
@@ -137,6 +138,11 @@ input:focus, select:focus, textarea:focus {
   font-weight: 700;
   cursor: pointer;
   margin-top: 8px;
+  transition: opacity 0.2s ease;
+}
+
+.main-btn:active {
+  opacity: 0.85;
 }
 
 /* Keşfet / Tinder Kartları Ekranı */
@@ -144,7 +150,7 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .explore-header h3 {
@@ -162,6 +168,30 @@ input:focus, select:focus, textarea:focus {
   cursor: pointer;
 }
 
+/* Günün Eşleşmesi Vitrini */
+.daily-pick-card {
+  background: linear-gradient(135deg, rgba(229, 169, 60, 0.15), rgba(26, 26, 34, 0.95));
+  border: 1.5px solid var(--accent-gold);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 15px rgba(229, 169, 60, 0.2);
+}
+
+.daily-tag {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--accent-gold);
+  letter-spacing: 0.8px;
+  margin-bottom: 6px;
+}
+
+.daily-pick-body {
+  font-size: 13px;
+  color: #e0e0e0;
+}
+
+/* Kart Yığını & Profil Kartı */
 .card-stack {
   position: relative;
   width: 100%;
@@ -170,7 +200,7 @@ input:focus, select:focus, textarea:focus {
   border: 1px solid var(--border-color);
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
 }
@@ -186,6 +216,24 @@ input:focus, select:focus, textarea:focus {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* KM Mesafe Rozeti */
+.distance-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(0, 0, 0, 0.75);
+  color: var(--accent-gold);
+  border: 1px solid var(--accent-gold);
+  backdrop-filter: blur(4px);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .card-info {
@@ -220,7 +268,7 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   justify-content: center;
   gap: 30px;
-  margin-top: 20px;
+  margin-top: 18px;
 }
 
 .action-btn {
@@ -233,7 +281,7 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
   transition: transform 0.1s ease;
 }
 
@@ -249,4 +297,34 @@ input:focus, select:focus, textarea:focus {
 .action-btn.like {
   background: #1e2c22;
   border: 2px solid #2ed573;
+}
+
+/* Filtreleme Modal Penceresi */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  padding: 16px;
+}
+
+.modal-content {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 380px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+}
+
+.modal-content h4 {
+  font-size: 18px;
+  color: var(--accent-gold);
 }
