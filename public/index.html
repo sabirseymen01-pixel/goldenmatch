@@ -14,7 +14,7 @@
     <div id="registerView" class="view-screen">
       <div class="header">
         <h2>GoldenMatch ✨</h2>
-        <p class="subtitle">Profilini tamamla, eşleşmeye başla.</p>
+        <p class="subtitle">Profilini tamamla, konumuna en yakın üyelerle eşleş.</p>
       </div>
 
       <!-- Fotoğraf Yuvaları -->
@@ -60,18 +60,49 @@
           </div>
         </div>
 
-        <div class="field">
-          <label>Pozisyon / Rol</label>
-          <select id="role" required>
-            <option value="" disabled selected>Seçiniz</option>
-            <option value="Top">Top</option>
-            <option value="Bottom">Bottom</option>
-            <option value="Verse">Verse</option>
-            <option value="Verse Top">Verse Top</option>
-            <option value="Verse Bottom">Verse Bottom</option>
-            <option value="Side">Side</option>
-            <option value="Trans">Trans</option>
-          </select>
+        <!-- ŞEHİR VE İLÇE SEÇİMİ -->
+        <div class="field-row" style="grid-template-columns: 1fr 1fr;">
+          <div class="field">
+            <label>Şehir (İl)</label>
+            <select id="city" onchange="onCityChanged()" required>
+              <option value="" disabled selected>Şehir Seç</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>İlçe / Semt</label>
+            <select id="district" required>
+              <option value="" disabled selected>Önce İl Seçin</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field-row" style="grid-template-columns: 1fr 1fr;">
+          <div class="field">
+            <label>Senin Rolün</label>
+            <select id="role" required>
+              <option value="" disabled selected>Seçiniz</option>
+              <option value="Top">Top</option>
+              <option value="Bottom">Bottom</option>
+              <option value="Verse">Verse</option>
+              <option value="Verse Top">Verse Top</option>
+              <option value="Verse Bottom">Verse Bottom</option>
+              <option value="Side">Side</option>
+              <option value="Trans">Trans</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>İlgilendiğin Rol</label>
+            <select id="interestedRole" required>
+              <option value="Hepsi" selected>Hepsi</option>
+              <option value="Top">Top</option>
+              <option value="Bottom">Bottom</option>
+              <option value="Verse">Verse</option>
+              <option value="Verse Top">Verse Top</option>
+              <option value="Verse Bottom">Verse Bottom</option>
+              <option value="Side">Side</option>
+              <option value="Trans">Trans</option>
+            </select>
+          </div>
         </div>
 
         <div class="field">
@@ -92,7 +123,7 @@
           <textarea id="bio" rows="3" placeholder="Kendinden ve aradığın özelliklerden kısaca bahset..."></textarea>
         </div>
 
-        <button type="submit" id="saveBtn" class="main-btn">Profili Kaydet & Başla</button>
+        <button type="submit" id="saveBtn" class="main-btn">Profili Kaydet & Keşfet</button>
       </form>
     </div>
 
@@ -100,17 +131,57 @@
     <div id="exploreView" class="view-screen hidden">
       <div class="explore-header">
         <h3>Keşfet ✨</h3>
-        <button class="icon-btn" onclick="openProfileEdit()">⚙️ Profilim</button>
+        <div style="display: flex; gap: 8px;">
+          <button class="icon-btn" onclick="openFilterModal()">🔍 Filtrele</button>
+          <button class="icon-btn" onclick="openProfileEdit()">⚙️ Profil</button>
+        </div>
       </div>
 
+      <!-- Günün Eşleşmesi Vitrini -->
+      <div id="dailyPickBanner" class="daily-pick-card hidden">
+        <div class="daily-tag">⭐ GÜNÜN ÖZEL SEÇİMİ</div>
+        <div id="dailyPickContent" class="daily-pick-body"></div>
+      </div>
+
+      <!-- Kaydırma Kartı -->
       <div class="card-stack" id="cardStack">
-        <!-- Kartlar dinamik olarak app.js tarafından buraya yerleştirilecek -->
+        <!-- Kartlar dinamik olarak app.js tarafından yerleştirilecek -->
       </div>
 
-      <!-- Aksiyon Butonları (Pas / Beğen) -->
+      <!-- Aksiyon Butonları -->
       <div class="action-buttons">
         <button class="action-btn pass" onclick="handleCardAction('pass')">❌</button>
         <button class="action-btn like" onclick="handleCardAction('like')">💚</button>
+      </div>
+    </div>
+
+    <!-- FİLTRELEME MODALI -->
+    <div id="filterModal" class="modal-overlay hidden">
+      <div class="modal-content">
+        <h4>Arama Filtresi</h4>
+        <div class="field" style="margin-top: 14px;">
+          <label>Şehir Filtresi</label>
+          <select id="filterCity">
+            <option value="Hepsi" selected>Tüm Şehirler</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Rol Filtresi</label>
+          <select id="filterRole">
+            <option value="Hepsi" selected>Tüm Roller</option>
+            <option value="Top">Top</option>
+            <option value="Bottom">Bottom</option>
+            <option value="Verse">Verse</option>
+            <option value="Verse Top">Verse Top</option>
+            <option value="Verse Bottom">Verse Bottom</option>
+            <option value="Side">Side</option>
+            <option value="Trans">Trans</option>
+          </select>
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 18px;">
+          <button class="main-btn" style="background: #2b2b36; color: #fff;" onclick="closeFilterModal()">Kapat</button>
+          <button class="main-btn" onclick="applyFilters()">Uygula</button>
+        </div>
       </div>
     </div>
 
