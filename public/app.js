@@ -64,7 +64,7 @@ function onCityChanged() {
   const districtSelect = document.getElementById('district');
   const selectedCity = citySelect.value;
 
-  districtSelect.innerHTML = '<option value="" disabled selected>İlçe / Semt Seçiniz</option>';
+  districtSelect.innerHTML = '<option value="" disabled selected>İlçe Seç</option>';
 
   if (locationsData[selectedCity] && locationsData[selectedCity].districts) {
     const districts = Object.keys(locationsData[selectedCity].districts).sort((a, b) => a.localeCompare(b, 'tr'));
@@ -77,7 +77,7 @@ function onCityChanged() {
   }
 }
 
-// 2. Profil Durumu Kontrolü
+// 2. Profil Durum Kontrolü
 async function checkUserProfile() {
   try {
     const res = await fetch(`/api/profile/${telegramId}?username=${encodeURIComponent(username)}`);
@@ -159,9 +159,13 @@ function fillForm(profile) {
       if (idx < 4 && photo) {
         images[idx] = photo;
         const slotElem = document.getElementById(`slot-${idx}`);
-        slotElem.querySelector('.slot-preview').src = photo;
-        slotElem.querySelector('.slot-preview').style.display = 'block';
-        slotElem.querySelector('.slot-icon').style.display = 'none';
+        const imgElem = slotElem.querySelector('.slot-preview');
+        imgElem.src = photo;
+        imgElem.style.display = 'block';
+        const placeholder = slotElem.querySelector('.slot-placeholder');
+        if (placeholder) placeholder.style.display = 'none';
+        const plus = slotElem.querySelector('.plus-icon');
+        if (plus) plus.style.display = 'none';
       }
     });
   }
@@ -181,9 +185,14 @@ function onFileSelected(event) {
   reader.onload = (e) => {
     images[selectedSlot] = e.target.result;
     const slotElem = document.getElementById(`slot-${selectedSlot}`);
-    slotElem.querySelector('.slot-preview').src = e.target.result;
-    slotElem.querySelector('.slot-preview').style.display = 'block';
-    slotElem.querySelector('.slot-icon').style.display = 'none';
+    const imgElem = slotElem.querySelector('.slot-preview');
+    imgElem.src = e.target.result;
+    imgElem.style.display = 'block';
+
+    const placeholder = slotElem.querySelector('.slot-placeholder');
+    if (placeholder) placeholder.style.display = 'none';
+    const plus = slotElem.querySelector('.plus-icon');
+    if (plus) plus.style.display = 'none';
   };
   reader.readAsDataURL(file);
 }
@@ -214,7 +223,7 @@ async function handleFormSubmit(e) {
 
   const btn = document.getElementById('saveBtn');
   btn.disabled = true;
-  btn.innerText = 'Fotoğraflar taranıyor ve kaydediliyor...';
+  btn.innerText = 'Fotoğraflar Taranıyor...';
 
   try {
     const res = await fetch('/api/profile', {
@@ -224,7 +233,7 @@ async function handleFormSubmit(e) {
     });
     const data = await res.json();
     btn.disabled = false;
-    btn.innerText = 'Profili Kaydet & Keşfet';
+    btn.innerText = 'Profili Kaydet & Başla';
 
     if (data.success) {
       document.getElementById('appNav').classList.remove('hidden');
@@ -235,7 +244,7 @@ async function handleFormSubmit(e) {
   } catch (err) {
     alert('Sunucuya bağlanılamadı.');
     btn.disabled = false;
-    btn.innerText = 'Profili Kaydet & Keşfet';
+    btn.innerText = 'Profili Kaydet & Başla';
   }
 }
 
@@ -250,7 +259,7 @@ async function loadDailyPick() {
     if (data.success && data.dailyPick) {
       const p = data.dailyPick;
       const dist = p.distanceKm !== null ? `(${p.distanceKm === 0 ? 'Aynı Semt' : p.distanceKm + ' km'})` : '';
-      content.innerHTML = `<strong>${p.nickname}, ${p.age}</strong> • ${p.city}${p.district ? '/' + p.district : ''} ${dist} • <em>${p.role}</em>`;
+      content.innerHTML = `<strong>${p.nickname}, ${p.age}</strong> • ${p.city}${p.district ? '/' + p.district : ''} ${dist} • <span style="color:#e5a93c;">${p.role}</span>`;
       banner.classList.remove('hidden');
     } else {
       banner.classList.add('hidden');
@@ -260,10 +269,10 @@ async function loadDailyPick() {
   }
 }
 
-// 7. Keşfet Kartları
+// 7. Keşfet Kartları & HD Tinder Kart Render
 async function loadExploreCards() {
-  const stack = document.getElementById('cardStack');
-  stack.innerHTML = '<div style="padding: 40px; text-align: center; color: #888;">Uygun profiller taranıyor...</div>';
+  const stage = document.getElementById('activeCard');
+  stage.innerHTML = '<div class="card-loader">Kader ağları taranıyor...</div>';
 
   let url = `/api/cards?userId=${telegramId}`;
   if (activeFilters.city !== 'Hepsi') url += `&city=${encodeURIComponent(activeFilters.city)}`;
@@ -278,17 +287,17 @@ async function loadExploreCards() {
       currentIndex = 0;
       renderCurrentCard();
     } else {
-      stack.innerHTML = '<div style="padding: 60px 20px; text-align: center; color: #aaa;">✨ Civarında yeni profil kalmadı. Filtreleri genişletmeyi deneyebilirsin!</div>';
+      stage.innerHTML = '<div class="card-loader">✨ Civarında görüntülenecek yeni profil kalmadı.<br><br>Filtreleri genişletmeyi deneyebilirsin!</div>';
     }
   } catch (err) {
-    stack.innerHTML = '<div style="padding: 40px; text-align: center; color: #ff4757;">Profiller yüklenemedi.</div>';
+    stage.innerHTML = '<div class="card-loader" style="color:#ff4757;">Profiller yüklenemedi.</div>';
   }
 }
 
 function renderCurrentCard() {
-  const stack = document.getElementById('cardStack');
+  const stage = document.getElementById('activeCard');
   if (currentIndex >= currentCards.length) {
-    stack.innerHTML = '<div style="padding: 60px 20px; text-align: center; color: #aaa;">🎉 Tüm profilleri inceledin! Yeni kullanıcılar geldiğinde burada göreceksin.</div>';
+    stage.innerHTML = '<div class="card-loader">🎉 Tüm profilleri inceledin!<br><br>Yeni kullanıcılar katıldığında burada belirecek.</div>';
     return;
   }
 
@@ -301,25 +310,26 @@ function renderCurrentCard() {
   let distanceBadge = '';
   if (user.distanceKm !== null && user.distanceKm !== undefined) {
     const distText = user.distanceKm === 0 ? '📍 Aynı Semt' : `📍 ${user.distanceKm} km`;
-    distanceBadge = `<div class="distance-badge">${distText}</div>`;
+    distanceBadge = `<div class="pill-badge">${distText}</div>`;
   }
 
-  stack.innerHTML = `
-    <div class="card-image-box">
-      ${photoUrl ? `<img src="${photoUrl}" alt="${user.nickname}">` : '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#666;">Fotoğraf Yok</div>'}
-      ${distanceBadge}
-    </div>
-    <div class="card-info">
-      <div>
-        <div class="card-title">${user.nickname}, ${user.age}</div>
-        <div class="card-meta">${locationText} • ${user.role || ''} • ${user.expression || ''}${heightText}${weightText}</div>
-        <div class="card-bio">${user.bio || 'Henüz bir biyografi eklenmemiş.'}</div>
+  stage.innerHTML = `
+    ${photoUrl ? `<img src="${photoUrl}" class="card-bg-img" alt="${user.nickname}">` : '<div style="width:100%;height:100%;background:#1a1a23;"></div>'}
+    <div class="card-gradient-overlay"></div>
+    ${distanceBadge}
+    <div class="card-meta-box">
+      <div class="meta-name-age">${user.nickname}, ${user.age}</div>
+      <div class="meta-tags">
+        <span class="tag-pill gold">${user.role || 'Belirtilmemiş'}</span>
+        <span class="tag-pill">${locationText}</span>
+        <span class="tag-pill">${user.expression || ''}${heightText}${weightText}</span>
       </div>
+      <div class="meta-bio">${user.bio || 'Henüz bir biyografi eklenmemiş.'}</div>
     </div>
   `;
 }
 
-// 8. Beğeni & Pas
+// 8. Beğeni / Pas Aksiyonu
 async function handleCardAction(action) {
   if (currentIndex >= currentCards.length) return;
   const targetUser = currentCards[currentIndex];
@@ -354,7 +364,7 @@ async function handleCardAction(action) {
   }
 }
 
-// 9. DM Kutusu ve Rozet
+// 9. DM Kutusu ve Bildirim Rozeti
 async function checkInboxBadge() {
   try {
     const res = await fetch(`/api/chats?userId=${telegramId}`);
@@ -382,33 +392,33 @@ async function loadInboxChats() {
       list.innerHTML = '';
       data.chats.forEach(chat => {
         const item = document.createElement('div');
-        item.className = 'chat-item';
+        item.className = 'inbox-card';
         item.onclick = () => openChatRoom(chat.matchId);
 
         const avatar = chat.partner.avatar || 'https://via.placeholder.com/50';
         const unreadClass = chat.unread ? 'unread' : '';
 
         item.innerHTML = `
-          <img src="${avatar}" class="chat-avatar">
-          <div class="chat-info">
-            <div class="chat-name">
+          <img src="${avatar}" class="inbox-avatar" alt="${chat.partner.nickname}">
+          <div class="inbox-info">
+            <div class="inbox-top">
               <span>${chat.partner.nickname}</span>
-              <span class="chat-time">${chat.lastMessageTime ? chat.lastMessageTime.slice(11, 16) || '' : ''}</span>
+              <span class="inbox-time">${chat.lastMessageTime ? chat.lastMessageTime.slice(11, 16) || '' : ''}</span>
             </div>
-            <div class="chat-snippet ${unreadClass}">${chat.lastMessage}</div>
+            <div class="inbox-snippet ${unreadClass}">${chat.lastMessage}</div>
           </div>
         `;
         list.appendChild(item);
       });
     } else {
-      list.innerHTML = '<div style="text-align: center; color: #aaa; padding: 50px 20px;">Henüz aktif bir eşleşmen yok. Keşfetmeye devam et! ✨</div>';
+      list.innerHTML = '<div style="text-align: center; color: #888; padding: 60px 20px;">Henüz aktif bir eşleşmen yok.<br><br>Profilleri keşfetmeye devam et! ✨</div>';
     }
   } catch (err) {
     list.innerHTML = '<div style="text-align: center; color: #ff4757; padding: 30px;">Sohbetler yüklenemedi.</div>';
   }
 }
 
-// 10. Anonim Chat & Paravan
+// 10. Anonim Chat Odası & Paravan
 async function openChatRoom(matchId) {
   activeMatchId = matchId;
   document.getElementById('inboxView').classList.add('hidden');
@@ -432,7 +442,7 @@ async function refreshChatRoom() {
 
     if (data.bothRevealed) {
       document.getElementById('chatParavanStatus').innerText = `🔓 ${data.partner.username}`;
-      paravanAlert.innerHTML = `🎉 <strong>Paravan Açıldı!</strong> Telegram hesabı: <strong>${data.partner.username}</strong>`;
+      paravanAlert.innerHTML = `🎉 <strong>Paravan Açıldı!</strong> Telegram Adresi: <strong>${data.partner.username}</strong>`;
       paravanAlert.classList.remove('hidden');
       paravanBtn.style.display = 'none';
     } else if (data.myParavanRequested) {
@@ -455,8 +465,8 @@ async function refreshChatRoom() {
     data.messages.forEach(msg => {
       const bubble = document.createElement('div');
       const isMe = msg.senderId === telegramId;
-      bubble.className = `message-bubble ${isMe ? 'me' : 'partner'}`;
-      bubble.innerHTML = `${msg.text} <span class="msg-time">${msg.time}</span>`;
+      bubble.className = `chat-bubble ${isMe ? 'me' : 'partner'}`;
+      bubble.innerHTML = `${msg.text} <span class="bubble-time">${msg.time}</span>`;
       stream.appendChild(bubble);
     });
 
@@ -488,7 +498,7 @@ async function sendChatMessage(e) {
 
 async function requestParavanReveal() {
   if (!activeMatchId) return;
-  if (!confirm('Telegram kullanıcı adını karşı tarafla paylaşmak istiyor musun?')) return;
+  if (!confirm('Telegram kullanıcı adınızı karşı tarafla paylaşmak istiyor musunuz?')) return;
 
   try {
     const res = await fetch(`/api/chats/${activeMatchId}/reveal`, {
@@ -503,10 +513,7 @@ async function requestParavanReveal() {
   }
 }
 
-// ----------------------------------------------------
-// 11. KAYITSIZ DOĞRUDAN YT GİRİŞİ & YÖNETİM MASASI
-// ----------------------------------------------------
-
+// 11. Kayıtsız YT Girişi & Yönetim Masası
 async function directYtLogin() {
   try {
     const res = await fetch('/api/admin/verify', {
@@ -521,8 +528,7 @@ async function directYtLogin() {
       document.getElementById('ytNavBtn').classList.remove('hidden');
       switchTab('adminPanel');
     } else {
-      // Eğer Telegram ID / Username otomatik listede değilse şifre sor
-      const keyPrompt = prompt('Telegram hesabınız (@' + (username || 'gizli') + ') otomatik YT listesinde bulunamadı. Lütfen YT Şifrenizi girin:');
+      const keyPrompt = prompt('Telegram hesabınız (@' + (username || 'gizli') + ') listede bulunamadı. Lütfen YT Şifresini girin:');
       if (!keyPrompt) return;
 
       const keyRes = await fetch('/api/admin/verify', {
@@ -563,12 +569,10 @@ async function loadAdminDashboard() {
     allAdminUsers = data.users;
     renderAdminUserCards(allAdminUsers);
 
-    // Aktif Yetkililer Listesini Göster
     const adminListEl = document.getElementById('activeAdminsList');
     const uNames = data.admins.usernames.map(u => `@${u}`).join(', ');
     const ids = data.admins.ids.join(', ');
-    adminListEl.innerHTML = `<strong>Yetkili Listesi:</strong> ${uNames || 'Kullanıcı adı yok'} ${ids ? `| ID'ler: ${ids}` : ''}`;
-
+    adminListEl.innerHTML = `<strong>Yetkililer:</strong> ${uNames || 'Yok'} ${ids ? `| ID'ler: ${ids}` : ''}`;
   } catch (err) {
     console.error('Yönetim verisi çekilemedi:', err);
   }
@@ -586,25 +590,25 @@ function renderAdminUserCards(usersToRender) {
   usersToRender.forEach(u => {
     const photo = u.photos && u.photos[0] ? u.photos[0] : '';
     const tgDisplay = u.username ? `@${u.username}` : `ID: ${u.telegramId}`;
-    const card = document.createElement('div');
-    card.className = 'admin-u-card';
+    const row = document.createElement('div');
+    row.className = 'admin-row';
 
-    card.innerHTML = `
-      <div style="display: flex; align-items: center; flex: 1; overflow: hidden;">
-        ${photo ? `<img src="${photo}" class="admin-u-photo">` : '<div style="width:44px;height:44px;border-radius:50%;background:#333;margin-right:10px;"></div>'}
-        <div class="admin-u-details">
-          <div class="admin-u-name">${u.nickname}, ${u.age}</div>
-          <div class="admin-u-meta">${u.city} / ${u.district || '-'} • <strong>${u.role}</strong></div>
-          <div class="admin-u-tg">${tgDisplay}</div>
+    row.innerHTML = `
+      <div class="admin-row-user">
+        ${photo ? `<img src="${photo}" class="admin-row-avatar">` : '<div style="width:42px;height:42px;border-radius:50%;background:#222;"></div>'}
+        <div>
+          <div style="font-weight:700;font-size:14px;color:#fff;">${u.nickname}, ${u.age}</div>
+          <div style="font-size:11px;color:#8e8e9a;">${u.city} / ${u.district || '-'} • <strong>${u.role}</strong></div>
+          <div style="font-size:12px;color:#e5a93c;font-weight:600;">${tgDisplay}</div>
         </div>
       </div>
       <div>
-        <button class="${u.isBanned ? 'admin-unban-btn' : 'admin-ban-btn'}" onclick="toggleBanUser('${u.telegramId}')">
+        <button class="sm-btn ${u.isBanned ? 'gold' : 'danger'}" onclick="toggleBanUser('${u.telegramId}')">
           ${u.isBanned ? 'Yasağı Aç' : 'Yasakla'}
         </button>
       </div>
     `;
-    container.appendChild(card);
+    container.appendChild(row);
   });
 }
 
