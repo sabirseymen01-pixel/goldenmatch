@@ -22,9 +22,19 @@ app.get('/health', (req, res) => {
 const users = new Map();   // Profil verileri (tgId -> profil)
 const likes = new Map();   // Beğeniler (tgId -> Set(beğenilenTgIdler))
 
-// Render Environment Variables üzerinden çekilecek değişkenler
+// Render Değişkenleri
 const BOT_TOKEN = process.env.BOT_TOKEN;
-const WEBAPP_URL = process.env.WEBAPP_URL;
+let activeWebAppUrl = process.env.WEBAPP_URL || '';
+
+// Sunucuya gelen ilk istek üzerinden kendi adresini otomatik yakalama (Yedek Güvenlik)
+app.use((req, res, next) => {
+  if (!activeWebAppUrl && req.headers.host) {
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    activeWebAppUrl = `${protocol}://${req.headers.host}`;
+    console.log('Mini App URL otomatik olarak tespit edildi:', activeWebAppUrl);
+  }
+  next();
+});
 
 // Telegram Bot Kurulumu
 if (!BOT_TOKEN) {
@@ -33,10 +43,19 @@ if (!BOT_TOKEN) {
 
 const bot = BOT_TOKEN ? new Telegraf(BOT_TOKEN) : null;
 
+function getValidAppUrl() {
+  return activeWebAppUrl || process.env.WEBAPP_URL;
+}
+
 if (bot) {
   // Kullanıcı bota özelden /start yazdığında
   bot.start((ctx) => {
-    const appUrl = WEBAPP_URL || 'https://google.com';
+    const appUrl = getValidAppUrl();
+
+    if (!appUrl) {
+      return ctx.reply('⚠️ Mini App adresi henüz hazır değil. Lütfen birkaç saniye sonra tekrar /start yazın.');
+    }
+
     ctx.reply(
       `Merhaba ${ctx.from.first_name}! ✨\n\nGoldenMatch'e hoş geldin. Topluluktaki diğer üyelerle tanışmak ve profilleri keşfetmek için butona tıkla:`,
       Markup.inlineKeyboard([
@@ -47,7 +66,12 @@ if (bot) {
 
   // Grup veya kanallarda /match, /ara, /bul komutları verildiğinde
   bot.command(['match', 'ara', 'bul', 'tanis'], (ctx) => {
-    const appUrl = WEBAPP_URL || 'https://google.com';
+    const appUrl = getValidAppUrl();
+
+    if (!appUrl) {
+      return ctx.reply('⚠️ Mini App adresi henüz hazır değil. Lütfen birkaç saniye sonra tekrar deneyin.');
+    }
+
     ctx.reply(
       `🔥 Yeni insanlarla tanışmak ve sohbet etmek için GoldenMatch'e katılın!`,
       Markup.inlineKeyboard([
