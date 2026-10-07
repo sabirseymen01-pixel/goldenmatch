@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>GoldenMatch</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+
+    <!-- 1. EKRAN: PROFİL DOLDURMA FORMU -->
+    <div id="registerView" class="view-screen">
+      <div class="header">
+        <h2>GoldenMatch ✨</h2>
+        <p class="subtitle">Profilini tamamla, eşleşmeye başla.</p>
+      </div>
+
+      <!-- Fotoğraf Yuvaları -->
+      <div class="photo-grid">
+        <div class="photo-slot main" onclick="pickImage(0)" id="slot-0">
+          <span class="slot-icon">+</span>
+          <img class="slot-preview" alt="Ana Fotoğraf">
+          <span class="main-tag">Ana Fotoğraf</span>
+        </div>
+        <div class="photo-slot" onclick="pickImage(1)" id="slot-1">
+          <span class="slot-icon">+</span>
+          <img class="slot-preview" alt="Fotoğraf 2">
+        </div>
+        <div class="photo-slot" onclick="pickImage(2)" id="slot-2">
+          <span class="slot-icon">+</span>
+          <img class="slot-preview" alt="Fotoğraf 3">
+        </div>
+        <div class="photo-slot" onclick="pickImage(3)" id="slot-3">
+          <span class="slot-icon">+</span>
+          <img class="slot-preview" alt="Fotoğraf 4">
+        </div>
+      </div>
+      <input type="file" id="fileSelector" accept="image/*" style="display:none" onchange="onFileSelected(event)">
+
+      <form id="regForm" onsubmit="handleFormSubmit(event)">
+        <div class="field">
+          <label>Rumuz / İsim</label>
+          <input type="text" id="nickname" placeholder="Görünecek adın" required>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Yaş</label>
+            <input type="number" id="age" min="18" max="99" placeholder="18+" required>
+          </div>
+          <div class="field">
+            <label>Boy (cm)</label>
+            <input type="number" id="height" placeholder="180">
+          </div>
+          <div class="field">
+            <label>Kilo (kg)</label>
+            <input type="number" id="weight" placeholder="75">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Pozisyon / Rol</label>
+          <select id="role" required>
+            <option value="" disabled selected>Seçiniz</option>
+            <option value="Top">Top</option>
+            <option value="Bottom">Bottom</option>
+            <option value="Verse">Verse</option>
+            <option value="Verse Top">Verse Top</option>
+            <option value="Verse Bottom">Verse Bottom</option>
+            <option value="Side">Side</option>
+            <option value="Trans">Trans</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Tarz / İfade</label>
+          <select id="expression" required>
+            <option value="" disabled selected>Seçiniz</option>
+            <option value="Maskülen">Maskülen</option>
+            <option value="Feminen">Feminen</option>
+            <option value="Ladyboy">Ladyboy</option>
+            <option value="Twink">Twink</option>
+            <option value="Daddy">Daddy</option>
+            <option value="Diğer">Diğer</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Hakkında</label>
+          <textarea id="bio" rows="3" placeholder="Kendinden ve aradığın özelliklerden kısaca bahset..."></textarea>
+        </div>
+
+        <button type="submit" id="saveBtn" class="main-btn">Profili Kaydet & Başla</button>
+      </form>
+    </div>
+
+    <!-- 2. EKRAN: KEŞFET / TINDER KARTLARI -->
+    <div id="exploreView" class="view-screen hidden">
+      <div class="explore-header">
+        <h3>Keşfet ✨</h3>
+        <button class="icon-btn" onclick="openProfileEdit()">⚙️ Profilim</button>
+      </div>
+
+      <div class="card-stack" id="cardStack">
+        <!-- Kartlar dinamik olarak app.js tarafından buraya yerleştirilecek -->
+      </div>
+
+      <!-- Aksiyon Butonları (Pas / Beğen) -->
+      <div class="action-buttons">
+        <button class="action-btn pass" onclick="handleCardAction('pass')">❌</button>
+        <button class="action-btn like" onclick="handleCardAction('like')">💚</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
