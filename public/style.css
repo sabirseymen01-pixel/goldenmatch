@@ -1,30 +1,24 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Inter:wght@400;500;600;700&display=swap');
-
 :root {
-  --bg-dark: #0a0a0f;
-  --surface-mythic: #12131a;
-  --gold-olympus: #e5a93c;
-  --gold-glow: rgba(229, 169, 60, 0.4);
-  --gold-gradient: linear-gradient(135deg, #f7d070, #e5a93c, #9d6d1d);
-  --border-gold: rgba(229, 169, 60, 0.3);
-  --text-main: #f5f5f7;
-  --text-dim: #9ba1a6;
+  --bg-color: var(--tg-theme-bg-color, #0f0f12);
+  --text-color: var(--tg-theme-text-color, #f5f5f7);
+  --accent-gold: #e5a93c;
+  --accent-gold-dark: #c78b27;
+  --surface-color: #1a1a22;
+  --border-color: #2b2b36;
 }
 
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 body {
-  background-color: var(--bg-dark);
-  color: var(--text-main);
-  padding: 14px;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  padding: 12px;
   user-select: none;
-  background-image: radial-gradient(circle at 50% 10%, rgba(229, 169, 60, 0.08), transparent 60%);
-  min-height: 100vh;
 }
 
 .container {
@@ -36,28 +30,62 @@ body {
   display: none !important;
 }
 
-/* Başlık ve Mistik Panteon Header */
-.header {
-  text-align: center;
-  margin-bottom: 18px;
+/* Üst Navigasyon Barı */
+.app-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 4px 14px 4px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 12px;
 }
 
+.brand-logo {
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--accent-gold);
+  cursor: pointer;
+}
+
+.nav-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.nav-btn {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  position: relative;
+  font-size: 14px;
+}
+
+.badge-dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 10px;
+  height: 10px;
+  background-color: #ff4757;
+  border-radius: 50%;
+  border: 2px solid var(--bg-color);
+}
+
+/* Başlık */
 .header h2 {
-  font-family: 'Cinzel', serif;
-  font-size: 24px;
-  font-weight: 900;
-  background: var(--gold-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  letter-spacing: 2px;
-  text-shadow: 0 0 20px var(--gold-glow);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent-gold);
 }
 
 .subtitle {
-  font-size: 12px;
-  color: var(--text-dim);
-  letter-spacing: 0.5px;
-  margin-top: 4px;
+  font-size: 13px;
+  color: #8c8c9a;
+  margin: 4px 0 16px 0;
 }
 
 /* Fotoğraf Yuvaları */
@@ -71,16 +99,14 @@ body {
 
 .photo-slot {
   position: relative;
-  background: var(--surface-mythic);
-  border: 1.5px dashed var(--border-gold);
-  border-radius: 14px;
+  background: var(--surface-color);
+  border: 1.5px dashed var(--border-color);
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   cursor: pointer;
-  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.6);
-  transition: border-color 0.2s ease;
 }
 
 .photo-slot.main {
@@ -88,159 +114,112 @@ body {
 }
 
 .slot-icon {
-  font-size: 28px;
-  color: var(--gold-olympus);
+  font-size: 26px;
+  color: var(--accent-gold);
 }
 
 .slot-preview {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  top: 0; left: 0; width: 100%; height: 100%;
   object-fit: cover;
   display: none;
 }
 
 .main-tag {
   position: absolute;
-  bottom: 8px;
-  left: 8px;
-  background: rgba(10, 10, 15, 0.85);
-  color: var(--gold-olympus);
-  border: 1px solid var(--border-gold);
-  font-size: 9px;
-  font-weight: 700;
+  bottom: 6px; left: 6px;
+  background: rgba(0, 0, 0, 0.75);
+  color: var(--accent-gold);
+  font-size: 10px;
+  font-weight: 600;
   padding: 3px 6px;
   border-radius: 4px;
-  letter-spacing: 0.5px;
 }
 
 /* Form Elemanları */
-.field {
-  margin-bottom: 12px;
-}
-
-.field-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
-}
+.field { margin-bottom: 14px; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
 
 label {
   display: block;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: var(--gold-olympus);
-  margin-bottom: 5px;
+  font-size: 12px;
+  color: #a0a0b0;
+  margin-bottom: 6px;
 }
 
 input, select, textarea {
   width: 100%;
-  padding: 11px 12px;
-  background: var(--surface-mythic);
-  border: 1px solid var(--border-gold);
-  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
   color: #ffffff;
   font-size: 14px;
   outline: none;
-  transition: all 0.2s ease;
 }
 
 input:focus, select:focus, textarea:focus {
-  border-color: var(--gold-olympus);
-  box-shadow: 0 0 12px var(--gold-glow);
+  border-color: var(--accent-gold);
 }
 
-/* Butonlar */
 .main-btn {
   width: 100%;
-  padding: 14px;
-  background: var(--gold-gradient);
+  padding: 13px;
+  background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dark));
   border: none;
-  border-radius: 12px;
-  color: #0b0c10;
-  font-family: 'Cinzel', serif;
+  border-radius: 10px;
+  color: #000;
   font-size: 15px;
-  font-weight: 800;
-  letter-spacing: 1px;
+  font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 4px 20px var(--gold-glow);
-  margin-top: 10px;
-  transition: transform 0.1s ease, box-shadow 0.2s ease;
-}
-
-.main-btn:active {
-  transform: scale(0.98);
-}
-
-/* Keşfet Ekranı */
-.explore-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.explore-header h3 {
-  font-family: 'Cinzel', serif;
-  font-size: 20px;
-  color: var(--gold-olympus);
-  letter-spacing: 1.5px;
+  margin-top: 8px;
 }
 
 .icon-btn {
-  background: var(--surface-mythic);
-  border: 1px solid var(--border-gold);
-  color: var(--text-main);
-  padding: 7px 12px;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+  padding: 6px 12px;
   border-radius: 8px;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
   cursor: pointer;
 }
 
-/* Günün Eşleşmesi Vitrini (Olimpos Yıldızı) */
+/* Günün Eşleşmesi Vitrini */
 .daily-pick-card {
-  background: linear-gradient(135deg, rgba(229, 169, 60, 0.2), rgba(18, 19, 26, 0.95));
-  border: 1.5px solid var(--gold-olympus);
-  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(229, 169, 60, 0.15), rgba(26, 26, 34, 0.95));
+  border: 1.5px solid var(--accent-gold);
+  border-radius: 12px;
   padding: 12px;
   margin-bottom: 14px;
-  box-shadow: 0 4px 18px var(--gold-glow);
-  backdrop-filter: blur(8px);
 }
 
 .daily-tag {
-  font-family: 'Cinzel', serif;
-  font-size: 10px;
-  font-weight: 900;
-  color: var(--gold-olympus);
-  letter-spacing: 1.5px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--accent-gold);
   margin-bottom: 4px;
 }
 
-/* Tinder Kart Stack & Mistik Kart */
+/* Kart Yığını & Profil Kartı */
 .card-stack {
   position: relative;
   width: 100%;
-  height: 490px;
-  background: var(--surface-mythic);
-  border: 1.5px solid var(--border-gold);
-  border-radius: 20px;
+  height: 480px;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.8), 0 0 25px rgba(229, 169, 60, 0.15);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
 }
 
 .card-image-box {
   width: 100%;
-  height: 72%;
-  position: relative;
+  height: 70%;
   background: #000;
+  position: relative;
 }
 
 .card-image-box img {
@@ -249,77 +228,40 @@ input:focus, select:focus, textarea:focus {
   object-fit: cover;
 }
 
-/* KM Rozeti */
 .distance-badge {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  background: rgba(10, 10, 15, 0.85);
-  color: var(--gold-olympus);
-  border: 1px solid var(--gold-olympus);
-  backdrop-filter: blur(6px);
-  font-size: 11px;
+  top: 12px; right: 12px;
+  background: rgba(0, 0, 0, 0.75);
+  color: var(--accent-gold);
+  border: 1px solid var(--accent-gold);
+  font-size: 12px;
   font-weight: 700;
-  padding: 5px 10px;
+  padding: 4px 8px;
   border-radius: 20px;
 }
 
-/* Tanrı/Tanrıça Arketip Rozeti */
-.archetype-badge {
-  position: absolute;
-  bottom: 12px;
-  left: 12px;
-  background: var(--gold-gradient);
-  color: #000;
-  font-family: 'Cinzel', serif;
-  font-size: 10px;
-  font-weight: 900;
-  padding: 4px 9px;
-  border-radius: 12px;
-  letter-spacing: 1px;
-}
-
 .card-info {
-  padding: 14px 16px;
+  padding: 14px;
   flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  background: linear-gradient(180deg, rgba(18, 19, 26, 0.9) 0%, rgba(10, 10, 15, 1) 100%);
 }
 
-.card-title {
-  font-family: 'Cinzel', serif;
-  font-size: 20px;
-  font-weight: 700;
-  color: #ffffff;
-}
-
-.card-meta {
-  font-size: 12px;
-  color: var(--gold-olympus);
-  font-weight: 600;
-  margin-top: 3px;
-}
-
-.card-bio {
-  font-size: 13px;
-  color: var(--text-dim);
-  margin-top: 6px;
-  line-height: 1.35;
-}
+.card-title { font-size: 18px; font-weight: 700; color: #fff; }
+.card-meta { font-size: 13px; color: var(--accent-gold); margin-top: 2px; }
+.card-bio { font-size: 13px; color: #a0a0b0; margin-top: 6px; line-height: 1.3; }
 
 /* Aksiyon Butonları */
 .action-buttons {
   display: flex;
   justify-content: center;
-  gap: 25px;
+  gap: 30px;
   margin-top: 18px;
 }
 
 .action-btn {
-  width: 65px;
-  height: 65px;
+  width: 65px; height: 65px;
   border-radius: 50%;
   border: none;
   font-size: 24px;
@@ -327,49 +269,155 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
-  transition: transform 0.12s ease, filter 0.2s ease;
 }
 
-.action-btn:active {
-  transform: scale(0.9);
+.action-btn.pass { background: #2b1f24; border: 2px solid #ff4757; }
+.action-btn.like { background: #1e2c22; border: 2px solid #2ed573; }
+
+/* DM KUTUSU (INBOX) */
+.inbox-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
 }
 
-.action-btn.pass {
-  background: #1c1317;
-  border: 2px solid #ff4757;
-  color: #ff4757;
+.chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.action-btn.like {
-  background: #122218;
-  border: 2px solid #2ed573;
-  color: #2ed573;
-  box-shadow: 0 0 15px rgba(46, 213, 115, 0.3);
+.chat-item {
+  display: flex;
+  align-items: center;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  padding: 12px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.chat-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 12px;
+  border: 1px solid var(--accent-gold);
+}
+
+.chat-info { flex: 1; overflow: hidden; }
+.chat-name { font-weight: 700; font-size: 15px; color: #fff; display: flex; justify-content: space-between; }
+.chat-time { font-size: 11px; color: #777; font-weight: normal; }
+.chat-snippet { font-size: 13px; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
+.chat-snippet.unread { color: var(--accent-gold); font-weight: 600; }
+
+/* BİREBİR CHAT ODASI */
+.chat-room-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.chat-partner-info { text-align: center; }
+.partner-name { font-weight: 700; font-size: 16px; display: block; }
+.paravan-status { font-size: 11px; color: var(--accent-gold); }
+
+.paravan-action-btn {
+  background: #2b2b36;
+  border: 1px solid var(--accent-gold);
+  color: var(--accent-gold);
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.paravan-alert {
+  background: rgba(229, 169, 60, 0.15);
+  border: 1px solid var(--accent-gold);
+  color: #fff;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin: 10px 0;
+  text-align: center;
+}
+
+.message-stream {
+  height: 380px;
+  overflow-y: auto;
+  padding: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.message-bubble {
+  max-width: 78%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.message-bubble.me {
+  align-self: flex-end;
+  background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dark));
+  color: #000;
+  border-bottom-right-radius: 2px;
+}
+
+.message-bubble.partner {
+  align-self: flex-start;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  color: #fff;
+  border-bottom-left-radius: 2px;
+}
+
+.msg-time {
+  font-size: 10px;
+  opacity: 0.7;
+  display: block;
+  text-align: right;
+  margin-top: 4px;
+}
+
+.chat-input-bar {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.chat-input-bar input { flex: 1; }
+.send-btn {
+  background: var(--accent-gold);
+  color: #000;
+  border: none;
+  padding: 0 18px;
+  border-radius: 8px;
+  font-size: 18px;
+  cursor: pointer;
 }
 
 /* Filtreleme Modal */
 .modal-overlay {
   position: fixed;
   top: 0; left: 0; width: 100vw; height: 100vh;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(5px);
+  background: rgba(0, 0, 0, 0.8);
   display: flex; align-items: center; justify-content: center;
-  z-index: 1000; padding: 16px;
+  z-index: 999; padding: 16px;
 }
 
 .modal-content {
-  background: var(--surface-mythic);
-  border: 1.5px solid var(--border-gold);
-  border-radius: 18px;
-  width: 100%; max-width: 380px; padding: 22px;
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.9);
-}
-
-.modal-content h4 {
-  font-family: 'Cinzel', serif;
-  font-size: 18px;
-  color: var(--gold-olympus);
-  text-align: center;
-  letter-spacing: 1.5px;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  width: 100%; max-width: 380px; padding: 20px;
 }
