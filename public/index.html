@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>GoldenMatch</title>
+  <title>GoldenMatch • Olympus Edition</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -13,16 +13,16 @@
     <!-- 1. EKRAN: PROFİL DOLDURMA FORMU -->
     <div id="registerView" class="view-screen">
       <div class="header">
-        <h2>GoldenMatch ✨</h2>
-        <p class="subtitle">Profilini tamamla, konumuna en yakın üyelerle eşleş.</p>
+        <h2>GOLDENMATCH 🏛️</h2>
+        <p class="subtitle">Kutsal profilini tamamla, kaderindeki ruh eşiyle tanış.</p>
       </div>
 
       <!-- Fotoğraf Yuvaları -->
       <div class="photo-grid">
         <div class="photo-slot main" onclick="pickImage(0)" id="slot-0">
-          <span class="slot-icon">+</span>
+          <span class="slot-icon">⚡</span>
           <img class="slot-preview" alt="Ana Fotoğraf">
-          <span class="main-tag">Ana Fotoğraf</span>
+          <span class="main-tag">BAŞ PROFİL</span>
         </div>
         <div class="photo-slot" onclick="pickImage(1)" id="slot-1">
           <span class="slot-icon">+</span>
@@ -42,7 +42,7 @@
       <form id="regForm" onsubmit="handleFormSubmit(event)">
         <div class="field">
           <label>Rumuz / İsim</label>
-          <input type="text" id="nickname" placeholder="Görünecek adın" required>
+          <input type="text" id="nickname" placeholder="Mecliste görünecek adın" required>
         </div>
 
         <div class="field-row">
@@ -76,6 +76,7 @@
           </div>
         </div>
 
+        <!-- ROL VE İLGİLENİLEN ROL -->
         <div class="field-row" style="grid-template-columns: 1fr 1fr;">
           <div class="field">
             <label>Senin Rolün</label>
@@ -105,6 +106,20 @@
           </div>
         </div>
 
+        <!-- OLİMPOS ARKETİPİ -->
+        <div class="field">
+          <label>Olimpos Arketipi (Ruhunun Yansıması)</label>
+          <select id="archetype" required>
+            <option value="" disabled selected>Arketipini Seç</option>
+            <option value="Apollon (Işık, Sanat & Karizma)">Apollon (Işık, Sanat & Karizma)</option>
+            <option value="Afrodit (Güzellik, Arzu & Zarafet)">Afrodit (Güzellik, Arzu & Zarafet)</option>
+            <option value="Ares (Tutku, Güç & Cesaret)">Ares (Tutku, Güç & Cesaret)</option>
+            <option value="Hermes (Zeka, Hız & Macera)">Hermes (Zeka, Hız & Macera)</option>
+            <option value="Dionisos (Eğlence, Coşku & Özgürlük)">Dionisos (Eğlence, Coşku & Özgürlük)</option>
+            <option value="Athena (Bilgelik, Sadakat & Strateji)">Athena (Bilgelik, Sadakat & Strateji)</option>
+          </select>
+        </div>
+
         <div class="field">
           <label>Tarz / İfade</label>
           <select id="expression" required>
@@ -120,17 +135,17 @@
 
         <div class="field">
           <label>Hakkında</label>
-          <textarea id="bio" rows="3" placeholder="Kendinden ve aradığın özelliklerden kısaca bahset..."></textarea>
+          <textarea id="bio" rows="3" placeholder="Kendinden, tutkularından ve aradığın ruh eşinden bahset..."></textarea>
         </div>
 
-        <button type="submit" id="saveBtn" class="main-btn">Profili Kaydet & Keşfet</button>
+        <button type="submit" id="saveBtn" class="main-btn">Kutsal Profili Kaydet & Başla</button>
       </form>
     </div>
 
     <!-- 2. EKRAN: KEŞFET / TINDER KARTLARI -->
     <div id="exploreView" class="view-screen hidden">
       <div class="explore-header">
-        <h3>Keşfet ✨</h3>
+        <h3>PANTEON ✨</h3>
         <div style="display: flex; gap: 8px;">
           <button class="icon-btn" onclick="openFilterModal()">🔍 Filtrele</button>
           <button class="icon-btn" onclick="openProfileEdit()">⚙️ Profil</button>
@@ -139,7 +154,7 @@
 
       <!-- Günün Eşleşmesi Vitrini -->
       <div id="dailyPickBanner" class="daily-pick-card hidden">
-        <div class="daily-tag">⭐ GÜNÜN ÖZEL SEÇİMİ</div>
+        <div class="daily-tag">⭐ GÜNÜN KUTSAL SEÇİMİ</div>
         <div id="dailyPickContent" class="daily-pick-body"></div>
       </div>
 
@@ -158,7 +173,7 @@
     <!-- FİLTRELEME MODALI -->
     <div id="filterModal" class="modal-overlay hidden">
       <div class="modal-content">
-        <h4>Arama Filtresi</h4>
+        <h4>🏛️ Arama Filtresi</h4>
         <div class="field" style="margin-top: 14px;">
           <label>Şehir Filtresi</label>
           <select id="filterCity">
@@ -179,7 +194,7 @@
           </select>
         </div>
         <div style="display: flex; gap: 10px; margin-top: 18px;">
-          <button class="main-btn" style="background: #2b2b36; color: #fff;" onclick="closeFilterModal()">Kapat</button>
+          <button class="main-btn" style="background: #1f2833; color: #fff;" onclick="closeFilterModal()">Kapat</button>
           <button class="main-btn" onclick="applyFilters()">Uygula</button>
         </div>
       </div>
