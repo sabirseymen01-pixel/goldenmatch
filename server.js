@@ -11,7 +11,7 @@ const app = express();
 
 const limiter = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: 250,
+  max: 300,
   message: { success: false, message: 'İstek limiti aşıldı.' }
 });
 app.use(limiter);
@@ -22,23 +22,37 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/health', (req, res) => res.status(200).send('GOLDENMATCH_OK'));
 
-// Veri Depoları
-const users = new Map();         // tgId -> profil nesnesi
+// Veri Havuzları
+const users = new Map();         // tgId -> profil
 const likes = new Map();         // tgId -> Set(beğenilenler)
 const matches = new Map();       // matchId -> { id, user1, user2, paravan1, paravan2, messages: [], updatedAt }
 const dailyPicks = new Map();    // tgId -> { targetId, date }
-const reports = [];              // Şikayet havuzu
+const reports = [];              // Profil ve Mesaj şikayet havuzu
 
-const initialAdminIds = (process.env.ADMIN_IDS || '999999999').split(',').map(s => s.trim().toLowerCase());
+// KURUCU (SÜPER ADMİN) & YT YÖNETİMİ
+const FOUNDER_ID = String(process.env.FOUNDER_ID || '999999999').trim().toLowerCase();
+const FOUNDER_USERNAME = String(process.env.FOUNDER_USERNAME || 'sabirseymen').trim().toLowerCase().replace('@', '');
+
+const initialAdminIds = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim().toLowerCase());
 const initialAdminUsernames = (process.env.ADMIN_USERNAMES || '').split(',').map(s => s.trim().toLowerCase().replace('@', ''));
 
 const adminIdSet = new Set(initialAdminIds.filter(Boolean));
 const adminUsernameSet = new Set(initialAdminUsernames.filter(Boolean));
 
+// Kurucuyu otomatik yönetici yap
+if (FOUNDER_ID) adminIdSet.add(FOUNDER_ID);
+if (FOUNDER_USERNAME) adminUsernameSet.add(FOUNDER_USERNAME);
+
 function isUserAdmin(telegramId, username) {
   const tid = String(telegramId || '').trim().toLowerCase();
   const uname = String(username || '').trim().toLowerCase().replace('@', '');
-  return (tid && adminIdSet.has(tid)) || (uname && adminUsernameSet.has(uname));
+  return tid === FOUNDER_ID || uname === FOUNDER_USERNAME || adminIdSet.has(tid) || adminUsernameSet.has(uname);
+}
+
+function isFounder(telegramId, username) {
+  const tid = String(telegramId || '').trim().toLowerCase();
+  const uname = String(username || '').trim().toLowerCase().replace('@', '');
+  return tid === FOUNDER_ID || uname === FOUNDER_USERNAME;
 }
 
 const ADMIN_SECRET = process.env.ADMIN_SECRET || 'golden_admin_2026';
@@ -47,35 +61,116 @@ const WEBAPP_URL = 'https://goldenmatch.onrender.com';
 
 const bot = BOT_TOKEN ? new Telegraf(BOT_TOKEN) : null;
 
+// TELEGRAM BOT KOMUTLARI: YÖNETİCİ EKLEME/ÇIKARMA & DUYURU
 if (bot) {
   bot.start((ctx) => {
     ctx.reply(
-      `Merhaba ${ctx.from.first_name}! ✨\n\nGoldenMatch'e hoş geldin. Topluluktaki diğer üyelerle tanışmak, anonim sohbet etmek ve profilleri keşfetmek için butona tıkla:`,
+      `Merhaba ${ctx.from.first_name}! ✨\n\nGoldenMatch'e hoş geldin. Topluluktaki diğer üyelerle tanışmak, anonim sohbet etmek ve profilleri keşfetmek için dokun:`,
       Markup.inlineKeyboard([Markup.button.webApp("🔥 GoldenMatch'i Aç", WEBAPP_URL)])
     );
   });
-  bot.launch().catch(err => console.error('Bot hatası:', err));
+
+  // Kurucuya Özel: /ytekle @kullaniciadi veya ID
+  bot.command('ytekle', (ctx) => {
+    const senderId = String(ctx.from.id).toLowerCase();
+    const senderUname = String(ctx.from.username || '').toLowerCase();
+
+    if (!isFounder(senderId, senderUname)) {
+      return ctx.reply('⛔ Bu komutu sadece sistem kurucusu kullanabilir.');
+    }
+
+    const args = ctx.message.text.split(' ').slice(1);
+    if (!args[0]) return ctx.reply('Kullanım: /ytekle @kullaniciadi veya /ytekle 123456789');
+
+    const target = args[0].trim().toLowerCase();
+    if (target.startsWith('@') || isNaN(target)) {
+      const clean = target.replace('@', '');
+      adminUsernameSet.add(clean);
+      ctx.reply(`✅ @${clean} başarıyla YT yetkilisi yapıldı.`);
+    } else {
+      adminIdSet.add(target);
+      ctx.reply(`✅ ID: ${target} başarıyla YT yetkilisi yapıldı.`);
+    }
+  });
+
+  // Kurucuya Özel: /ytcikar @kullaniciadi veya ID
+  bot.command('ytcikar', (ctx) => {
+    const senderId = String(ctx.from.id).toLowerCase();
+    const senderUname = String(ctx.from.username || '').toLowerCase();
+
+    if (!isFounder(senderId, senderUname)) {
+      return ctx.reply('⛔ Bu komutu sadece sistem kurucusu kullanabilir.');
+    }
+
+    const args = ctx.message.text.split(' ').slice(1);
+    if (!args[0]) return ctx.reply('Kullanım: /ytcikar @kullaniciadi veya /ytcikar 123456789');
+
+    const target = args[0].trim().toLowerCase();
+    if (target.startsWith('@') || isNaN(target)) {
+      const clean = target.replace('@', '');
+      adminUsernameSet.delete(clean);
+      ctx.reply(`❌ @${clean} YT yetkisi kaldırıldı.`);
+    } else {
+      adminIdSet.delete(target);
+      ctx.reply(`❌ ID: ${target} YT yetkisi kaldırıldı.`);
+    }
+  });
+
+  // Kurucuya Özel: /ytsorgu (Listele)
+  bot.command('ytsorgu', (ctx) => {
+    const senderId = String(ctx.from.id).toLowerCase();
+    const senderUname = String(ctx.from.username || '').toLowerCase();
+
+    if (!isFounder(senderId, senderUname)) return ctx.reply('⛔ Yetkisiz işlem.');
+
+    const unames = Array.from(adminUsernameSet).map(u => `@${u}`).join(', ');
+    const ids = Array.from(adminIdSet).join(', ');
+    ctx.reply(`👑 *Aktif YT Listesi:*\n\nKullanıcı Adları: ${unames || 'Yok'}\nID'ler: ${ids || 'Yok'}`, { parse_mode: 'Markdown' });
+  });
+
+  // Kurucuya Özel: /duyuru [mesaj]
+  bot.command('duyuru', async (ctx) => {
+    const senderId = String(ctx.from.id).toLowerCase();
+    const senderUname = String(ctx.from.username || '').toLowerCase();
+
+    if (!isFounder(senderId, senderUname)) return ctx.reply('⛔ Yetkisiz işlem.');
+
+    const msg = ctx.message.text.replace('/duyuru', '').trim();
+    if (!msg) return ctx.reply('Lütfen duyuru metnini girin: /duyuru [metin]');
+
+    let count = 0;
+    for (const u of users.values()) {
+      try {
+        await bot.telegram.sendMessage(u.telegramId, `📢 *GOLDENMATCH RESMİ DUYURU*\n\n${msg}`, { parse_mode: 'Markdown' });
+        count++;
+      } catch (e) {}
+    }
+    ctx.reply(`✅ Duyuru ${count} üyeye başarıyla gönderildi.`);
+  });
+
+  bot.launch().catch(err => console.error('Bot başlatma hatası:', err));
   process.once('SIGINT', () => bot.stop('SIGINT'));
   process.once('SIGTERM', () => bot.stop('SIGTERM'));
 }
 
-// 1. Konumlar
+// 1. API: Konumlar
 app.get('/api/locations', (req, res) => res.json({ success: true, locations: LOCATIONS_DATA }));
 
-// 2. Profil Sorgula
+// 2. API: Profil Sorgula
 app.get('/api/profile/:id', (req, res) => {
   const tid = String(req.params.id);
   const uname = req.query.username || '';
   const profile = users.get(tid);
   const isAdmin = isUserAdmin(tid, uname);
-  if (profile) return res.json({ exists: true, profile, isAdmin });
-  return res.json({ exists: false, isAdmin });
+  const founder = isFounder(tid, uname);
+  if (profile) return res.json({ exists: true, profile, isAdmin, isFounder: founder });
+  return res.json({ exists: false, isAdmin, isFounder: founder });
 });
 
-// 3. Profil Kaydet / Güncelle
+// 3. API: Profil Kaydet
 app.post('/api/profile', async (req, res) => {
   try {
-    const { telegramId, username, nickname, age, height, weight, role, interestedRole, city, district, expression, bio, photos } = req.body;
+    const { telegramId, username, nickname, age, height, weight, role, interestedRole, city, district, archetype, expression, bio, photos } = req.body;
     if (!telegramId || !city || !role) return res.status(400).json({ success: false, message: 'Eksik bilgi.' });
 
     if (photos && photos.length > 0) {
@@ -96,9 +191,11 @@ app.post('/api/profile', async (req, res) => {
       interestedRole: interestedRole || 'Hepsi',
       city,
       district: district || '',
+      archetype: archetype || 'Apollon',
       expression,
       bio,
       photos: photos || [],
+      isVerified: false,
       isBanned: false,
       registeredAt: new Date().toISOString()
     };
@@ -110,36 +207,24 @@ app.post('/api/profile', async (req, res) => {
   }
 });
 
-// 4. HESAP SİLME SİSTEMİ (Tüm bağlı verileriyle sıfırlama)
+// 4. API: Hesap Silme
 app.delete('/api/profile/:id', (req, res) => {
   const tid = String(req.params.id);
-  
-  if (!users.has(tid)) {
-    return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı.' });
-  }
+  if (!users.has(tid)) return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı.' });
 
-  // Kullanıcı profilini sil
   users.delete(tid);
   likes.delete(tid);
   dailyPicks.delete(tid);
 
-  // Bu kullanıcıya ait tüm eşleşmeleri ve sohbetleri temizle
   for (const [mId, m] of matches.entries()) {
-    if (m.user1 === tid || m.user2 === tid) {
-      matches.delete(mId);
-    }
+    if (m.user1 === tid || m.user2 === tid) matches.delete(mId);
   }
+  for (const likeSet of likes.values()) likeSet.delete(tid);
 
-  // Diğer kullanıcıların beğeni listesinden bu kullanıcıyı temizle
-  for (const likeSet of likes.values()) {
-    likeSet.delete(tid);
-  }
-
-  console.log(`[HESAP SİLİNDİ] ID: ${tid}`);
-  res.json({ success: true, message: 'Hesabınız ve tüm verileriniz kalıcı olarak silindi.' });
+  res.json({ success: true, message: 'Hesap silindi.' });
 });
 
-// 5. Keşfet Kartları
+// 5. API: Keşfet Kartları
 app.get('/api/cards', (req, res) => {
   const currentUserId = String(req.query.userId);
   const filterCity = req.query.city;
@@ -165,7 +250,7 @@ app.get('/api/cards', (req, res) => {
   res.json({ success: true, cards });
 });
 
-// 6. Günün Eşleşmesi
+// 6. API: Günün Eşleşmesi
 app.get('/api/daily-pick', (req, res) => {
   const userId = String(req.query.userId);
   const currentUser = users.get(userId);
@@ -192,7 +277,7 @@ app.get('/api/daily-pick', (req, res) => {
   res.json({ success: true, dailyPick: { ...picked, distanceKm: calculateExactDistance(currentUser, picked) } });
 });
 
-// 7. Beğeni / Eşleşme
+// 7. API: Beğeni / Eşleşme
 app.post('/api/like', async (req, res) => {
   const { fromUserId, toUserId, action } = req.body;
   const fromId = String(fromUserId);
@@ -234,7 +319,7 @@ app.post('/api/like', async (req, res) => {
   res.json({ success: true, isMatch, matchId });
 });
 
-// 8. DM Kutusu
+// 8. API: DM Kutusu
 app.get('/api/chats', (req, res) => {
   const userId = String(req.query.userId);
   const userChats = [];
@@ -270,7 +355,7 @@ app.get('/api/chats', (req, res) => {
   res.json({ success: true, chats: userChats, totalUnread: userChats.filter(c => c.unread).length });
 });
 
-// 9. Tekil Sohbet
+// 9. API: Tekil Sohbet
 app.get('/api/chats/:matchId', (req, res) => {
   const match = matches.get(req.params.matchId);
   const userId = String(req.query.userId);
@@ -296,7 +381,7 @@ app.get('/api/chats/:matchId', (req, res) => {
   });
 });
 
-// 10. Mesaj Gönder
+// 10. API: Mesaj Gönder
 app.post('/api/chats/:matchId/message', (req, res) => {
   const { senderId, text } = req.body;
   const match = matches.get(req.params.matchId);
@@ -315,7 +400,7 @@ app.post('/api/chats/:matchId/message', (req, res) => {
   res.json({ success: true, message: msg });
 });
 
-// 11. Paravanı Aç
+// 11. API: Paravanı Aç
 app.post('/api/chats/:matchId/reveal', (req, res) => {
   const { userId } = req.body;
   const match = matches.get(req.params.matchId);
@@ -335,7 +420,7 @@ app.post('/api/chats/:matchId/reveal', (req, res) => {
   });
 });
 
-// 12. Eşleşmeyi İptal Et
+// 12. API: Eşleşmeyi İptal Et
 app.post('/api/chats/:matchId/unmatch', (req, res) => {
   const { userId } = req.body;
   const match = matches.get(req.params.matchId);
@@ -349,9 +434,9 @@ app.post('/api/chats/:matchId/unmatch', (req, res) => {
   res.json({ success: true, message: 'Eşleşme iptal edildi.' });
 });
 
-// 13. Şikayet Et
+// 13. API: Şikayet Et (Profil veya Seçili Mesajlar)
 app.post('/api/report', (req, res) => {
-  const { reporterId, targetId, reason } = req.body;
+  const { reporterId, targetId, reason, selectedMessages } = req.body;
   if (!targetId || !reason?.trim()) return res.status(400).json({ success: false });
 
   const targetUser = users.get(String(targetId));
@@ -365,33 +450,43 @@ app.post('/api/report', (req, res) => {
     reporterId: String(reporterId),
     reporterNickname: reporterUser?.nickname || 'Anonim',
     reason: reason.trim(),
+    evidenceMessages: selectedMessages || [],
     date: new Date().toLocaleString('tr-TR')
   };
 
   reports.unshift(reportItem);
-  res.json({ success: true });
+  console.log(`[ŞİKAYET] ${reportItem.targetNickname} bildirildi. Kanıt mesaj sayısı: ${reportItem.evidenceMessages.length}`);
+  res.json({ success: true, message: 'Şikayet iletildi.' });
 });
 
-// 14. YT Paneli API'leri
+// 14. YT Yetki Middleware'i
 function checkAdminAuth(req, res, next) {
   const requesterId = req.headers['x-user-id'] || req.query.userId;
   const requesterUsername = req.headers['x-user-name'] || req.query.username;
   const secretKey = req.headers['x-admin-key'] || req.query.key;
 
   if (isUserAdmin(requesterId, requesterUsername) || secretKey === ADMIN_SECRET) return next();
-  return res.status(403).json({ success: false });
+  return res.status(403).json({ success: false, message: 'Yetki reddedildi.' });
 }
 
+// YT Yetki Kontrolü
 app.post('/api/admin/verify', (req, res) => {
   const { telegramId, username, key } = req.body;
-  if (isUserAdmin(telegramId, username) || key === ADMIN_SECRET) return res.json({ success: true });
+  if (isUserAdmin(telegramId, username) || key === ADMIN_SECRET) {
+    return res.json({ success: true, isFounder: isFounder(telegramId, username) });
+  }
   return res.status(403).json({ success: false });
 });
 
+// YT Dashboard Verisi
 app.get('/api/admin/dashboard-data', checkAdminAuth, (req, res) => {
   const userList = Array.from(users.values());
+  const requesterId = req.headers['x-user-id'] || req.query.userId;
+  const requesterUsername = req.headers['x-user-name'] || req.query.username;
+
   res.json({
     success: true,
+    isFounder: isFounder(requesterId, requesterUsername),
     stats: {
       total: userList.length,
       active: userList.filter(u => !u.isBanned).length,
@@ -404,6 +499,7 @@ app.get('/api/admin/dashboard-data', checkAdminAuth, (req, res) => {
   });
 });
 
+// YT: Kullanıcı Banla / Aç
 app.post('/api/admin/toggle-ban', checkAdminAuth, (req, res) => {
   const user = users.get(String(req.body.targetTelegramId));
   if (!user) return res.status(404).json({ success: false });
@@ -411,7 +507,15 @@ app.post('/api/admin/toggle-ban', checkAdminAuth, (req, res) => {
   res.json({ success: true, isBanned: user.isBanned });
 });
 
+// YT: Ekleme/Çıkarma (Sadece Kurucu Yapabilir)
 app.post('/api/admin/add-admin', checkAdminAuth, (req, res) => {
+  const requesterId = req.headers['x-user-id'] || req.query.userId;
+  const requesterUsername = req.headers['x-user-name'] || req.query.username;
+
+  if (!isFounder(requesterId, requesterUsername)) {
+    return res.status(403).json({ success: false, message: 'Yalnızca kurucu yeni YT ekleyebilir.' });
+  }
+
   const clean = req.body.target?.trim().toLowerCase();
   if (clean.startsWith('@') || isNaN(clean)) adminUsernameSet.add(clean.replace('@', ''));
   else adminIdSet.add(clean);
@@ -419,6 +523,13 @@ app.post('/api/admin/add-admin', checkAdminAuth, (req, res) => {
 });
 
 app.post('/api/admin/remove-admin', checkAdminAuth, (req, res) => {
+  const requesterId = req.headers['x-user-id'] || req.query.userId;
+  const requesterUsername = req.headers['x-user-name'] || req.query.username;
+
+  if (!isFounder(requesterId, requesterUsername)) {
+    return res.status(403).json({ success: false, message: 'Yalnızca kurucu YT yetkisini alabilir.' });
+  }
+
   const clean = req.body.target?.trim().toLowerCase();
   if (clean.startsWith('@') || isNaN(clean)) adminUsernameSet.delete(clean.replace('@', ''));
   else adminIdSet.delete(clean);
