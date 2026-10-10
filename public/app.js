@@ -4,9 +4,24 @@ if (tg) {
   tg.expand();
 }
 
+function triggerHaptic(type = 'light') {
+  try {
+    if (tg?.HapticFeedback) {
+      if (type === 'success' || type === 'error' || type === 'warning') {
+        tg.HapticFeedback.notificationOccurred(type);
+      } else {
+        tg.HapticFeedback.impactOccurred(type);
+      }
+    }
+  } catch (e) {}
+}
+
 const tgUser = tg?.initDataUnsafe?.user;
-const telegramId = tgUser ? String(tgUser.id) : '999999999';
-const username = tgUser ? (tgUser.username || '') : '';
+const telegramId = tgUser ? String(tgUser.id) : (localStorage.getItem('gm_tid') || '999999999');
+const username = tgUser ? (tgUser.username || '') : (localStorage.getItem('gm_uname') || '');
+
+localStorage.setItem('gm_tid', telegramId);
+localStorage.setItem('gm_uname', username);
 
 let selectedSlot = null;
 const images = [null, null, null, null];
@@ -16,11 +31,19 @@ let locationsData = {};
 let activeMatchId = null;
 let chatPollingInterval = null;
 let allAdminUsers = [];
+let reportingTargetId = null;
 
 let activeFilters = {
   city: 'Hepsi',
   role: 'Hepsi'
 };
+
+// DOKUNMATİK KAYDIRMA (SWIPE PHYSICS) DEĞİŞKENLERİ
+let startX = 0;
+let startY = 0;
+let currentX = 0;
+let currentY = 0;
+let isDragging = false;
 
 window.addEventListener('DOMContentLoaded', async () => {
   await loadLocations();
@@ -36,9 +59,7 @@ async function loadLocations() {
       locationsData = data.locations;
       populateCityDropdowns();
     }
-  } catch (err) {
-    console.error('Konum yükleme hatası:', err);
-  }
+  } catch (err) {}
 }
 
 function populateCityDropdowns() {
@@ -77,7 +98,7 @@ function onCityChanged() {
   }
 }
 
-// 2. Profil Durum Kontrolü
+// 2. Profil Kontrolü (Giriş/Çıkış Yapılsa Bile Tanımlı Giriş)
 async function checkUserProfile() {
   try {
     const res = await fetch(`/api/profile/${telegramId}?username=${encodeURIComponent(username)}`);
@@ -89,16 +110,17 @@ async function checkUserProfile() {
 
     if (data.exists) {
       fillForm(data.profile);
+      document.getElementById('deleteAccountBtn').classList.remove('hidden'); // Hesap silme butonunu göster
       document.getElementById('appNav').classList.remove('hidden');
       switchTab('explore');
       loadExploreCards();
       loadDailyPick();
       checkInboxBadge();
     } else {
+      document.getElementById('deleteAccountBtn').classList.add('hidden');
       showRegisterView();
     }
   } catch (err) {
-    console.error('Profil kontrol hatası:', err);
     showRegisterView();
   }
 }
@@ -113,6 +135,7 @@ function showRegisterView() {
 }
 
 function switchTab(tabName) {
+  triggerHaptic('light');
   if (chatPollingInterval) clearInterval(chatPollingInterval);
 
   document.getElementById('registerView').classList.add('hidden');
@@ -135,6 +158,7 @@ function switchTab(tabName) {
 }
 
 function openProfileEdit() {
+  triggerHaptic('medium');
   showRegisterView();
 }
 
@@ -173,6 +197,7 @@ function fillForm(profile) {
 
 // 4. Fotoğraf Seçim İşlemleri
 function pickImage(slotIndex) {
+  triggerHaptic('light');
   selectedSlot = slotIndex;
   document.getElementById('fileSelector').click();
 }
@@ -200,6 +225,8 @@ function onFileSelected(event) {
 // 5. Profil Form Kaydetme
 async function handleFormSubmit(e) {
   e.preventDefault();
+  triggerHaptic('medium');
+
   if (!images[0]) {
     alert('Lütfen en az bir ana profil fotoğrafı yükleyin.');
     return;
@@ -236,19 +263,54 @@ async function handleFormSubmit(e) {
     btn.innerText = 'Profili Kaydet & Başla';
 
     if (data.success) {
+      triggerHaptic('success');
+      document.getElementById('deleteAccountBtn').classList.remove('hidden');
       document.getElementById('appNav').classList.remove('hidden');
       switchTab('explore');
     } else {
-      alert(data.message || 'Kayıt sırasında hata oluştu.');
+      triggerHaptic('error');
+      alert(data.message || 'Hata oluştu.');
     }
   } catch (err) {
-    alert('Sunucuya bağlanılamadı.');
     btn.disabled = false;
     btn.innerText = 'Profili Kaydet & Başla';
   }
 }
 
-// 6. Günün Eşleşmesi
+// 6. HESAP SİLME FONKSİYONU
+async function deleteMyAccount() {
+  triggerHaptic('warning');
+  const confirmFirst = confirm('Hesabınızı, fotoğraflarınızı ve tüm sohbetlerinizi kalıcı olarak silmek istediğinize emin misiniz?');
+  if (!confirmFirst) return;
+
+  const confirmSecond = confirm('Bu işlem GERİ ALINAMAZ. Profiliniz tamamen silinecek!');
+  if (!confirmSecond) return;
+
+  try {
+    const res = await fetch(`/api/profile/${telegramId}`, { method: 'DELETE' });
+    const data = await res.json();
+
+    if (data.success) {
+      triggerHaptic('success');
+      alert('Hesabınız başarıyla silindi.');
+      localStorage.removeItem('gm_cached_profile');
+      // Sayfayı sıfırdan kayıt ekranına çevir
+      document.getElementById('regForm').reset();
+      images.fill(null);
+      document.querySelectorAll('.slot-preview').forEach(p => p.style.display = 'none');
+      document.querySelectorAll('.slot-placeholder').forEach(p => p.style.display = 'flex');
+      document.getElementById('appNav').classList.add('hidden');
+      document.getElementById('deleteAccountBtn').classList.add('hidden');
+      showRegisterView();
+    } else {
+      alert('Hesap silinemedi.');
+    }
+  } catch (err) {
+    alert('Sunucuya bağlanılamadı.');
+  }
+}
+
+// 7. Günün Eşleşmesi
 async function loadDailyPick() {
   try {
     const res = await fetch(`/api/daily-pick?userId=${telegramId}`);
@@ -264,12 +326,10 @@ async function loadDailyPick() {
     } else {
       banner.classList.add('hidden');
     }
-  } catch (e) {
-    console.error(e);
-  }
+  } catch (e) {}
 }
 
-// 7. Keşfet Kartları & HD Tinder Kart Render
+// 8. Keşfet Kartları & Dokunmatik Motor Kurulumu
 async function loadExploreCards() {
   const stage = document.getElementById('activeCard');
   stage.innerHTML = '<div class="card-loader">Kader ağları taranıyor...</div>';
@@ -295,9 +355,13 @@ async function loadExploreCards() {
 }
 
 function renderCurrentCard() {
-  const stage = document.getElementById('activeCard');
+  const card = document.getElementById('activeCard');
+  card.className = 'tinder-card';
+  card.style.transform = '';
+  card.style.opacity = '1';
+
   if (currentIndex >= currentCards.length) {
-    stage.innerHTML = '<div class="card-loader">🎉 Tüm profilleri inceledin!<br><br>Yeni kullanıcılar katıldığında burada belirecek.</div>';
+    card.innerHTML = '<div class="card-loader">🎉 Tüm profilleri inceledin!<br><br>Yeni kullanıcılar katıldığında burada belirecek.</div>';
     return;
   }
 
@@ -313,9 +377,11 @@ function renderCurrentCard() {
     distanceBadge = `<div class="pill-badge">${distText}</div>`;
   }
 
-  stage.innerHTML = `
+  card.innerHTML = `
     ${photoUrl ? `<img src="${photoUrl}" class="card-bg-img" alt="${user.nickname}">` : '<div style="width:100%;height:100%;background:#1a1a23;"></div>'}
     <div class="card-gradient-overlay"></div>
+    <div class="swipe-stamp stamp-like" id="stampLike">BEĞEN</div>
+    <div class="swipe-stamp stamp-pass" id="stampPass">PAS</div>
     ${distanceBadge}
     <div class="card-meta-box">
       <div class="meta-name-age">${user.nickname}, ${user.age}</div>
@@ -327,11 +393,119 @@ function renderCurrentCard() {
       <div class="meta-bio">${user.bio || 'Henüz bir biyografi eklenmemiş.'}</div>
     </div>
   `;
+
+  // Dokunmatik Sürükleme Olaylarını Bağla
+  initTouchDrag(card);
 }
 
-// 8. Beğeni / Pas Aksiyonu
-async function handleCardAction(action) {
+// ==========================================================================
+// 9. DOKUNMATİK PARMAK SÜRÜKLEME (TINDER TOUCH PHYSICS ENGINE)
+// ==========================================================================
+
+function initTouchDrag(cardElement) {
+  // Mobil Dokunmatik Olaylar
+  cardElement.addEventListener('touchstart', onDragStart, { passive: true });
+  window.addEventListener('touchmove', onDragMove, { passive: false });
+  window.addEventListener('touchend', onDragEnd);
+
+  // Masaüstü Fare Olayları
+  cardElement.addEventListener('mousedown', onDragStart);
+  window.addEventListener('mousemove', onDragMove);
+  window.addEventListener('mouseup', onDragEnd);
+}
+
+function onDragStart(e) {
   if (currentIndex >= currentCards.length) return;
+  isDragging = true;
+  const touch = e.touches ? e.touches[0] : e;
+  startX = touch.clientX;
+  startY = touch.clientY;
+  currentX = startX;
+  currentY = startY;
+
+  const card = document.getElementById('activeCard');
+  card.classList.remove('animate-spring');
+}
+
+function onDragMove(e) {
+  if (!isDragging) return;
+  const touch = e.touches ? e.touches[0] : e;
+  currentX = touch.clientX;
+  currentY = touch.clientY;
+
+  const deltaX = currentX - startX;
+  const deltaY = currentY - startY;
+
+  // Dikey kaydırmayı engelle
+  if (e.cancelable && Math.abs(deltaX) > 10) e.preventDefault();
+
+  const rotate = deltaX * 0.08;
+  const card = document.getElementById('activeCard');
+  card.style.transform = `translate3d(${deltaX}px, ${deltaY * 0.3}px, 0) rotate(${rotate}deg)`;
+
+  // Damgaların Belirmesi (LIKE / PASS)
+  const stampLike = document.getElementById('stampLike');
+  const stampPass = document.getElementById('stampPass');
+
+  if (deltaX > 25) {
+    if (stampLike) stampLike.style.opacity = Math.min((deltaX - 25) / 80, 1);
+    if (stampPass) stampPass.style.opacity = 0;
+  } else if (deltaX < -25) {
+    if (stampPass) stampPass.style.opacity = Math.min((Math.abs(deltaX) - 25) / 80, 1);
+    if (stampLike) stampLike.style.opacity = 0;
+  } else {
+    if (stampLike) stampLike.style.opacity = 0;
+    if (stampPass) stampPass.style.opacity = 0;
+  }
+}
+
+function onDragEnd() {
+  if (!isDragging) return;
+  isDragging = false;
+
+  const deltaX = currentX - startX;
+  const threshold = 110; // Fırlatma eşiği (px)
+  const card = document.getElementById('activeCard');
+
+  if (deltaX > threshold) {
+    // Sağa Fırlat (Beğen)
+    triggerCardSwipe('like');
+  } else if (deltaX < -threshold) {
+    // Sola Fırlat (Pas)
+    triggerCardSwipe('pass');
+  } else {
+    // Eşik aşılmadı: Lastik yaylanma ile yerine dön
+    card.classList.add('animate-spring');
+    card.style.transform = 'translate3d(0, 0, 0) rotate(0deg)';
+    const stampLike = document.getElementById('stampLike');
+    const stampPass = document.getElementById('stampPass');
+    if (stampLike) stampLike.style.opacity = 0;
+    if (stampPass) stampPass.style.opacity = 0;
+    triggerHaptic('light');
+  }
+}
+
+// Buton veya Swipe ile Kartı Fırlatma
+function triggerCardSwipe(action) {
+  if (currentIndex >= currentCards.length) return;
+  const card = document.getElementById('activeCard');
+
+  if (action === 'like') {
+    triggerHaptic('medium');
+    card.classList.add('fly-right');
+  } else {
+    triggerHaptic('light');
+    card.classList.add('fly-left');
+  }
+
+  // Animasyon bitince sunucuya gönder ve sıradaki kartı çiz
+  setTimeout(() => {
+    handleCardAction(action);
+  }, 220);
+}
+
+// 10. Beğeni / Pas Arka Plan İsteği
+async function handleCardAction(action) {
   const targetUser = currentCards[currentIndex];
   currentIndex++;
   renderCurrentCard();
@@ -348,6 +522,7 @@ async function handleCardAction(action) {
     });
     const data = await res.json();
     if (data.isMatch) {
+      triggerHaptic('success');
       checkInboxBadge();
       if (tg?.showPopup) {
         tg.showPopup({
@@ -359,25 +534,18 @@ async function handleCardAction(action) {
         alert(`Tebrikler! ${targetUser.nickname} ile eşleştiniz! DM kutusuna bakınız.`);
       }
     }
-  } catch (err) {
-    console.error(err);
-  }
+  } catch (err) {}
 }
 
-// 9. DM Kutusu ve Bildirim Rozeti
+// 11. DM Kutusu ve Rozet
 async function checkInboxBadge() {
   try {
     const res = await fetch(`/api/chats?userId=${telegramId}`);
     const data = await res.json();
     const badge = document.getElementById('unreadBadge');
-    if (data.success && data.totalUnread > 0) {
-      badge.classList.remove('hidden');
-    } else {
-      badge.classList.add('hidden');
-    }
-  } catch (e) {
-    console.error(e);
-  }
+    if (data.success && data.totalUnread > 0) badge.classList.remove('hidden');
+    else badge.classList.add('hidden');
+  } catch (e) {}
 }
 
 async function loadInboxChats() {
@@ -418,8 +586,9 @@ async function loadInboxChats() {
   }
 }
 
-// 10. Anonim Chat Odası & Paravan
+// 12. Anonim Chat & Paravan
 async function openChatRoom(matchId) {
+  triggerHaptic('light');
   activeMatchId = matchId;
   document.getElementById('inboxView').classList.add('hidden');
   document.getElementById('chatRoomView').classList.remove('hidden');
@@ -471,13 +640,12 @@ async function refreshChatRoom() {
     });
 
     stream.scrollTop = stream.scrollHeight;
-  } catch (err) {
-    console.error(err);
-  }
+  } catch (err) {}
 }
 
 async function sendChatMessage(e) {
   e.preventDefault();
+  triggerHaptic('light');
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
   if (!text || !activeMatchId) return;
@@ -491,12 +659,11 @@ async function sendChatMessage(e) {
     });
     const data = await res.json();
     if (data.success) refreshChatRoom();
-  } catch (err) {
-    console.error(err);
-  }
+  } catch (err) {}
 }
 
 async function requestParavanReveal() {
+  triggerHaptic('medium');
   if (!activeMatchId) return;
   if (!confirm('Telegram kullanıcı adınızı karşı tarafla paylaşmak istiyor musunuz?')) return;
 
@@ -507,14 +674,71 @@ async function requestParavanReveal() {
       body: JSON.stringify({ userId: telegramId })
     });
     const data = await res.json();
-    if (data.success) refreshChatRoom();
-  } catch (err) {
-    console.error(err);
-  }
+    if (data.success) {
+      triggerHaptic('success');
+      refreshChatRoom();
+    }
+  } catch (err) {}
 }
 
-// 11. Kayıtsız YT Girişi & Yönetim Masası
+// 13. Eşleşmeyi İptal Et (Unmatch)
+async function cancelCurrentMatch() {
+  triggerHaptic('warning');
+  if (!activeMatchId) return;
+  if (!confirm('Bu eşleşmeyi bitirmek ve sohbeti kalıcı olarak silmek istiyor musunuz?')) return;
+
+  try {
+    const res = await fetch(`/api/chats/${activeMatchId}/unmatch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: telegramId })
+    });
+    const data = await res.json();
+    if (data.success) {
+      triggerHaptic('success');
+      switchTab('inbox');
+    }
+  } catch (err) {}
+}
+
+// 14. Şikayet Et (Report)
+function openReportModalCurrentCard() {
+  triggerHaptic('light');
+  if (currentIndex >= currentCards.length) return;
+  const user = currentCards[currentIndex];
+  reportingTargetId = user.telegramId;
+  document.getElementById('reportReason').value = '';
+  document.getElementById('reportModal').classList.remove('hidden');
+}
+
+function closeReportModal() {
+  document.getElementById('reportModal').classList.add('hidden');
+}
+
+async function submitReport() {
+  const reason = document.getElementById('reportReason').value.trim();
+  if (!reason) return alert('Lütfen bir açıklama girin.');
+
+  triggerHaptic('medium');
+  try {
+    const res = await fetch('/api/report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reporterId: telegramId, targetId: reportingTargetId, reason })
+    });
+    const data = await res.json();
+    if (data.success) {
+      triggerHaptic('success');
+      alert('Şikayet iletildi.');
+      closeReportModal();
+      triggerCardSwipe('pass');
+    }
+  } catch (err) {}
+}
+
+// 15. YT Girişi & Yönetim Masası
 async function directYtLogin() {
+  triggerHaptic('medium');
   try {
     const res = await fetch('/api/admin/verify', {
       method: 'POST',
@@ -524,11 +748,12 @@ async function directYtLogin() {
     const data = await res.json();
 
     if (data.success) {
+      triggerHaptic('success');
       document.getElementById('appNav').classList.remove('hidden');
       document.getElementById('ytNavBtn').classList.remove('hidden');
       switchTab('adminPanel');
     } else {
-      const keyPrompt = prompt('Telegram hesabınız (@' + (username || 'gizli') + ') listede bulunamadı. Lütfen YT Şifresini girin:');
+      const keyPrompt = prompt('Telegram hesabınız listede bulunamadı. Lütfen YT Şifresini girin:');
       if (!keyPrompt) return;
 
       const keyRes = await fetch('/api/admin/verify', {
@@ -539,43 +764,67 @@ async function directYtLogin() {
       const keyData = await keyRes.json();
 
       if (keyData.success) {
+        triggerHaptic('success');
         document.getElementById('appNav').classList.remove('hidden');
         document.getElementById('ytNavBtn').classList.remove('hidden');
         switchTab('adminPanel');
       } else {
+        triggerHaptic('error');
         alert('Hatalı şifre veya yetkisiz erişim!');
       }
     }
-  } catch (err) {
-    alert('YT doğrulama sunucusuna erişilemedi.');
-  }
+  } catch (err) {}
 }
 
 async function loadAdminDashboard() {
   try {
     const res = await fetch(`/api/admin/dashboard-data?userId=${telegramId}&username=${encodeURIComponent(username)}`);
     const data = await res.json();
-
     if (!data.success) {
-      alert(data.message || 'Yetki reddedildi!');
       switchTab('explore');
       return;
     }
 
     document.getElementById('ytStatTotal').innerText = data.stats.total;
     document.getElementById('ytStatActive').innerText = data.stats.active;
-    document.getElementById('ytStatBanned').innerText = data.stats.banned;
+    document.getElementById('ytStatReports').innerText = data.stats.reportsCount;
 
     allAdminUsers = data.users;
     renderAdminUserCards(allAdminUsers);
+    renderAdminReports(data.reports);
 
     const adminListEl = document.getElementById('activeAdminsList');
     const uNames = data.admins.usernames.map(u => `@${u}`).join(', ');
     const ids = data.admins.ids.join(', ');
     adminListEl.innerHTML = `<strong>Yetkililer:</strong> ${uNames || 'Yok'} ${ids ? `| ID'ler: ${ids}` : ''}`;
-  } catch (err) {
-    console.error('Yönetim verisi çekilemedi:', err);
+  } catch (err) {}
+}
+
+function renderAdminReports(reports) {
+  const container = document.getElementById('adminReportsList');
+  container.innerHTML = '';
+
+  if (!reports || reports.length === 0) {
+    container.innerHTML = '<div style="font-size: 12px; color: #777; padding: 10px;">Gelen şikayet bulunmuyor.</div>';
+    return;
   }
+
+  reports.forEach(r => {
+    const card = document.createElement('div');
+    card.className = 'report-row-card';
+    card.innerHTML = `
+      <div class="report-row-header">
+        <span>Hedef: ${r.targetNickname} (@${r.targetUsername})</span>
+        <span style="font-size: 10px; opacity: 0.6;">${r.date}</span>
+      </div>
+      <div class="report-reason-text">"${r.reason}"</div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+        <span style="font-size: 10px; color: #888;">Şikayet Eden: ${r.reporterNickname}</span>
+        <button class="sm-btn danger" onclick="toggleBanUser('${r.targetId}')">Kullanıcıyı Yasakla</button>
+      </div>
+    `;
+    container.appendChild(card);
+  });
 }
 
 function renderAdminUserCards(usersToRender) {
@@ -625,46 +874,38 @@ function filterAdminUserList() {
 }
 
 async function toggleBanUser(targetTgId) {
+  triggerHaptic('warning');
   if (!confirm('Bu kullanıcının durumunu değiştirmek istiyor musunuz?')) return;
 
   try {
     const res = await fetch('/api/admin/toggle-ban', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-user-id': telegramId,
-        'x-user-name': username
-      },
+      headers: { 'Content-Type': 'application/json', 'x-user-id': telegramId, 'x-user-name': username },
       body: JSON.stringify({ targetTelegramId: targetTgId })
     });
     const data = await res.json();
-    if (data.success) loadAdminDashboard();
-  } catch (err) {
-    alert('İşlem tamamlanamadı.');
-  }
+    if (data.success) {
+      triggerHaptic('success');
+      loadAdminDashboard();
+    }
+  } catch (err) {}
 }
 
 async function addAdminTarget() {
   const target = document.getElementById('newAdminTarget').value.trim();
-  if (!target) return alert('Lütfen @kullaniciadi veya Telegram ID girin.');
+  if (!target) return alert('Lütfen @kullaniciadi veya ID girin.');
 
   try {
     const res = await fetch('/api/admin/add-admin', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-user-id': telegramId,
-        'x-user-name': username
-      },
+      headers: { 'Content-Type': 'application/json', 'x-user-id': telegramId, 'x-user-name': username },
       body: JSON.stringify({ target })
     });
     const data = await res.json();
-    alert(data.message);
+    triggerHaptic('success');
     document.getElementById('newAdminTarget').value = '';
     loadAdminDashboard();
-  } catch (err) {
-    alert('Yönetici eklenemedi.');
-  }
+  } catch (err) {}
 }
 
 async function removeAdminTarget() {
@@ -674,26 +915,21 @@ async function removeAdminTarget() {
   try {
     const res = await fetch('/api/admin/remove-admin', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-user-id': telegramId,
-        'x-user-name': username
-      },
+      headers: { 'Content-Type': 'application/json', 'x-user-id': telegramId, 'x-user-name': username },
       body: JSON.stringify({ target })
     });
     const data = await res.json();
-    alert(data.message);
+    triggerHaptic('success');
     document.getElementById('newAdminTarget').value = '';
     loadAdminDashboard();
-  } catch (err) {
-    alert('Yönetici yetkisi kaldırılamadı.');
-  }
+  } catch (err) {}
 }
 
-// 12. Filtre Modalı
-function openFilterModal() { document.getElementById('filterModal').classList.remove('hidden'); }
+// 16. Filtre Modalı
+function openFilterModal() { triggerHaptic('light'); document.getElementById('filterModal').classList.remove('hidden'); }
 function closeFilterModal() { document.getElementById('filterModal').classList.add('hidden'); }
 function applyFilters() {
+  triggerHaptic('medium');
   activeFilters.city = document.getElementById('filterCity').value;
   activeFilters.role = document.getElementById('filterRole').value;
   closeFilterModal();
