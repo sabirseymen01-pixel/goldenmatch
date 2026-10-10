@@ -50,55 +50,123 @@ window.addEventListener('DOMContentLoaded', async () => {
   await checkUserProfile();
 });
 
-// 1. Konum Verileri
+// 1. Konum Verileri ve Doğrudan Görünen Şehir Çipleri
 async function loadLocations() {
   try {
     const res = await fetch('/api/locations');
     const data = await res.json();
     if (data.success) {
       locationsData = data.locations;
-      populateCityDropdowns();
+      renderCityChips();
+      populateFilterCities();
     }
   } catch (err) {}
 }
 
-function populateCityDropdowns() {
-  const citySelect = document.getElementById('city');
-  const filterCitySelect = document.getElementById('filterCity');
-  const cities = Object.keys(locationsData).sort((a, b) => a.localeCompare(b, 'tr'));
+function renderCityChips(filterText = '') {
+  const container = document.getElementById('cityChipGrid');
+  if (!container) return;
+  container.innerHTML = '';
 
+  const cities = Object.keys(locationsData).sort((a, b) => a.localeCompare(b, 'tr'));
+  const filtered = cities.filter(c => c.toLowerCase().includes(filterText.toLowerCase().trim()));
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<span style="font-size: 12px; color: #777;">Eşleşen şehir bulunamadı.</span>';
+    return;
+  }
+
+  const currentCityVal = document.getElementById('city').value;
+
+  filtered.forEach(city => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `choice-chip ${currentCityVal === city ? 'selected' : ''}`;
+    btn.textContent = city;
+    btn.onclick = () => onCitySelected(city, btn);
+    container.appendChild(btn);
+  });
+}
+
+function filterCityChips() {
+  const text = document.getElementById('citySearchInput').value;
+  renderCityChips(text);
+}
+
+function onCitySelected(city, btnElement) {
+  triggerHaptic('light');
+  document.getElementById('city').value = city;
+
+  // Seçili çipi güncelle
+  const container = document.getElementById('cityChipGrid');
+  container.querySelectorAll('.choice-chip').forEach(c => c.classList.remove('selected'));
+  btnElement.classList.add('selected');
+
+  // İlçeleri doğrudan ekrana dök
+  renderDistrictChips(city);
+}
+
+function renderDistrictChips(city) {
+  const container = document.getElementById('districtChipGrid');
+  if (!container) return;
+  container.innerHTML = '';
+  document.getElementById('district').value = '';
+
+  if (locationsData[city] && locationsData[city].districts) {
+    const districts = Object.keys(locationsData[city].districts).sort((a, b) => a.localeCompare(b, 'tr'));
+    
+    if (districts.length === 0) {
+      container.innerHTML = '<span style="font-size: 12px; color: #777;">Bu şehir için ilçe verisi bulunmuyor (Merkez kabul edilir).</span>';
+      document.getElementById('district').value = 'Merkez';
+      return;
+    }
+
+    districts.forEach(dist => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'choice-chip';
+      btn.textContent = dist;
+      btn.onclick = () => onDistrictSelected(dist, btn);
+      container.appendChild(btn);
+    });
+  } else {
+    container.innerHTML = '<span style="font-size: 12px; color: #777;">Merkez</span>';
+    document.getElementById('district').value = 'Merkez';
+  }
+}
+
+function onDistrictSelected(district, btnElement) {
+  triggerHaptic('light');
+  document.getElementById('district').value = district;
+  const container = document.getElementById('districtChipGrid');
+  container.querySelectorAll('.choice-chip').forEach(c => c.classList.remove('selected'));
+  btnElement.classList.add('selected');
+}
+
+function populateFilterCities() {
+  const filterCitySelect = document.getElementById('filterCity');
+  if (!filterCitySelect) return;
+  const cities = Object.keys(locationsData).sort((a, b) => a.localeCompare(b, 'tr'));
   cities.forEach(city => {
     const opt = document.createElement('option');
     opt.value = city;
     opt.textContent = city;
-    citySelect.appendChild(opt);
-
-    const filterOpt = document.createElement('option');
-    filterOpt.value = city;
-    filterOpt.textContent = city;
-    filterCitySelect.appendChild(filterOpt);
+    filterCitySelect.appendChild(opt);
   });
 }
 
-function onCityChanged() {
-  const citySelect = document.getElementById('city');
-  const districtSelect = document.getElementById('district');
-  const selectedCity = citySelect.value;
+// 2. Doğrudan Görünen Çip Seçim Motoru (Rol, Arketip, İfade)
+function selectChip(targetInputId, value, buttonElement) {
+  triggerHaptic('light');
+  const input = document.getElementById(targetInputId);
+  if (input) input.value = value;
 
-  districtSelect.innerHTML = '<option value="" disabled selected>İlçe Seç</option>';
-
-  if (locationsData[selectedCity] && locationsData[selectedCity].districts) {
-    const districts = Object.keys(locationsData[selectedCity].districts).sort((a, b) => a.localeCompare(b, 'tr'));
-    districts.forEach(dist => {
-      const opt = document.createElement('option');
-      opt.value = dist;
-      opt.textContent = dist;
-      districtSelect.appendChild(opt);
-    });
-  }
+  const parent = buttonElement.parentElement;
+  parent.querySelectorAll('.choice-chip, .choice-chip-card').forEach(el => el.classList.remove('selected'));
+  buttonElement.classList.add('selected');
 }
 
-// 2. Profil Kontrolü (Kalıcı Oturum)
+// 3. Profil Kontrolü
 async function checkUserProfile() {
   try {
     const res = await fetch(`/api/profile/${telegramId}?username=${encodeURIComponent(username)}`);
@@ -125,7 +193,6 @@ async function checkUserProfile() {
   }
 }
 
-// 3. iOS Balon Yay Animasyonlu Tab Değiştirme
 function showRegisterView() {
   document.getElementById('registerView').classList.remove('hidden');
   document.getElementById('exploreView').classList.add('hidden');
@@ -155,9 +222,8 @@ function switchTab(tabName) {
   const targetEl = document.getElementById(targetMap[tabName] || tabName);
   if (targetEl) {
     targetEl.classList.remove('hidden');
-    // iOS Spring animasyonunu tekrar tetikle
     targetEl.style.animation = 'none';
-    targetEl.offsetHeight; // Reflow tetikleyici
+    targetEl.offsetHeight;
     targetEl.style.animation = null;
   }
 
@@ -176,21 +242,52 @@ function openProfileEdit() {
   switchTab('register');
 }
 
+// Formu Doldururken Çipleri Otomatik Seç
 function fillForm(profile) {
   document.getElementById('nickname').value = profile.nickname || '';
   document.getElementById('age').value = profile.age || '';
   document.getElementById('height').value = profile.height || '';
   document.getElementById('weight').value = profile.weight || '';
-  document.getElementById('role').value = profile.role || '';
-  document.getElementById('interestedRole').value = profile.interestedRole || 'Hepsi';
-  document.getElementById('archetype').value = profile.archetype || '';
-  document.getElementById('expression').value = profile.expression || '';
   document.getElementById('bio').value = profile.bio || '';
 
+  // Rol Çipini Seç
+  if (profile.role) {
+    document.getElementById('role').value = profile.role;
+    selectChipByValue('role', profile.role);
+  }
+
+  // İlgilenilen Rol Çipini Seç
+  if (profile.interestedRole) {
+    document.getElementById('interestedRole').value = profile.interestedRole;
+    selectChipByValue('interestedRole', profile.interestedRole);
+  }
+
+  // Arketip Çipini Seç
+  if (profile.archetype) {
+    document.getElementById('archetype').value = profile.archetype;
+    selectChipByValue('archetype', profile.archetype);
+  }
+
+  // İfade Çipini Seç
+  if (profile.expression) {
+    document.getElementById('expression').value = profile.expression;
+    selectChipByValue('expression', profile.expression);
+  }
+
+  // Şehir & Semt Çiplerini Seç
   if (profile.city) {
     document.getElementById('city').value = profile.city;
-    onCityChanged();
-    if (profile.district) document.getElementById('district').value = profile.district;
+    renderCityChips();
+    renderDistrictChips(profile.city);
+    if (profile.district) {
+      document.getElementById('district').value = profile.district;
+      setTimeout(() => {
+        const dContainer = document.getElementById('districtChipGrid');
+        dContainer.querySelectorAll('.choice-chip').forEach(btn => {
+          if (btn.textContent === profile.district) btn.classList.add('selected');
+        });
+      }, 50);
+    }
   }
 
   if (profile.photos && profile.photos.length > 0) {
@@ -206,6 +303,17 @@ function fillForm(profile) {
       }
     });
   }
+}
+
+function selectChipByValue(target, value) {
+  const container = document.querySelector(`[data-target="${target}"]`);
+  if (!container) return;
+  container.querySelectorAll('.choice-chip, .choice-chip-card').forEach(btn => {
+    btn.classList.remove('selected');
+    if (btn.textContent.trim().startsWith(value) || btn.getAttribute('onclick')?.includes(`'${value}'`)) {
+      btn.classList.add('selected');
+    }
+  });
 }
 
 // 4. Fotoğraf Seçim İşlemleri
@@ -233,7 +341,7 @@ function onFileSelected(event) {
   reader.readAsDataURL(file);
 }
 
-// 5. Kayıt Formu Gönderme & Hoş Geldiniz Modalı
+// 5. Kayıt Formu Gönderme & Onay
 async function handleFormSubmit(e) {
   e.preventDefault();
   triggerHaptic('medium');
@@ -243,6 +351,18 @@ async function handleFormSubmit(e) {
     return;
   }
 
+  const city = document.getElementById('city').value;
+  const district = document.getElementById('district').value;
+  const role = document.getElementById('role').value;
+  const archetype = document.getElementById('archetype').value;
+  const expression = document.getElementById('expression').value;
+
+  if (!city) return alert('Lütfen doğrudan ekranda görünen şehirlerden birini seçin.');
+  if (!district) return alert('Lütfen bir ilçe/semt seçin.');
+  if (!role) return alert('Lütfen rolünüzü seçin.');
+  if (!archetype) return alert('Lütfen Olimpos arketipinizi seçin.');
+  if (!expression) return alert('Lütfen tarz/ifade seçiminizi yapın.');
+
   const payload = {
     telegramId,
     username,
@@ -250,12 +370,12 @@ async function handleFormSubmit(e) {
     age: document.getElementById('age').value,
     height: document.getElementById('height').value,
     weight: document.getElementById('weight').value,
-    city: document.getElementById('city').value,
-    district: document.getElementById('district').value,
-    role: document.getElementById('role').value,
-    interestedRole: document.getElementById('interestedRole').value,
-    archetype: document.getElementById('archetype').value,
-    expression: document.getElementById('expression').value,
+    city,
+    district,
+    role,
+    interestedRole: document.getElementById('interestedRole').value || 'Hepsi',
+    archetype,
+    expression,
     bio: document.getElementById('bio').value,
     photos: images.filter(img => img !== null)
   };
@@ -278,8 +398,6 @@ async function handleFormSubmit(e) {
       triggerHaptic('success');
       document.getElementById('deleteAccountBtn').classList.remove('hidden');
       document.getElementById('appNav').classList.remove('hidden');
-
-      // Doğrudan fırlatmak yerine "Hoş Geldiniz" onay penceresini aç
       document.getElementById('welcomeModal').classList.remove('hidden');
     } else {
       triggerHaptic('error');
@@ -315,6 +433,7 @@ async function deleteMyAccount() {
       images.fill(null);
       document.querySelectorAll('.slot-preview').forEach(p => p.style.display = 'none');
       document.querySelectorAll('.slot-placeholder').forEach(p => p.style.display = 'flex');
+      document.querySelectorAll('.choice-chip, .choice-chip-card').forEach(p => p.classList.remove('selected'));
       document.getElementById('appNav').classList.add('hidden');
       document.getElementById('deleteAccountBtn').classList.add('hidden');
       switchTab('register');
@@ -415,7 +534,7 @@ function renderCurrentCard() {
   initTouchDrag(card);
 }
 
-// 9. DOKUNMATİK PARMAK KAYDIRMA (SPRING DYNAMICS)
+// 9. Dokunmatik Parmak Kaydırma
 function initTouchDrag(cardElement) {
   cardElement.addEventListener('touchstart', onDragStart, { passive: true });
   window.addEventListener('touchmove', onDragMove, { passive: false });
