@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
   <div class="app-wrapper">
@@ -33,18 +33,19 @@
       </div>
     </header>
 
-    <!-- 1. EKRAN: PROFİL FORMU (GİRİŞ/GÜNCELLEME/SİLME) -->
+    <!-- 1. EKRAN: PROFİL DOLDURMA / DÜZENLEME -->
     <main id="registerView" class="view-screen">
       <div class="screen-header">
         <h1 class="gold-text">GOLDENMATCH</h1>
-        <p class="subtitle">Kutsal profilini mühürle, altın eşleşmeni bul.</p>
+        <p class="subtitle">Kutsal profilini tamamla, altın eşleşmeni bul.</p>
       </div>
 
+      <!-- Fotoğraf Yükleme Izgarası -->
       <div class="photo-grid">
         <div class="photo-slot main" onclick="pickImage(0)" id="slot-0">
           <div class="slot-placeholder">
-            <span class="plus-icon">+</span>
-            <span class="slot-label">Ana Fotoğraf</span>
+            <span class="plus-icon">⚡</span>
+            <span class="slot-label">BAŞ PROFİL</span>
           </div>
           <img class="slot-preview" alt="Ana Fotoğraf">
         </div>
@@ -66,7 +67,7 @@
       <form id="regForm" onsubmit="handleFormSubmit(event)" class="gold-form">
         <div class="form-group">
           <label>Rumuz / Ad</label>
-          <input type="text" id="nickname" placeholder="Örn: Ares, Defne" required>
+          <input type="text" id="nickname" placeholder="Mecliste görünecek adın" required>
         </div>
 
         <div class="form-row-3">
@@ -92,9 +93,9 @@
             </select>
           </div>
           <div class="form-group">
-            <label>İlçe</label>
+            <label>İlçe / Semt</label>
             <select id="district" required>
-              <option value="" disabled selected>İlçe Seç</option>
+              <option value="" disabled selected>Önce İl Seçin</option>
             </select>
           </div>
         </div>
@@ -128,6 +129,20 @@
           </div>
         </div>
 
+        <!-- Mistik Arketip Seçimi -->
+        <div class="form-group">
+          <label>Olimpos Arketipi (Ruhunun Yansıması)</label>
+          <select id="archetype" required>
+            <option value="" disabled selected>Arketipini Seç</option>
+            <option value="Apollon (Işık, Sanat & Karizma)">Apollon (Işık, Sanat & Karizma)</option>
+            <option value="Afrodit (Güzellik, Arzu & Zarafet)">Afrodit (Güzellik, Arzu & Zarafet)</option>
+            <option value="Ares (Tutku, Güç & Cesaret)">Ares (Tutku, Güç & Cesaret)</option>
+            <option value="Hermes (Zeka, Hız & Macera)">Hermes (Zeka, Hız & Macera)</option>
+            <option value="Dionisos (Eğlence, Coşku & Özgürlük)">Dionisos (Eğlence, Coşku & Özgürlük)</option>
+            <option value="Athena (Bilgelik, Sadakat & Strateji)">Athena (Bilgelik, Sadakat & Strateji)</option>
+          </select>
+        </div>
+
         <div class="form-group">
           <label>Tarz / İfade</label>
           <select id="expression" required>
@@ -143,19 +158,20 @@
 
         <div class="form-group">
           <label>Biyografi</label>
-          <textarea id="bio" rows="3" placeholder="Kendinden ve aradığın özelliklerden bahset..."></textarea>
+          <textarea id="bio" rows="3" placeholder="Kendinden ve aradığın ruh eşinden kısaca bahset..."></textarea>
         </div>
 
         <button type="submit" id="saveBtn" class="primary-btn gold-glow">
           <span>Profili Kaydet & Başla</span>
         </button>
 
-        <!-- HESAP SİLME BUTONU (Sadece kayıtlı hesaplarda görünür) -->
+        <!-- Hesap Silme Butonu -->
         <button type="button" id="deleteAccountBtn" class="danger-outline-btn hidden" onclick="deleteMyAccount()">
           🗑️ Hesabımı Kalıcı Olarak Sil
         </button>
       </form>
 
+      <!-- Hızlı YT Girişi -->
       <div class="bypass-area">
         <button type="button" class="text-link-btn" onclick="directYtLogin()">
           👑 Yönetici (YT) Hızlı Girişi
@@ -166,18 +182,16 @@
     <!-- 2. EKRAN: KEŞFET / TINDER DOKUNMATİK SAHNESİ -->
     <main id="exploreView" class="view-screen hidden">
       <div id="dailyPickBanner" class="daily-pick-banner hidden">
-        <div class="daily-badge">⭐ GÜNÜN ÖZEL EŞLEŞMESİ</div>
+        <div class="daily-badge">⭐ GÜNÜN KUTSAL SEÇİMİ</div>
         <div id="dailyPickContent" class="daily-content"></div>
       </div>
 
-      <!-- Fiziksel Dokunmatik Kart Sahnesi -->
       <div class="card-stage" id="cardStage">
         <div class="tinder-card" id="activeCard">
-          <div class="card-loader">Kader ağları taranıyor...</div>
+          <div class="card-loader">Altın kader ağları taranıyor...</div>
         </div>
       </div>
 
-      <!-- Aksiyon Butonları -->
       <div class="swipe-actions">
         <button class="action-circle pass-btn" onclick="triggerCardSwipe('pass')" aria-label="Pas">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
