@@ -84,74 +84,100 @@
           </div>
         </div>
 
-        <div class="form-row-2">
-          <div class="form-group">
-            <label>Şehir</label>
-            <select id="city" onchange="onCityChanged()" required>
-              <option value="" disabled selected>Şehir Seç</option>
-            </select>
+        <!-- DOĞRUDAN GÖRÜNEN ŞEHİR SEÇİMİ -->
+        <div class="form-group">
+          <label>Şehir Seçimi (Popüler / Arama)</label>
+          <input type="text" id="citySearchInput" onkeyup="filterCityChips()" placeholder="🔍 Şehir ara... (Örn: İstanbul, Ankara)" style="margin-bottom: 8px;">
+          <div class="chip-grid" id="cityChipGrid">
+            <!-- Dinamik Şehir Çipleri app.js tarafından doldurulacak -->
           </div>
-          <div class="form-group">
-            <label>İlçe / Semt</label>
-            <select id="district" required>
-              <option value="" disabled selected>Önce İl Seçin</option>
-            </select>
-          </div>
+          <input type="hidden" id="city" required>
         </div>
 
-        <div class="form-row-2">
-          <div class="form-group">
-            <label>Senin Rolün</label>
-            <select id="role" required>
-              <option value="" disabled selected>Seçiniz</option>
-              <option value="Top">Top</option>
-              <option value="Bottom">Bottom</option>
-              <option value="Verse">Verse</option>
-              <option value="Verse Top">Verse Top</option>
-              <option value="Verse Bottom">Verse Bottom</option>
-              <option value="Side">Side</option>
-              <option value="Trans">Trans</option>
-            </select>
+        <!-- DOĞRUDAN GÖRÜNEN İLÇE/SEMT SEÇİMİ -->
+        <div class="form-group" id="districtGroup">
+          <label>İlçe / Semt Seçimi</label>
+          <div class="chip-grid" id="districtChipGrid">
+            <span style="font-size: 12px; color: #777;">Önce yukarıdan bir şehir seçin.</span>
           </div>
-          <div class="form-group">
-            <label>Aradığın Rol</label>
-            <select id="interestedRole" required>
-              <option value="Hepsi" selected>Hepsi</option>
-              <option value="Top">Top</option>
-              <option value="Bottom">Bottom</option>
-              <option value="Verse">Verse</option>
-              <option value="Verse Top">Verse Top</option>
-              <option value="Verse Bottom">Verse Bottom</option>
-              <option value="Side">Side</option>
-              <option value="Trans">Trans</option>
-            </select>
-          </div>
+          <input type="hidden" id="district" required>
         </div>
 
+        <!-- DOĞRUDAN GÖRÜNEN SENİN ROLÜN -->
+        <div class="form-group">
+          <label>Senin Rolün</label>
+          <div class="chip-grid" data-target="role">
+            <button type="button" class="choice-chip" onclick="selectChip('role', 'Top', this)">Top</button>
+            <button type="button" class="choice-chip" onclick="selectChip('role', 'Bottom', this)">Bottom</button>
+            <button type="button" class="choice-chip" onclick="selectChip('role', 'Verse', this)">Verse</button>
+            <button type="button" class="choice-chip" onclick="selectChip('role', 'Verse Top', this)">Verse Top</button>
+            <button type="button" class="choice-chip" onclick="selectChip('role', 'Verse Bottom', this)">Verse Bottom</button>
+            <button type="button" class="choice-chip" onclick="selectChip('role', 'Side', this)">Side</button>
+            <button type="button" class="choice-chip" onclick="selectChip('role', 'Trans', this)">Trans</button>
+          </div>
+          <input type="hidden" id="role" required>
+        </div>
+
+        <!-- DOĞRUDAN GÖRÜNEN ARADIĞIN ROL -->
+        <div class="form-group">
+          <label>Aradığın Rol</label>
+          <div class="chip-grid" data-target="interestedRole">
+            <button type="button" class="choice-chip selected" onclick="selectChip('interestedRole', 'Hepsi', this)">Hepsi</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Top', this)">Top</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Bottom', this)">Bottom</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Verse', this)">Verse</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Verse Top', this)">Verse Top</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Verse Bottom', this)">Verse Bottom</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Side', this)">Side</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Trans', this)">Trans</button>
+          </div>
+          <input type="hidden" id="interestedRole" value="Hepsi" required>
+        </div>
+
+        <!-- DOĞRUDAN GÖRÜNEN OLİMPOS ARKETİPİ -->
         <div class="form-group">
           <label>Olimpos Arketipi (Ruhunun Yansıması)</label>
-          <select id="archetype" required>
-            <option value="" disabled selected>Arketipini Seç</option>
-            <option value="Apollon (Işık, Sanat & Karizma)">Apollon (Işık, Sanat & Karizma)</option>
-            <option value="Afrodit (Güzellik, Arzu & Zarafet)">Afrodit (Güzellik, Arzu & Zarafet)</option>
-            <option value="Ares (Tutku, Güç & Cesaret)">Ares (Tutku, Güç & Cesaret)</option>
-            <option value="Hermes (Zeka, Hız & Macera)">Hermes (Zeka, Hız & Macera)</option>
-            <option value="Dionisos (Eğlence, Coşku & Özgürlük)">Dionisos (Eğlence, Coşku & Özgürlük)</option>
-            <option value="Athena (Bilgelik, Sadakat & Strateji)">Athena (Bilgelik, Sadakat & Strateji)</option>
-          </select>
+          <div class="chip-grid vertical-chips" data-target="archetype">
+            <button type="button" class="choice-chip-card" onclick="selectChip('archetype', 'Apollon (Işık, Sanat & Karizma)', this)">
+              <div class="chip-card-title">☀️ Apollon</div>
+              <div class="chip-card-sub">Işık, Sanat & Karizma</div>
+            </button>
+            <button type="button" class="choice-chip-card" onclick="selectChip('archetype', 'Afrodit (Güzellik, Arzu & Zarafet)', this)">
+              <div class="chip-card-title">🕊️ Afrodit</div>
+              <div class="chip-card-sub">Güzellik, Arzu & Zarafet</div>
+            </button>
+            <button type="button" class="choice-chip-card" onclick="selectChip('archetype', 'Ares (Tutku, Güç & Cesaret)', this)">
+              <div class="chip-card-title">⚔️ Ares</div>
+              <div class="chip-card-sub">Tutku, Güç & Cesaret</div>
+            </button>
+            <button type="button" class="choice-chip-card" onclick="selectChip('archetype', 'Hermes (Zeka, Hız & Macera)', this)">
+              <div class="chip-card-title">🪽 Hermes</div>
+              <div class="chip-card-sub">Zeka, Hız & Macera</div>
+            </button>
+            <button type="button" class="choice-chip-card" onclick="selectChip('archetype', 'Dionisos (Eğlence, Coşku & Özgürlük)', this)">
+              <div class="chip-card-title">🍷 Dionisos</div>
+              <div class="chip-card-sub">Eğlence, Coşku & Özgürlük</div>
+            </button>
+            <button type="button" class="choice-chip-card" onclick="selectChip('archetype', 'Athena (Bilgelik, Sadakat & Strateji)', this)">
+              <div class="chip-card-title">🦉 Athena</div>
+              <div class="chip-card-sub">Bilgelik, Sadakat & Strateji</div>
+            </button>
+          </div>
+          <input type="hidden" id="archetype" required>
         </div>
 
+        <!-- DOĞRUDAN GÖRÜNEN TARZ / İFADE -->
         <div class="form-group">
           <label>Tarz / İfade</label>
-          <select id="expression" required>
-            <option value="" disabled selected>Seçiniz</option>
-            <option value="Maskülen">Maskülen</option>
-            <option value="Feminen">Feminen</option>
-            <option value="Twink">Twink</option>
-            <option value="Daddy">Daddy</option>
-            <option value="Ladyboy">Ladyboy</option>
-            <option value="Diğer">Diğer</option>
-          </select>
+          <div class="chip-grid" data-target="expression">
+            <button type="button" class="choice-chip" onclick="selectChip('expression', 'Maskülen', this)">Maskülen</button>
+            <button type="button" class="choice-chip" onclick="selectChip('expression', 'Feminen', this)">Feminen</button>
+            <button type="button" class="choice-chip" onclick="selectChip('expression', 'Twink', this)">Twink</button>
+            <button type="button" class="choice-chip" onclick="selectChip('expression', 'Daddy', this)">Daddy</button>
+            <button type="button" class="choice-chip" onclick="selectChip('expression', 'Ladyboy', this)">Ladyboy</button>
+            <button type="button" class="choice-chip" onclick="selectChip('expression', 'Diğer', this)">Diğer</button>
+          </div>
+          <input type="hidden" id="expression" required>
         </div>
 
         <div class="form-group">
@@ -283,7 +309,7 @@
       <div id="adminUserCards" class="admin-scroll-list"></div>
     </main>
 
-    <!-- KAYIT SONRASI HOŞ GELDİNİZ ONAY EKRANI (WELCOME SHEET) -->
+    <!-- HOŞ GELDİNİZ ONAY EKRANI -->
     <div id="welcomeModal" class="modal-backdrop hidden">
       <div class="modal-sheet">
         <div class="welcome-modal-card">
