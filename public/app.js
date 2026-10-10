@@ -98,7 +98,7 @@ function onCityChanged() {
   }
 }
 
-// 2. Profil Durumu (Otomatik Oturum)
+// 2. Profil Kontrolü (Kalıcı Oturum)
 async function checkUserProfile() {
   try {
     const res = await fetch(`/api/profile/${telegramId}?username=${encodeURIComponent(username)}`);
@@ -125,7 +125,7 @@ async function checkUserProfile() {
   }
 }
 
-// 3. Tab Değiştirme
+// 3. iOS Balon Yay Animasyonlu Tab Değiştirme
 function showRegisterView() {
   document.getElementById('registerView').classList.remove('hidden');
   document.getElementById('exploreView').classList.add('hidden');
@@ -138,20 +138,34 @@ function switchTab(tabName) {
   triggerHaptic('light');
   if (chatPollingInterval) clearInterval(chatPollingInterval);
 
-  document.getElementById('registerView').classList.add('hidden');
-  document.getElementById('exploreView').classList.add('hidden');
-  document.getElementById('inboxView').classList.add('hidden');
-  document.getElementById('chatRoomView').classList.add('hidden');
-  document.getElementById('adminPanelView').classList.add('hidden');
+  const screens = ['registerView', 'exploreView', 'inboxView', 'chatRoomView', 'adminPanelView'];
+  screens.forEach(s => {
+    const el = document.getElementById(s);
+    if (el) el.classList.add('hidden');
+  });
+
+  const targetMap = {
+    explore: 'exploreView',
+    inbox: 'inboxView',
+    chatRoom: 'chatRoomView',
+    adminPanel: 'adminPanelView',
+    register: 'registerView'
+  };
+
+  const targetEl = document.getElementById(targetMap[tabName] || tabName);
+  if (targetEl) {
+    targetEl.classList.remove('hidden');
+    // iOS Spring animasyonunu tekrar tetikle
+    targetEl.style.animation = 'none';
+    targetEl.offsetHeight; // Reflow tetikleyici
+    targetEl.style.animation = null;
+  }
 
   if (tabName === 'explore') {
-    document.getElementById('exploreView').classList.remove('hidden');
     loadExploreCards();
   } else if (tabName === 'inbox') {
-    document.getElementById('inboxView').classList.remove('hidden');
     loadInboxChats();
   } else if (tabName === 'adminPanel') {
-    document.getElementById('adminPanelView').classList.remove('hidden');
     loadAdminDashboard();
   }
   checkInboxBadge();
@@ -159,7 +173,7 @@ function switchTab(tabName) {
 
 function openProfileEdit() {
   triggerHaptic('medium');
-  showRegisterView();
+  switchTab('register');
 }
 
 function fillForm(profile) {
@@ -189,8 +203,6 @@ function fillForm(profile) {
         imgElem.style.display = 'block';
         const placeholder = slotElem.querySelector('.slot-placeholder');
         if (placeholder) placeholder.style.display = 'none';
-        const plus = slotElem.querySelector('.plus-icon');
-        if (plus) plus.style.display = 'none';
       }
     });
   }
@@ -217,13 +229,11 @@ function onFileSelected(event) {
 
     const placeholder = slotElem.querySelector('.slot-placeholder');
     if (placeholder) placeholder.style.display = 'none';
-    const plus = slotElem.querySelector('.plus-icon');
-    if (plus) plus.style.display = 'none';
   };
   reader.readAsDataURL(file);
 }
 
-// 5. Profil Kaydetme
+// 5. Kayıt Formu Gönderme & Hoş Geldiniz Modalı
 async function handleFormSubmit(e) {
   e.preventDefault();
   triggerHaptic('medium');
@@ -268,7 +278,9 @@ async function handleFormSubmit(e) {
       triggerHaptic('success');
       document.getElementById('deleteAccountBtn').classList.remove('hidden');
       document.getElementById('appNav').classList.remove('hidden');
-      switchTab('explore');
+
+      // Doğrudan fırlatmak yerine "Hoş Geldiniz" onay penceresini aç
+      document.getElementById('welcomeModal').classList.remove('hidden');
     } else {
       triggerHaptic('error');
       alert(data.message || 'Hata oluştu.');
@@ -277,6 +289,13 @@ async function handleFormSubmit(e) {
     btn.disabled = false;
     btn.innerText = 'Profili Kaydet & Başla';
   }
+}
+
+function closeWelcomeAndExplore() {
+  triggerHaptic('medium');
+  document.getElementById('welcomeModal').classList.add('hidden');
+  switchTab('explore');
+  loadDailyPick();
 }
 
 // 6. Hesap Silme
@@ -292,14 +311,13 @@ async function deleteMyAccount() {
     if (data.success) {
       triggerHaptic('success');
       alert('Hesabınız başarıyla silindi.');
-      localStorage.removeItem('gm_cached_profile');
       document.getElementById('regForm').reset();
       images.fill(null);
       document.querySelectorAll('.slot-preview').forEach(p => p.style.display = 'none');
       document.querySelectorAll('.slot-placeholder').forEach(p => p.style.display = 'flex');
       document.getElementById('appNav').classList.add('hidden');
       document.getElementById('deleteAccountBtn').classList.add('hidden');
-      showRegisterView();
+      switchTab('register');
     }
   } catch (err) {
     alert('İşlem tamamlanamadı.');
@@ -326,7 +344,7 @@ async function loadDailyPick() {
   } catch (e) {}
 }
 
-// 8. Keşfet Kartları & Rozetler
+// 8. Keşfet Kartları
 async function loadExploreCards() {
   const stage = document.getElementById('activeCard');
   stage.innerHTML = '<div class="card-loader">Altın kader ağları taranıyor...</div>';
@@ -377,7 +395,7 @@ function renderCurrentCard() {
   const archetypeBadge = user.archetype ? `<div class="archetype-badge">🏛️ ${user.archetype.split(' ')[0]}</div>` : '';
 
   card.innerHTML = `
-    ${photoUrl ? `<img src="${photoUrl}" class="card-bg-img" alt="${user.nickname}">` : '<div style="width:100%;height:100%;background:#1a1a23;"></div>'}
+    ${photoUrl ? `<img src="${photoUrl}" class="card-bg-img" alt="${user.nickname}">` : '<div style="width:100%;height:100%;background:#14141c;"></div>'}
     <div class="card-gradient-overlay"></div>
     <div class="swipe-stamp stamp-like" id="stampLike">BEĞEN</div>
     <div class="swipe-stamp stamp-pass" id="stampPass">PAS</div>
@@ -397,7 +415,7 @@ function renderCurrentCard() {
   initTouchDrag(card);
 }
 
-// 9. DOKUNMATİK KAYDIRMA FİZİK MOTORU
+// 9. DOKUNMATİK PARMAK KAYDIRMA (SPRING DYNAMICS)
 function initTouchDrag(cardElement) {
   cardElement.addEventListener('touchstart', onDragStart, { passive: true });
   window.addEventListener('touchmove', onDragMove, { passive: false });
@@ -434,7 +452,7 @@ function onDragMove(e) {
 
   const rotate = deltaX * 0.08;
   const card = document.getElementById('activeCard');
-  card.style.transform = `translate3d(${deltaX}px, ${deltaY * 0.3}px, 0) rotate(${rotate}deg)`;
+  card.style.transform = `translate3d(${deltaX}px, ${deltaY * 0.28}px, 0) rotate(${rotate}deg)`;
 
   const stampLike = document.getElementById('stampLike');
   const stampPass = document.getElementById('stampPass');
