@@ -86,15 +86,13 @@
 
         <!-- DOĞRUDAN GÖRÜNEN ŞEHİR SEÇİMİ -->
         <div class="form-group">
-          <label>Şehir Seçimi (Popüler / Arama)</label>
-          <input type="text" id="citySearchInput" onkeyup="filterCityChips()" placeholder="🔍 Şehir ara... (Örn: İstanbul, Ankara)" style="margin-bottom: 8px;">
-          <div class="chip-grid" id="cityChipGrid">
-            <!-- Dinamik Şehir Çipleri app.js tarafından doldurulacak -->
-          </div>
+          <label>Şehir Seçimi (Arama / Çipler)</label>
+          <input type="text" id="citySearchInput" onkeyup="filterCityChips()" placeholder="🔍 Şehir ara... (Örn: İstanbul, İzmir)">
+          <div class="chip-grid" id="cityChipGrid"></div>
           <input type="hidden" id="city" required>
         </div>
 
-        <!-- DOĞRUDAN GÖRÜNEN İLÇE/SEMT SEÇİMİ -->
+        <!-- DOĞRUDAN GÖRÜNEN İLÇE SEÇİMİ -->
         <div class="form-group" id="districtGroup">
           <label>İlçe / Semt Seçimi</label>
           <div class="chip-grid" id="districtChipGrid">
@@ -134,7 +132,7 @@
           <input type="hidden" id="interestedRole" value="Hepsi" required>
         </div>
 
-        <!-- DOĞRUDAN GÖRÜNEN OLİMPOS ARKETİPİ -->
+        <!-- DOĞRUDAN GÖRÜNEN ARKETİP KARTLARI -->
         <div class="form-group">
           <label>Olimpos Arketipi (Ruhunun Yansıması)</label>
           <div class="chip-grid vertical-chips" data-target="archetype">
@@ -218,7 +216,7 @@
         <button class="action-circle pass-btn" onclick="triggerCardSwipe('pass')" aria-label="Pas">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
         </button>
-        <button class="action-circle report-btn-small" onclick="openReportModalCurrentCard()" title="Şikayet Et">
+        <button class="action-circle report-btn-small" onclick="openReportModalCurrentCard()" title="Profili Şikayet Et">
           🚩
         </button>
         <button class="action-circle like-btn" onclick="triggerCardSwipe('like')" aria-label="Beğen">
@@ -236,7 +234,7 @@
       <div id="chatList" class="inbox-list"></div>
     </main>
 
-    <!-- 4. EKRAN: BİREBİR ANONİM SOHBET -->
+    <!-- 4. EKRAN: BİREBİR ANONİM SOHBET & MESAJ SEÇİMLİ BİLDİRİM -->
     <main id="chatRoomView" class="view-screen hidden">
       <div class="chat-header">
         <button class="icon-back" onclick="switchTab('inbox')">
@@ -246,10 +244,18 @@
           <h3 id="chatPartnerName">Kullanıcı</h3>
           <span id="chatParavanStatus" class="status-indicator">🎭 Anonim Sohbet</span>
         </div>
-        <div style="display: flex; gap: 6px;">
+        <div style="display: flex; gap: 6px; align-items: center;">
           <button id="paravanBtn" class="paravan-pill" onclick="requestParavanReveal()">🎭 Paravanı Aç</button>
+          <button class="report-chat-pill" onclick="openChatReportModal()" title="Mesajları Şikayet Et">🚩</button>
           <button class="unmatch-pill" onclick="cancelCurrentMatch()" title="Eşleşmeyi Bitir">✕</button>
         </div>
+      </div>
+
+      <!-- Buz Kırıcılar (Icebreakers) -->
+      <div class="icebreakers-bar">
+        <button type="button" class="ice-btn" onclick="sendIcebreaker('İlk buluşmada kahve mi kadeh mi? 🍷')">🍷 İlk Buluşma?</button>
+        <button type="button" class="ice-btn" onclick="sendIcebreaker('Hangi Olimpos tanrısı ruh ikizin? ⚡')">⚡ Ruh İkizin?</button>
+        <button type="button" class="ice-btn" onclick="sendIcebreaker('Bu gece şehri ateşe verelim mi? 🔥')">🔥 Bu Gece?</button>
       </div>
 
       <div id="paravanAlert" class="paravan-banner hidden"></div>
@@ -285,15 +291,17 @@
         </div>
       </div>
 
+      <!-- Kanıtlı Şikayetler Masası -->
       <div class="admin-action-box" style="border-color: rgba(255, 71, 87, 0.4);">
-        <label style="color: #ff4757;">🚩 Gelen Kullanıcı Şikayetleri</label>
+        <label style="color: #ff4757;">🚩 Bildirilen Mesaj Kanıtları & Şikayetler</label>
         <div id="adminReportsList" class="reports-scroll-box">
           <div style="font-size: 12px; color: #777;">Henüz şikayet bulunmuyor.</div>
         </div>
       </div>
 
-      <div class="admin-action-box">
-        <label>👑 Yönetici Yetkilendir / Kaldır</label>
+      <!-- Sadece Kurucunun Görebileceği YT Ekle/Çıkar Alanı -->
+      <div class="admin-action-box" id="founderAdminBox">
+        <label>👑 [Kurucu] Yönetici Tanımla / Kaldır</label>
         <div class="input-inline">
           <input type="text" id="newAdminTarget" placeholder="@kullaniciadi veya TG ID">
           <button class="sm-btn gold" onclick="addAdminTarget()">Ekle</button>
@@ -323,17 +331,18 @@
       </div>
     </div>
 
-    <!-- ŞİKAYET MODALI -->
+    <!-- ŞİKAYET MODALI (MESAJ KANITLI) -->
     <div id="reportModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeReportModal()">
       <div class="modal-sheet">
         <div class="sheet-header">
-          <h3 style="color: #ff4757;">🚩 Profili Bildir</h3>
+          <h3 style="color: #ff4757;">🚩 Şikayet Bildirimi</h3>
           <button class="icon-close" onclick="closeReportModal()">✕</button>
         </div>
-        <p style="font-size: 12px; color: #8e8e9a;">Bu kullanıcıyı topluluk yöneticilerine şikayet ediyorsunuz. Lütfen sebebi belirtin:</p>
+        <p style="font-size: 12px; color: #8e8e9a;">Bu durumu topluluk yöneticilerine iletiyorsunuz. Lütfen sebebi belirtin:</p>
         <div class="form-group">
-          <textarea id="reportReason" rows="3" placeholder="Uygunsuz fotoğraf, taciz, sahte profil vb..."></textarea>
+          <textarea id="reportReason" rows="3" placeholder="Taciz, uygunsuz dil, dolandırıcılık vb..."></textarea>
         </div>
+        <div id="reportedMessagesPreview" style="font-size: 11px; color: #ff9f43; margin-top: 4px;"></div>
         <div class="sheet-actions">
           <button class="ghost-btn full" onclick="closeReportModal()">Vazgeç</button>
           <button class="primary-btn full" style="background: #ff4757; color: #fff;" onclick="submitReport()">Şikayeti İlet</button>
@@ -341,35 +350,38 @@
       </div>
     </div>
 
-    <!-- FİLTRE MODALI -->
+    <!-- FİLTRE MODALI (DOĞRUDAN GÖRÜNEN ALTIN ÇİPLER) -->
     <div id="filterModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeFilterModal()">
-      <div class="modal-sheet">
+      <div class="modal-sheet" style="max-height: 85vh; overflow-y: auto;">
         <div class="sheet-header">
           <h3>Arama Filtreleri</h3>
           <button class="icon-close" onclick="closeFilterModal()">✕</button>
         </div>
+
         <div class="form-group">
-          <label>Şehir</label>
-          <select id="filterCity">
-            <option value="Hepsi" selected>Tüm Şehirler</option>
-          </select>
+          <label>Şehir Filtresi</label>
+          <div class="chip-grid" id="filterCityChips">
+            <button type="button" class="choice-chip selected" onclick="selectFilterCity('Hepsi', this)">Hepsi (Tüm Şehirler)</button>
+          </div>
         </div>
+
         <div class="form-group">
-          <label>Rol Tercihi</label>
-          <select id="filterRole">
-            <option value="Hepsi" selected>Tüm Roller</option>
-            <option value="Top">Top</option>
-            <option value="Bottom">Bottom</option>
-            <option value="Verse">Verse</option>
-            <option value="Verse Top">Verse Top</option>
-            <option value="Verse Bottom">Verse Bottom</option>
-            <option value="Side">Side</option>
-            <option value="Trans">Trans</option>
-          </select>
+          <label>Rol Filtresi</label>
+          <div class="chip-grid" id="filterRoleChips">
+            <button type="button" class="choice-chip selected" onclick="selectFilterRole('Hepsi', this)">Hepsi</button>
+            <button type="button" class="choice-chip" onclick="selectFilterRole('Top', this)">Top</button>
+            <button type="button" class="choice-chip" onclick="selectFilterRole('Bottom', this)">Bottom</button>
+            <button type="button" class="choice-chip" onclick="selectFilterRole('Verse', this)">Verse</button>
+            <button type="button" class="choice-chip" onclick="selectFilterRole('Verse Top', this)">Verse Top</button>
+            <button type="button" class="choice-chip" onclick="selectFilterRole('Verse Bottom', this)">Verse Bottom</button>
+            <button type="button" class="choice-chip" onclick="selectFilterRole('Side', this)">Side</button>
+            <button type="button" class="choice-chip" onclick="selectFilterRole('Trans', this)">Trans</button>
+          </div>
         </div>
+
         <div class="sheet-actions">
           <button class="ghost-btn full" onclick="closeFilterModal()">Vazgeç</button>
-          <button class="primary-btn full" onclick="applyFilters()">Uygula</button>
+          <button class="primary-btn full" onclick="applyFilters()">Filtreleri Uygula</button>
         </div>
       </div>
     </div>
