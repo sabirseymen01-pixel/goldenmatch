@@ -29,9 +29,9 @@ const matches = new Map();       // matchId -> { id, user1, user2, paravan1, par
 const dailyPicks = new Map();    // tgId -> { targetId, date }
 const reports = [];              // Profil ve Mesaj şikayet havuzu
 
-// KURUCU (SÜPER ADMİN) & YT YÖNETİMİ
-const FOUNDER_ID = String(process.env.FOUNDER_ID || '999999999').trim().toLowerCase();
-const FOUNDER_USERNAME = String(process.env.FOUNDER_USERNAME || 'sabirseymen').trim().toLowerCase().replace('@', '');
+// KURUCU (GİZLİ SÜPER ADMİN) & YT YÖNETİMİ
+const FOUNDER_ID = String(process.env.FOUNDER_ID || '8245373459').trim().toLowerCase();
+const FOUNDER_USERNAME = String(process.env.FOUNDER_USERNAME || 'breskavica').trim().toLowerCase().replace('@', '');
 
 const initialAdminIds = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim().toLowerCase());
 const initialAdminUsernames = (process.env.ADMIN_USERNAMES || '').split(',').map(s => s.trim().toLowerCase().replace('@', ''));
@@ -39,7 +39,7 @@ const initialAdminUsernames = (process.env.ADMIN_USERNAMES || '').split(',').map
 const adminIdSet = new Set(initialAdminIds.filter(Boolean));
 const adminUsernameSet = new Set(initialAdminUsernames.filter(Boolean));
 
-// Kurucuyu otomatik yönetici yap
+// Kurucuyu arka plan yetki kontrolü için dahil et
 if (FOUNDER_ID) adminIdSet.add(FOUNDER_ID);
 if (FOUNDER_USERNAME) adminUsernameSet.add(FOUNDER_USERNAME);
 
@@ -61,7 +61,7 @@ const WEBAPP_URL = 'https://goldenmatch.onrender.com';
 
 const bot = BOT_TOKEN ? new Telegraf(BOT_TOKEN) : null;
 
-// TELEGRAM BOT KOMUTLARI: YÖNETİCİ EKLEME/ÇIKARMA & DUYURU
+// TELEGRAM BOT KOMUTLARI
 if (bot) {
   bot.start((ctx) => {
     ctx.reply(
@@ -116,16 +116,28 @@ if (bot) {
     }
   });
 
-  // Kurucuya Özel: /ytsorgu (Listele)
+  // Kurucuya Özel: /ytsorgu (KURUCU GİZLENMİŞ LİSTE)
   bot.command('ytsorgu', (ctx) => {
     const senderId = String(ctx.from.id).toLowerCase();
     const senderUname = String(ctx.from.username || '').toLowerCase();
 
     if (!isFounder(senderId, senderUname)) return ctx.reply('⛔ Yetkisiz işlem.');
 
-    const unames = Array.from(adminUsernameSet).map(u => `@${u}`).join(', ');
-    const ids = Array.from(adminIdSet).join(', ');
-    ctx.reply(`👑 *Aktif YT Listesi:*\n\nKullanıcı Adları: ${unames || 'Yok'}\nID'ler: ${ids || 'Yok'}`, { parse_mode: 'Markdown' });
+    const visibleUsernames = Array.from(adminUsernameSet)
+      .filter(u => u !== FOUNDER_USERNAME)
+      .map(u => `@${u}`)
+      .join(', ');
+
+    const visibleIds = Array.from(adminIdSet)
+      .filter(id => id !== FOUNDER_ID)
+      .join(', ');
+
+    ctx.reply(
+      `👑 *Tanımlı Alt Yetkililer (YT):*\n\n` +
+      `Kullanıcı Adları: ${visibleUsernames || 'Atanmış yetkili yok'}\n` +
+      `ID'ler: ${visibleIds || 'Atanmış ID yok'}`,
+      { parse_mode: 'Markdown' }
+    );
   });
 
   // Kurucuya Özel: /duyuru [mesaj]
@@ -455,7 +467,6 @@ app.post('/api/report', (req, res) => {
   };
 
   reports.unshift(reportItem);
-  console.log(`[ŞİKAYET] ${reportItem.targetNickname} bildirildi. Kanıt mesaj sayısı: ${reportItem.evidenceMessages.length}`);
   res.json({ success: true, message: 'Şikayet iletildi.' });
 });
 
@@ -478,11 +489,17 @@ app.post('/api/admin/verify', (req, res) => {
   return res.status(403).json({ success: false });
 });
 
-// YT Dashboard Verisi
+// YT Dashboard Verisi (KURUCU GİZLENMİŞ ŞEKİLDE)
 app.get('/api/admin/dashboard-data', checkAdminAuth, (req, res) => {
   const userList = Array.from(users.values());
   const requesterId = req.headers['x-user-id'] || req.query.userId;
   const requesterUsername = req.headers['x-user-name'] || req.query.username;
+
+  // Kurucuyu arayüzdeki listeden gizle
+  const visibleAdmins = {
+    ids: Array.from(adminIdSet).filter(id => id !== FOUNDER_ID),
+    usernames: Array.from(adminUsernameSet).filter(u => u !== FOUNDER_USERNAME)
+  };
 
   res.json({
     success: true,
@@ -495,7 +512,7 @@ app.get('/api/admin/dashboard-data', checkAdminAuth, (req, res) => {
     },
     users: userList,
     reports: reports,
-    admins: { ids: Array.from(adminIdSet), usernames: Array.from(adminUsernameSet) }
+    admins: visibleAdmins
   });
 });
 
@@ -519,7 +536,14 @@ app.post('/api/admin/add-admin', checkAdminAuth, (req, res) => {
   const clean = req.body.target?.trim().toLowerCase();
   if (clean.startsWith('@') || isNaN(clean)) adminUsernameSet.add(clean.replace('@', ''));
   else adminIdSet.add(clean);
-  res.json({ success: true, admins: { ids: Array.from(adminIdSet), usernames: Array.from(adminUsernameSet) } });
+
+  res.json({
+    success: true,
+    admins: {
+      ids: Array.from(adminIdSet).filter(id => id !== FOUNDER_ID),
+      usernames: Array.from(adminUsernameSet).filter(u => u !== FOUNDER_USERNAME)
+    }
+  });
 });
 
 app.post('/api/admin/remove-admin', checkAdminAuth, (req, res) => {
@@ -533,7 +557,14 @@ app.post('/api/admin/remove-admin', checkAdminAuth, (req, res) => {
   const clean = req.body.target?.trim().toLowerCase();
   if (clean.startsWith('@') || isNaN(clean)) adminUsernameSet.delete(clean.replace('@', ''));
   else adminIdSet.delete(clean);
-  res.json({ success: true, admins: { ids: Array.from(adminIdSet), usernames: Array.from(adminUsernameSet) } });
+
+  res.json({
+    success: true,
+    admins: {
+      ids: Array.from(adminIdSet).filter(id => id !== FOUNDER_ID),
+      usernames: Array.from(adminUsernameSet).filter(u => u !== FOUNDER_USERNAME)
+    }
+  });
 });
 
 const PORT = process.env.PORT || 3000;
