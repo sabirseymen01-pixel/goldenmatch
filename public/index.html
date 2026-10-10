@@ -13,7 +13,7 @@
 <body>
   <div class="app-wrapper">
 
-    <!-- ÜST NAVİGASYON (TINDER STYLE) -->
+    <!-- ÜST NAVİGASYON (TINDER BAR) -->
     <header id="appNav" class="app-nav hidden">
       <div class="brand-logo" onclick="switchTab('explore')">
         <span class="gold-text">GOLDEN</span>MATCH
@@ -33,14 +33,13 @@
       </div>
     </header>
 
-    <!-- 1. EKRAN: PROFİL FORMU -->
+    <!-- 1. EKRAN: PROFİL FORMU (GİRİŞ/GÜNCELLEME/SİLME) -->
     <main id="registerView" class="view-screen">
       <div class="screen-header">
         <h1 class="gold-text">GOLDENMATCH</h1>
         <p class="subtitle">Kutsal profilini mühürle, altın eşleşmeni bul.</p>
       </div>
 
-      <!-- Fotoğraf Yükleme Izgarası -->
       <div class="photo-grid">
         <div class="photo-slot main" onclick="pickImage(0)" id="slot-0">
           <div class="slot-placeholder">
@@ -66,7 +65,7 @@
 
       <form id="regForm" onsubmit="handleFormSubmit(event)" class="gold-form">
         <div class="form-group">
-          <label>Rumuz / Görünecek Ad</label>
+          <label>Rumuz / Ad</label>
           <input type="text" id="nickname" placeholder="Örn: Ares, Defne" required>
         </div>
 
@@ -93,7 +92,7 @@
             </select>
           </div>
           <div class="form-group">
-            <label>İlçe / Semt</label>
+            <label>İlçe</label>
             <select id="district" required>
               <option value="" disabled selected>İlçe Seç</option>
             </select>
@@ -144,15 +143,19 @@
 
         <div class="form-group">
           <label>Biyografi</label>
-          <textarea id="bio" rows="3" placeholder="Kendinden, aradığın enerjiden ve tutkularından bahset..."></textarea>
+          <textarea id="bio" rows="3" placeholder="Kendinden ve aradığın özelliklerden bahset..."></textarea>
         </div>
 
         <button type="submit" id="saveBtn" class="primary-btn gold-glow">
           <span>Profili Kaydet & Başla</span>
         </button>
+
+        <!-- HESAP SİLME BUTONU (Sadece kayıtlı hesaplarda görünür) -->
+        <button type="button" id="deleteAccountBtn" class="danger-outline-btn hidden" onclick="deleteMyAccount()">
+          🗑️ Hesabımı Kalıcı Olarak Sil
+        </button>
       </form>
 
-      <!-- HIZLI YT GİRİŞİ -->
       <div class="bypass-area">
         <button type="button" class="text-link-btn" onclick="directYtLogin()">
           👑 Yönetici (YT) Hızlı Girişi
@@ -160,27 +163,29 @@
       </div>
     </main>
 
-    <!-- 2. EKRAN: KEŞFET / TINDER KARTLARI -->
+    <!-- 2. EKRAN: KEŞFET / TINDER DOKUNMATİK SAHNESİ -->
     <main id="exploreView" class="view-screen hidden">
-      <!-- Günün Özel Seçimi -->
       <div id="dailyPickBanner" class="daily-pick-banner hidden">
         <div class="daily-badge">⭐ GÜNÜN ÖZEL EŞLEŞMESİ</div>
         <div id="dailyPickContent" class="daily-content"></div>
       </div>
 
-      <!-- Kart Sahnesi -->
-      <div class="card-stage">
+      <!-- Fiziksel Dokunmatik Kart Sahnesi -->
+      <div class="card-stage" id="cardStage">
         <div class="tinder-card" id="activeCard">
-          <div class="card-loader">Altın kader ağları taranıyor...</div>
+          <div class="card-loader">Kader ağları taranıyor...</div>
         </div>
       </div>
 
-      <!-- Tinder Tarzı Aksiyon Butonları -->
+      <!-- Aksiyon Butonları -->
       <div class="swipe-actions">
-        <button class="action-circle pass-btn" onclick="handleCardAction('pass')" aria-label="Pas">
+        <button class="action-circle pass-btn" onclick="triggerCardSwipe('pass')" aria-label="Pas">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
         </button>
-        <button class="action-circle like-btn" onclick="handleCardAction('like')" aria-label="Beğen">
+        <button class="action-circle report-btn-small" onclick="openReportModalCurrentCard()" title="Şikayet Et">
+          🚩
+        </button>
+        <button class="action-circle like-btn" onclick="triggerCardSwipe('like')" aria-label="Beğen">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
         </button>
       </div>
@@ -205,9 +210,10 @@
           <h3 id="chatPartnerName">Kullanıcı</h3>
           <span id="chatParavanStatus" class="status-indicator">🎭 Anonim Sohbet</span>
         </div>
-        <button id="paravanBtn" class="paravan-pill" onclick="requestParavanReveal()">
-          🎭 Paravanı Aç
-        </button>
+        <div style="display: flex; gap: 6px;">
+          <button id="paravanBtn" class="paravan-pill" onclick="requestParavanReveal()">🎭 Paravanı Aç</button>
+          <button class="unmatch-pill" onclick="cancelCurrentMatch()" title="Eşleşmeyi Bitir">✕</button>
+        </div>
       </div>
 
       <div id="paravanAlert" class="paravan-banner hidden"></div>
@@ -238,12 +244,18 @@
           <strong id="ytStatActive">0</strong>
         </div>
         <div class="stat-pill">
-          <span>Yasaklı</span>
-          <strong id="ytStatBanned">0</strong>
+          <span>Şikayetler</span>
+          <strong id="ytStatReports" style="color: #ff4757;">0</strong>
         </div>
       </div>
 
-      <!-- YT Ekle/Çıkar Kutusu -->
+      <div class="admin-action-box" style="border-color: rgba(255, 71, 87, 0.4);">
+        <label style="color: #ff4757;">🚩 Gelen Kullanıcı Şikayetleri</label>
+        <div id="adminReportsList" class="reports-scroll-box">
+          <div style="font-size: 12px; color: #777;">Henüz şikayet bulunmuyor.</div>
+        </div>
+      </div>
+
       <div class="admin-action-box">
         <label>👑 Yönetici Yetkilendir / Kaldır</label>
         <div class="input-inline">
@@ -261,7 +273,25 @@
       <div id="adminUserCards" class="admin-scroll-list"></div>
     </main>
 
-    <!-- FİLTRELEME MODALI -->
+    <!-- ŞİKAYET MODALI -->
+    <div id="reportModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeReportModal()">
+      <div class="modal-sheet">
+        <div class="sheet-header">
+          <h3 style="color: #ff4757;">🚩 Profili Bildir</h3>
+          <button class="icon-close" onclick="closeReportModal()">✕</button>
+        </div>
+        <p style="font-size: 12px; color: #8e8e9a;">Bu kullanıcıyı topluluk yöneticilerine şikayet ediyorsunuz. Lütfen sebebi belirtin:</p>
+        <div class="form-group">
+          <textarea id="reportReason" rows="3" placeholder="Uygunsuz fotoğraf, taciz, sahte profil vb..."></textarea>
+        </div>
+        <div class="sheet-actions">
+          <button class="ghost-btn full" onclick="closeReportModal()">Vazgeç</button>
+          <button class="primary-btn full" style="background: #ff4757; color: #fff;" onclick="submitReport()">Şikayeti İlet</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- FİLTRE MODALI -->
     <div id="filterModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeFilterModal()">
       <div class="modal-sheet">
         <div class="sheet-header">
