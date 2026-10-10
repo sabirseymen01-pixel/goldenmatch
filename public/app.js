@@ -38,7 +38,7 @@ let activeFilters = {
   role: 'Hepsi'
 };
 
-// DOKUNMATİK KAYDIRMA (SWIPE PHYSICS) DEĞİŞKENLERİ
+// Touch Drag Değişkenleri
 let startX = 0;
 let startY = 0;
 let currentX = 0;
@@ -98,7 +98,7 @@ function onCityChanged() {
   }
 }
 
-// 2. Profil Kontrolü (Giriş/Çıkış Yapılsa Bile Tanımlı Giriş)
+// 2. Profil Durumu (Otomatik Oturum)
 async function checkUserProfile() {
   try {
     const res = await fetch(`/api/profile/${telegramId}?username=${encodeURIComponent(username)}`);
@@ -110,7 +110,7 @@ async function checkUserProfile() {
 
     if (data.exists) {
       fillForm(data.profile);
-      document.getElementById('deleteAccountBtn').classList.remove('hidden'); // Hesap silme butonunu göster
+      document.getElementById('deleteAccountBtn').classList.remove('hidden');
       document.getElementById('appNav').classList.remove('hidden');
       switchTab('explore');
       loadExploreCards();
@@ -169,6 +169,7 @@ function fillForm(profile) {
   document.getElementById('weight').value = profile.weight || '';
   document.getElementById('role').value = profile.role || '';
   document.getElementById('interestedRole').value = profile.interestedRole || 'Hepsi';
+  document.getElementById('archetype').value = profile.archetype || '';
   document.getElementById('expression').value = profile.expression || '';
   document.getElementById('bio').value = profile.bio || '';
 
@@ -222,7 +223,7 @@ function onFileSelected(event) {
   reader.readAsDataURL(file);
 }
 
-// 5. Profil Form Kaydetme
+// 5. Profil Kaydetme
 async function handleFormSubmit(e) {
   e.preventDefault();
   triggerHaptic('medium');
@@ -243,6 +244,7 @@ async function handleFormSubmit(e) {
     district: document.getElementById('district').value,
     role: document.getElementById('role').value,
     interestedRole: document.getElementById('interestedRole').value,
+    archetype: document.getElementById('archetype').value,
     expression: document.getElementById('expression').value,
     bio: document.getElementById('bio').value,
     photos: images.filter(img => img !== null)
@@ -277,14 +279,11 @@ async function handleFormSubmit(e) {
   }
 }
 
-// 6. HESAP SİLME FONKSİYONU
+// 6. Hesap Silme
 async function deleteMyAccount() {
   triggerHaptic('warning');
-  const confirmFirst = confirm('Hesabınızı, fotoğraflarınızı ve tüm sohbetlerinizi kalıcı olarak silmek istediğinize emin misiniz?');
-  if (!confirmFirst) return;
-
-  const confirmSecond = confirm('Bu işlem GERİ ALINAMAZ. Profiliniz tamamen silinecek!');
-  if (!confirmSecond) return;
+  if (!confirm('Hesabınızı, fotoğraflarınızı ve tüm sohbetlerinizi kalıcı olarak silmek istiyor musunuz?')) return;
+  if (!confirm('Bu işlem GERİ ALINAMAZ. Profiliniz tamamen silinecek!')) return;
 
   try {
     const res = await fetch(`/api/profile/${telegramId}`, { method: 'DELETE' });
@@ -294,7 +293,6 @@ async function deleteMyAccount() {
       triggerHaptic('success');
       alert('Hesabınız başarıyla silindi.');
       localStorage.removeItem('gm_cached_profile');
-      // Sayfayı sıfırdan kayıt ekranına çevir
       document.getElementById('regForm').reset();
       images.fill(null);
       document.querySelectorAll('.slot-preview').forEach(p => p.style.display = 'none');
@@ -302,11 +300,9 @@ async function deleteMyAccount() {
       document.getElementById('appNav').classList.add('hidden');
       document.getElementById('deleteAccountBtn').classList.add('hidden');
       showRegisterView();
-    } else {
-      alert('Hesap silinemedi.');
     }
   } catch (err) {
-    alert('Sunucuya bağlanılamadı.');
+    alert('İşlem tamamlanamadı.');
   }
 }
 
@@ -321,7 +317,8 @@ async function loadDailyPick() {
     if (data.success && data.dailyPick) {
       const p = data.dailyPick;
       const dist = p.distanceKm !== null ? `(${p.distanceKm === 0 ? 'Aynı Semt' : p.distanceKm + ' km'})` : '';
-      content.innerHTML = `<strong>${p.nickname}, ${p.age}</strong> • ${p.city}${p.district ? '/' + p.district : ''} ${dist} • <span style="color:#e5a93c;">${p.role}</span>`;
+      const archName = p.archetype ? p.archetype.split(' ')[0] : 'Olimpos';
+      content.innerHTML = `<strong>${p.nickname}, ${p.age}</strong> • ${p.city}${p.district ? '/' + p.district : ''} ${dist} • <span style="color:#e5a93c;">🏛️ ${archName}</span> • <em>${p.role}</em>`;
       banner.classList.remove('hidden');
     } else {
       banner.classList.add('hidden');
@@ -329,10 +326,10 @@ async function loadDailyPick() {
   } catch (e) {}
 }
 
-// 8. Keşfet Kartları & Dokunmatik Motor Kurulumu
+// 8. Keşfet Kartları & Rozetler
 async function loadExploreCards() {
   const stage = document.getElementById('activeCard');
-  stage.innerHTML = '<div class="card-loader">Kader ağları taranıyor...</div>';
+  stage.innerHTML = '<div class="card-loader">Altın kader ağları taranıyor...</div>';
 
   let url = `/api/cards?userId=${telegramId}`;
   if (activeFilters.city !== 'Hepsi') url += `&city=${encodeURIComponent(activeFilters.city)}`;
@@ -377,12 +374,15 @@ function renderCurrentCard() {
     distanceBadge = `<div class="pill-badge">${distText}</div>`;
   }
 
+  const archetypeBadge = user.archetype ? `<div class="archetype-badge">🏛️ ${user.archetype.split(' ')[0]}</div>` : '';
+
   card.innerHTML = `
     ${photoUrl ? `<img src="${photoUrl}" class="card-bg-img" alt="${user.nickname}">` : '<div style="width:100%;height:100%;background:#1a1a23;"></div>'}
     <div class="card-gradient-overlay"></div>
     <div class="swipe-stamp stamp-like" id="stampLike">BEĞEN</div>
     <div class="swipe-stamp stamp-pass" id="stampPass">PAS</div>
     ${distanceBadge}
+    ${archetypeBadge}
     <div class="card-meta-box">
       <div class="meta-name-age">${user.nickname}, ${user.age}</div>
       <div class="meta-tags">
@@ -394,21 +394,15 @@ function renderCurrentCard() {
     </div>
   `;
 
-  // Dokunmatik Sürükleme Olaylarını Bağla
   initTouchDrag(card);
 }
 
-// ==========================================================================
-// 9. DOKUNMATİK PARMAK SÜRÜKLEME (TINDER TOUCH PHYSICS ENGINE)
-// ==========================================================================
-
+// 9. DOKUNMATİK KAYDIRMA FİZİK MOTORU
 function initTouchDrag(cardElement) {
-  // Mobil Dokunmatik Olaylar
   cardElement.addEventListener('touchstart', onDragStart, { passive: true });
   window.addEventListener('touchmove', onDragMove, { passive: false });
   window.addEventListener('touchend', onDragEnd);
 
-  // Masaüstü Fare Olayları
   cardElement.addEventListener('mousedown', onDragStart);
   window.addEventListener('mousemove', onDragMove);
   window.addEventListener('mouseup', onDragEnd);
@@ -436,14 +430,12 @@ function onDragMove(e) {
   const deltaX = currentX - startX;
   const deltaY = currentY - startY;
 
-  // Dikey kaydırmayı engelle
   if (e.cancelable && Math.abs(deltaX) > 10) e.preventDefault();
 
   const rotate = deltaX * 0.08;
   const card = document.getElementById('activeCard');
   card.style.transform = `translate3d(${deltaX}px, ${deltaY * 0.3}px, 0) rotate(${rotate}deg)`;
 
-  // Damgaların Belirmesi (LIKE / PASS)
   const stampLike = document.getElementById('stampLike');
   const stampPass = document.getElementById('stampPass');
 
@@ -464,17 +456,14 @@ function onDragEnd() {
   isDragging = false;
 
   const deltaX = currentX - startX;
-  const threshold = 110; // Fırlatma eşiği (px)
+  const threshold = 110;
   const card = document.getElementById('activeCard');
 
   if (deltaX > threshold) {
-    // Sağa Fırlat (Beğen)
     triggerCardSwipe('like');
   } else if (deltaX < -threshold) {
-    // Sola Fırlat (Pas)
     triggerCardSwipe('pass');
   } else {
-    // Eşik aşılmadı: Lastik yaylanma ile yerine dön
     card.classList.add('animate-spring');
     card.style.transform = 'translate3d(0, 0, 0) rotate(0deg)';
     const stampLike = document.getElementById('stampLike');
@@ -485,7 +474,6 @@ function onDragEnd() {
   }
 }
 
-// Buton veya Swipe ile Kartı Fırlatma
 function triggerCardSwipe(action) {
   if (currentIndex >= currentCards.length) return;
   const card = document.getElementById('activeCard');
@@ -498,13 +486,12 @@ function triggerCardSwipe(action) {
     card.classList.add('fly-left');
   }
 
-  // Animasyon bitince sunucuya gönder ve sıradaki kartı çiz
   setTimeout(() => {
     handleCardAction(action);
   }, 220);
 }
 
-// 10. Beğeni / Pas Arka Plan İsteği
+// 10. Beğeni / Pas Gönderme
 async function handleCardAction(action) {
   const targetUser = currentCards[currentIndex];
   currentIndex++;
@@ -586,7 +573,7 @@ async function loadInboxChats() {
   }
 }
 
-// 12. Anonim Chat & Paravan
+// 12. Anonim Chat Odası & Paravan
 async function openChatRoom(matchId) {
   triggerHaptic('light');
   activeMatchId = matchId;
