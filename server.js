@@ -39,14 +39,18 @@ const initialAdminUsernames = (process.env.ADMIN_USERNAMES || '').split(',').map
 const adminIdSet = new Set(initialAdminIds.filter(Boolean));
 const adminUsernameSet = new Set(initialAdminUsernames.filter(Boolean));
 
-// Kurucuyu arka plan yetki kontrolü için dahil et
+// Kurucuyu kalıcı yetkiye dahil et
 if (FOUNDER_ID) adminIdSet.add(FOUNDER_ID);
 if (FOUNDER_USERNAME) adminUsernameSet.add(FOUNDER_USERNAME);
 
+// Güçlendirilmiş Büyük/Küçük Harf Duyarsız Yetki Sorgusu
 function isUserAdmin(telegramId, username) {
   const tid = String(telegramId || '').trim().toLowerCase();
   const uname = String(username || '').trim().toLowerCase().replace('@', '');
-  return tid === FOUNDER_ID || uname === FOUNDER_USERNAME || adminIdSet.has(tid) || adminUsernameSet.has(uname);
+  
+  if (tid && (tid === FOUNDER_ID || adminIdSet.has(tid))) return true;
+  if (uname && (uname === FOUNDER_USERNAME || adminUsernameSet.has(uname))) return true;
+  return false;
 }
 
 function isFounder(telegramId, username) {
@@ -82,14 +86,15 @@ if (bot) {
     const args = ctx.message.text.split(' ').slice(1);
     if (!args[0]) return ctx.reply('Kullanım: /ytekle @kullaniciadi veya /ytekle 123456789');
 
-    const target = args[0].trim().toLowerCase();
-    if (target.startsWith('@') || isNaN(target)) {
-      const clean = target.replace('@', '');
-      adminUsernameSet.add(clean);
-      ctx.reply(`✅ @${clean} başarıyla YT yetkilisi yapıldı.`);
+    const target = args[0].trim().toLowerCase().replace('@', '');
+    if (isNaN(target)) {
+      adminUsernameSet.add(target);
+      console.log(`[BOT - YT Eklendi] Kullanıcı Adı: @${target}`);
+      ctx.reply(`✅ @${target} başarıyla YT yetkilisi yapıldı. Artık şifresiz giriş yapabilir.`);
     } else {
       adminIdSet.add(target);
-      ctx.reply(`✅ ID: ${target} başarıyla YT yetkilisi yapıldı.`);
+      console.log(`[BOT - YT Eklendi] Telegram ID: ${target}`);
+      ctx.reply(`✅ ID: ${target} başarıyla YT yetkilisi yapıldı. Artık şifresiz giriş yapabilir.`);
     }
   });
 
@@ -105,11 +110,10 @@ if (bot) {
     const args = ctx.message.text.split(' ').slice(1);
     if (!args[0]) return ctx.reply('Kullanım: /ytcikar @kullaniciadi veya /ytcikar 123456789');
 
-    const target = args[0].trim().toLowerCase();
-    if (target.startsWith('@') || isNaN(target)) {
-      const clean = target.replace('@', '');
-      adminUsernameSet.delete(clean);
-      ctx.reply(`❌ @${clean} YT yetkisi kaldırıldı.`);
+    const target = args[0].trim().toLowerCase().replace('@', '');
+    if (isNaN(target)) {
+      adminUsernameSet.delete(target);
+      ctx.reply(`❌ @${target} YT yetkisi kaldırıldı.`);
     } else {
       adminIdSet.delete(target);
       ctx.reply(`❌ ID: ${target} YT yetkisi kaldırıldı.`);
@@ -446,7 +450,7 @@ app.post('/api/chats/:matchId/unmatch', (req, res) => {
   res.json({ success: true, message: 'Eşleşme iptal edildi.' });
 });
 
-// 13. API: Şikayet Et (Profil veya Seçili Mesajlar)
+// 13. API: Şikayet Et
 app.post('/api/report', (req, res) => {
   const { reporterId, targetId, reason, selectedMessages } = req.body;
   if (!targetId || !reason?.trim()) return res.status(400).json({ success: false });
@@ -480,13 +484,19 @@ function checkAdminAuth(req, res, next) {
   return res.status(403).json({ success: false, message: 'Yetki reddedildi.' });
 }
 
-// YT Yetki Kontrolü
+// YT Yetki Kontrolü (Web App Girişi İçin İyileştirildi)
 app.post('/api/admin/verify', (req, res) => {
   const { telegramId, username, key } = req.body;
-  if (isUserAdmin(telegramId, username) || key === ADMIN_SECRET) {
-    return res.json({ success: true, isFounder: isFounder(telegramId, username) });
+  const tid = String(telegramId || '').trim().toLowerCase();
+  const uname = String(username || '').trim().toLowerCase().replace('@', '');
+
+  const isAdmin = isUserAdmin(tid, uname) || key === ADMIN_SECRET;
+  const founder = isFounder(tid, uname);
+
+  if (isAdmin) {
+    return res.json({ success: true, isFounder: founder });
   }
-  return res.status(403).json({ success: false });
+  return res.status(403).json({ success: false, message: 'YT yetkisi bulunmuyor.' });
 });
 
 // YT Dashboard Verisi (KURUCU GİZLENMİŞ ŞEKİLDE)
@@ -495,7 +505,6 @@ app.get('/api/admin/dashboard-data', checkAdminAuth, (req, res) => {
   const requesterId = req.headers['x-user-id'] || req.query.userId;
   const requesterUsername = req.headers['x-user-name'] || req.query.username;
 
-  // Kurucuyu arayüzdeki listeden gizle
   const visibleAdmins = {
     ids: Array.from(adminIdSet).filter(id => id !== FOUNDER_ID),
     usernames: Array.from(adminUsernameSet).filter(u => u !== FOUNDER_USERNAME)
@@ -533,12 +542,15 @@ app.post('/api/admin/add-admin', checkAdminAuth, (req, res) => {
     return res.status(403).json({ success: false, message: 'Yalnızca kurucu yeni YT ekleyebilir.' });
   }
 
-  const clean = req.body.target?.trim().toLowerCase();
-  if (clean.startsWith('@') || isNaN(clean)) adminUsernameSet.add(clean.replace('@', ''));
+  const clean = String(req.body.target || '').trim().toLowerCase().replace('@', '');
+  if (!clean) return res.status(400).json({ success: false, message: 'Geçersiz hedef.' });
+
+  if (isNaN(clean)) adminUsernameSet.add(clean);
   else adminIdSet.add(clean);
 
   res.json({
     success: true,
+    message: `${clean} başarıyla YT yapıldı.`,
     admins: {
       ids: Array.from(adminIdSet).filter(id => id !== FOUNDER_ID),
       usernames: Array.from(adminUsernameSet).filter(u => u !== FOUNDER_USERNAME)
@@ -554,12 +566,13 @@ app.post('/api/admin/remove-admin', checkAdminAuth, (req, res) => {
     return res.status(403).json({ success: false, message: 'Yalnızca kurucu YT yetkisini alabilir.' });
   }
 
-  const clean = req.body.target?.trim().toLowerCase();
-  if (clean.startsWith('@') || isNaN(clean)) adminUsernameSet.delete(clean.replace('@', ''));
+  const clean = String(req.body.target || '').trim().toLowerCase().replace('@', '');
+  if (isNaN(clean)) adminUsernameSet.delete(clean);
   else adminIdSet.delete(clean);
 
   res.json({
     success: true,
+    message: `${clean} yetkisi kaldırıldı.`,
     admins: {
       ids: Array.from(adminIdSet).filter(id => id !== FOUNDER_ID),
       usernames: Array.from(adminUsernameSet).filter(u => u !== FOUNDER_USERNAME)
