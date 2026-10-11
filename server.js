@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const rateLimit = require('express-rate-limit');
 const { Telegraf, Markup } = require('telegraf');
 const { LOCATIONS_DATA, calculateExactDistance } = require('./cities');
@@ -25,29 +26,67 @@ app.get('/health', (req, res) => res.status(200).send('GOLDENMATCH_OK'));
 // Veri Havuzları
 const users = new Map();         // tgId -> profil
 const likes = new Map();         // tgId -> Set(beğenilenler)
-const matches = new Map();       // matchId -> { id, user1, user2, paravan1, paravan2, messages: [], updatedAt }
+const matches = new Map();       // matchId -> match nesnesi
 const dailyPicks = new Map();    // tgId -> { targetId, date }
-const reports = [];              // Profil ve Mesaj şikayet havuzu
+const reports = [];              // Şikayet havuzu
 
-// KURUCU (GİZLİ SÜPER ADMİN) & YT YÖNETİMİ
+// KURUCU BİLGİLERİ (GİZLİ SÜPER ADMİN)
 const FOUNDER_ID = String(process.env.FOUNDER_ID || '8245373459').trim().toLowerCase();
 const FOUNDER_USERNAME = String(process.env.FOUNDER_USERNAME || 'breskavica').trim().toLowerCase().replace('@', '');
 
-const initialAdminIds = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim().toLowerCase());
-const initialAdminUsernames = (process.env.ADMIN_USERNAMES || '').split(',').map(s => s.trim().toLowerCase().replace('@', ''));
+// KALICI YT DEPOLAMA MOTORU (admins.json)
+const ADMINS_FILE = path.join(__dirname, 'admins.json');
 
-const adminIdSet = new Set(initialAdminIds.filter(Boolean));
-const adminUsernameSet = new Set(initialAdminUsernames.filter(Boolean));
+function loadPersistentAdmins() {
+  try {
+    if (fs.existsSync(ADMINS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(ADMINS_FILE, 'utf8'));
+      return {
+        ids: new Set((data.ids || []).map(s => String(s).trim().toLowerCase())),
+        usernames: new Set((data.usernames || []).map(s => String(s).trim().toLowerCase().replace('@', '')))
+      };
+    }
+  } catch (err) {
+    console.error('admins.json okuma hatası:', err);
+  }
+  return { ids: new Set(), usernames: new Set() };
+}
 
-// Kurucuyu kalıcı yetkiye dahil et
+function savePersistentAdmins() {
+  try {
+    const data = {
+      ids: Array.from(adminIdSet),
+      usernames: Array.from(adminUsernameSet)
+    };
+    fs.writeFileSync(ADMINS_FILE, JSON.stringify(data, null, 2), 'utf8');
+  } catch (err) {
+    console.error('admins.json yazma hatası:', err);
+  }
+}
+
+const loadedAdmins = loadPersistentAdmins();
+const adminIdSet = loadedAdmins.ids;
+const adminUsernameSet = loadedAdmins.usernames;
+
+// .env'den gelen ilk yetkilileri de ekle
+(process.env.ADMIN_IDS || '').split(',').forEach(s => {
+  const c = s.trim().toLowerCase();
+  if (c) adminIdSet.add(c);
+});
+(process.env.ADMIN_USERNAMES || '').split(',').forEach(s => {
+  const c = s.trim().toLowerCase().replace('@', '');
+  if (c) adminUsernameSet.add(c);
+});
+
+// Kurucuyu her daim ekle
 if (FOUNDER_ID) adminIdSet.add(FOUNDER_ID);
 if (FOUNDER_USERNAME) adminUsernameSet.add(FOUNDER_USERNAME);
 
-// Güçlendirilmiş Büyük/Küçük Harf Duyarsız Yetki Sorgusu
+// Güçlendirilmiş ve Hatasız Yetki Kontrolü
 function isUserAdmin(telegramId, username) {
   const tid = String(telegramId || '').trim().toLowerCase();
   const uname = String(username || '').trim().toLowerCase().replace('@', '');
-  
+
   if (tid && (tid === FOUNDER_ID || adminIdSet.has(tid))) return true;
   if (uname && (uname === FOUNDER_USERNAME || adminUsernameSet.has(uname))) return true;
   return false;
@@ -83,18 +122,23 @@ if (bot) {
       return ctx.reply('⛔ Bu komutu sadece sistem kurucusu kullanabilir.');
     }
 
-    const args = ctx.message.text.split(' ').slice(1);
+    const args = ctx.message.text.split(/\s+/).slice(1);
     if (!args[0]) return ctx.reply('Kullanım: /ytekle @kullaniciadi veya /ytekle 123456789');
 
-    const target = args[0].trim().toLowerCase().replace('@', '');
-    if (isNaN(target)) {
-      adminUsernameSet.add(target);
-      console.log(`[BOT - YT Eklendi] Kullanıcı Adı: @${target}`);
-      ctx.reply(`✅ @${target} başarıyla YT yetkilisi yapıldı. Artık şifresiz giriş yapabilir.`);
+    const raw = args[0].trim().toLowerCase();
+    const isPureDigits = /^\d+$/.test(raw);
+
+    if (isPureDigits) {
+      adminIdSet.add(raw);
+      savePersistentAdmins();
+      console.log(`[BOT - YT Eklendi] Telegram ID: ${raw}`);
+      ctx.reply(`✅ ID: ${raw} başarıyla YT yetkilisi yapıldı. Kalıcı olarak kaydedildi.`);
     } else {
-      adminIdSet.add(target);
-      console.log(`[BOT - YT Eklendi] Telegram ID: ${target}`);
-      ctx.reply(`✅ ID: ${target} başarıyla YT yetkilisi yapıldı. Artık şifresiz giriş yapabilir.`);
+      const cleanUname = raw.replace('@', '');
+      adminUsernameSet.add(cleanUname);
+      savePersistentAdmins();
+      console.log(`[BOT - YT Eklendi] Kullanıcı Adı: @${cleanUname}`);
+      ctx.reply(`✅ @${cleanUname} başarıyla YT yetkilisi yapıldı. Kalıcı olarak kaydedildi.`);
     }
   });
 
@@ -107,20 +151,25 @@ if (bot) {
       return ctx.reply('⛔ Bu komutu sadece sistem kurucusu kullanabilir.');
     }
 
-    const args = ctx.message.text.split(' ').slice(1);
+    const args = ctx.message.text.split(/\s+/).slice(1);
     if (!args[0]) return ctx.reply('Kullanım: /ytcikar @kullaniciadi veya /ytcikar 123456789');
 
-    const target = args[0].trim().toLowerCase().replace('@', '');
-    if (isNaN(target)) {
-      adminUsernameSet.delete(target);
-      ctx.reply(`❌ @${target} YT yetkisi kaldırıldı.`);
+    const raw = args[0].trim().toLowerCase();
+    const isPureDigits = /^\d+$/.test(raw);
+
+    if (isPureDigits) {
+      adminIdSet.delete(raw);
+      savePersistentAdmins();
+      ctx.reply(`❌ ID: ${raw} YT yetkisi kaldırıldı.`);
     } else {
-      adminIdSet.delete(target);
-      ctx.reply(`❌ ID: ${target} YT yetkisi kaldırıldı.`);
+      const cleanUname = raw.replace('@', '');
+      adminUsernameSet.delete(cleanUname);
+      savePersistentAdmins();
+      ctx.reply(`❌ @${cleanUname} YT yetkisi kaldırıldı.`);
     }
   });
 
-  // Kurucuya Özel: /ytsorgu (KURUCU GİZLENMİŞ LİSTE)
+  // Kurucuya Özel: /ytsorgu (KURUCU GİZLİ LİSTE)
   bot.command('ytsorgu', (ctx) => {
     const senderId = String(ctx.from.id).toLowerCase();
     const senderUname = String(ctx.from.username || '').toLowerCase();
@@ -484,7 +533,7 @@ function checkAdminAuth(req, res, next) {
   return res.status(403).json({ success: false, message: 'Yetki reddedildi.' });
 }
 
-// YT Yetki Kontrolü (Web App Girişi İçin İyileştirildi)
+// YT Yetki Kontrolü (Hassas ve Büyük/Küçük Harf Eşitlemeli)
 app.post('/api/admin/verify', (req, res) => {
   const { telegramId, username, key } = req.body;
   const tid = String(telegramId || '').trim().toLowerCase();
@@ -499,7 +548,7 @@ app.post('/api/admin/verify', (req, res) => {
   return res.status(403).json({ success: false, message: 'YT yetkisi bulunmuyor.' });
 });
 
-// YT Dashboard Verisi (KURUCU GİZLENMİŞ ŞEKİLDE)
+// YT Dashboard Verisi
 app.get('/api/admin/dashboard-data', checkAdminAuth, (req, res) => {
   const userList = Array.from(users.values());
   const requesterId = req.headers['x-user-id'] || req.query.userId;
@@ -533,7 +582,7 @@ app.post('/api/admin/toggle-ban', checkAdminAuth, (req, res) => {
   res.json({ success: true, isBanned: user.isBanned });
 });
 
-// YT: Ekleme/Çıkarma (Sadece Kurucu Yapabilir)
+// YT: Ekleme/Çıkarma (Sadece Kurucu Yapabilir & Kalıcı Kaydeder)
 app.post('/api/admin/add-admin', checkAdminAuth, (req, res) => {
   const requesterId = req.headers['x-user-id'] || req.query.userId;
   const requesterUsername = req.headers['x-user-name'] || req.query.username;
@@ -545,12 +594,17 @@ app.post('/api/admin/add-admin', checkAdminAuth, (req, res) => {
   const clean = String(req.body.target || '').trim().toLowerCase().replace('@', '');
   if (!clean) return res.status(400).json({ success: false, message: 'Geçersiz hedef.' });
 
-  if (isNaN(clean)) adminUsernameSet.add(clean);
-  else adminIdSet.add(clean);
+  const isPureDigits = /^\d+$/.test(clean);
+  if (isPureDigits) {
+    adminIdSet.add(clean);
+  } else {
+    adminUsernameSet.add(clean);
+  }
+  savePersistentAdmins();
 
   res.json({
     success: true,
-    message: `${clean} başarıyla YT yapıldı.`,
+    message: `${clean} başarıyla YT yapıldı ve kaydedildi.`,
     admins: {
       ids: Array.from(adminIdSet).filter(id => id !== FOUNDER_ID),
       usernames: Array.from(adminUsernameSet).filter(u => u !== FOUNDER_USERNAME)
@@ -567,8 +621,14 @@ app.post('/api/admin/remove-admin', checkAdminAuth, (req, res) => {
   }
 
   const clean = String(req.body.target || '').trim().toLowerCase().replace('@', '');
-  if (isNaN(clean)) adminUsernameSet.delete(clean);
-  else adminIdSet.delete(clean);
+  const isPureDigits = /^\d+$/.test(clean);
+
+  if (isPureDigits) {
+    adminIdSet.delete(clean);
+  } else {
+    adminUsernameSet.delete(clean);
+  }
+  savePersistentAdmins();
 
   res.json({
     success: true,
