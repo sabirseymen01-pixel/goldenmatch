@@ -1,7 +1,4 @@
-// nsfwCheck.js - Görsel Güvenlik ve Moderasyon Modülü
-const axios = require('axios');
-const FormData = require('form-data');
-
+// nsfwCheck.js - Görsel Güvenlik ve Moderasyon Modülü (Sıfır Bağımlılık / Native Node.js)
 async function verifyImageSafety(base64Image) {
   // Eğer Sightengine ortam değişkenleri tanımlı değilse engelleme yapmadan devam eder
   if (!process.env.SIGHTENGINE_USER || !process.env.SIGHTENGINE_SECRET) {
@@ -12,17 +9,20 @@ async function verifyImageSafety(base64Image) {
     const cleanBase64 = base64Image.replace(/^data:image\/\w+;base64,/, '');
     const buffer = Buffer.from(cleanBase64, 'base64');
 
-    const form = new FormData();
-    form.append('media', buffer, { filename: 'upload.jpg' });
-    form.append('models', 'nudity-2.0');
-    form.append('api_user', process.env.SIGHTENGINE_USER);
-    form.append('api_secret', process.env.SIGHTENGINE_SECRET);
+    // Node.js yerleşik FormData ve Blob kullanımı (axios ve form-data paketine gerek kalmaz)
+    const blob = new Blob([buffer], { type: 'image/jpeg' });
+    const formData = new FormData();
+    formData.append('media', blob, 'upload.jpg');
+    formData.append('models', 'nudity-2.0');
+    formData.append('api_user', process.env.SIGHTENGINE_USER);
+    formData.append('api_secret', process.env.SIGHTENGINE_SECRET);
 
-    const response = await axios.post('https://api.sightengine.com/1.0/check.json', form, {
-      headers: form.getHeaders()
+    const response = await fetch('https://api.sightengine.com/1.0/check.json', {
+      method: 'POST',
+      body: formData
     });
 
-    const data = response.data;
+    const data = await response.json();
     if (data.status === 'success') {
       const nudity = data.nudity;
       if (nudity.sexual_activity > 0.6 || nudity.sexual_display > 0.6 || nudity.erotica > 0.8) {
