@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const fs = require('fs');
+const mongoose = require('mongoose');
 const rateLimit = require('express-rate-limit');
 const { Telegraf, Markup } = require('telegraf');
 const { LOCATIONS_DATA, calculateExactDistance } = require('./cities');
@@ -23,73 +23,99 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/health', (req, res) => res.status(200).send('GOLDENMATCH_OK'));
 
-// Veri Havuzları
-const users = new Map();         // tgId -> profil
-const likes = new Map();         // tgId -> Set(beğenilenler)
-const matches = new Map();       // matchId -> match nesnesi
-const dailyPicks = new Map();    // tgId -> { targetId, date }
-const reports = [];              // Şikayet havuzu
+// ==========================================================================
+// MONGODB VERİTABANI BAĞLANTISI VE ŞEMALARI
+// ==========================================================================
+const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://breskavica:05527330103Ss@cluster0.z1oe54g.mongodb.net/goldenmatch?retryWrites=true&w=majority&appName=Cluster0';
+
+mongoose.connect(MONGO_URI)
+  .then(() => console.log('✅ MongoDB Atlas Bağlantısı Başarılı! Veriler artık kalıcı olarak saklanıyor.'))
+  .catch(err => console.error('❌ MongoDB Bağlantı Hatası:', err));
+
+const UserSchema = new mongoose.Schema({
+  telegramId: { type: String, required: true, unique: true },
+  username: String,
+  nickname: String,
+  age: Number,
+  height: Number,
+  weight: Number,
+  role: String,
+  interestedRole: String,
+  city: String,
+  district: String,
+  archetype: String,
+  expression: String,
+  bio: String,
+  photos: [String],
+  isVerified: { type: Boolean, default: false },
+  isBanned: { type: Boolean, default: false },
+  registeredAt: { type: Date, default: Date.now }
+});
+
+const LikeSchema = new mongoose.Schema({
+  fromUserId: String,
+  toUserId: String,
+  createdAt: { type: Date, default: Date.now }
+});
+
+const MatchSchema = new mongoose.Schema({
+  matchId: { type: String, unique: true },
+  user1: String,
+  user2: String,
+  paravan1: { type: Boolean, default: false },
+  paravan2: { type: Boolean, default: false },
+  messages: [{
+    id: String,
+    senderId: String,
+    text: String,
+    time: String,
+    read: { type: Boolean, default: false }
+  }],
+  updatedAt: { type: Date, default: Date.now }
+});
+
+const ReportSchema = new mongoose.Schema({
+  id: String,
+  targetId: String,
+  targetNickname: String,
+  targetUsername: String,
+  reporterId: String,
+  reporterNickname: String,
+  reason: String,
+  evidenceMessages: [String],
+  date: String
+});
+
+const AdminSchema = new mongoose.Schema({
+  target: { type: String, unique: true },
+  type: String
+});
+
+const UserModel = mongoose.model('User', UserSchema);
+const LikeModel = mongoose.model('Like', LikeSchema);
+const MatchModel = mongoose.model('Match', MatchSchema);
+const ReportModel = mongoose.model('Report', ReportSchema);
+const AdminModel = mongoose.model('Admin', AdminSchema);
 
 // KURUCU BİLGİLERİ (GİZLİ SÜPER ADMİN)
 const FOUNDER_ID = String(process.env.FOUNDER_ID || '8245373459').trim().toLowerCase();
 const FOUNDER_USERNAME = String(process.env.FOUNDER_USERNAME || 'breskavica').trim().toLowerCase().replace('@', '');
 
-// KALICI YT DEPOLAMA MOTORU (admins.json)
-const ADMINS_FILE = path.join(__dirname, 'admins.json');
-
-function loadPersistentAdmins() {
-  try {
-    if (fs.existsSync(ADMINS_FILE)) {
-      const data = JSON.parse(fs.readFileSync(ADMINS_FILE, 'utf8'));
-      return {
-        ids: new Set((data.ids || []).map(s => String(s).trim().toLowerCase())),
-        usernames: new Set((data.usernames || []).map(s => String(s).trim().toLowerCase().replace('@', '')))
-      };
-    }
-  } catch (err) {
-    console.error('admins.json okuma hatası:', err);
-  }
-  return { ids: new Set(), usernames: new Set() };
-}
-
-function savePersistentAdmins() {
-  try {
-    const data = {
-      ids: Array.from(adminIdSet),
-      usernames: Array.from(adminUsernameSet)
-    };
-    fs.writeFileSync(ADMINS_FILE, JSON.stringify(data, null, 2), 'utf8');
-  } catch (err) {
-    console.error('admins.json yazma hatası:', err);
-  }
-}
-
-const loadedAdmins = loadPersistentAdmins();
-const adminIdSet = loadedAdmins.ids;
-const adminUsernameSet = loadedAdmins.usernames;
-
-// .env'den gelen ilk yetkilileri de ekle
-(process.env.ADMIN_IDS || '').split(',').forEach(s => {
-  const c = s.trim().toLowerCase();
-  if (c) adminIdSet.add(c);
-});
-(process.env.ADMIN_USERNAMES || '').split(',').forEach(s => {
-  const c = s.trim().toLowerCase().replace('@', '');
-  if (c) adminUsernameSet.add(c);
-});
-
-// Kurucuyu her daim ekle
-if (FOUNDER_ID) adminIdSet.add(FOUNDER_ID);
-if (FOUNDER_USERNAME) adminUsernameSet.add(FOUNDER_USERNAME);
-
-// Güçlendirilmiş ve Hatasız Yetki Kontrolü
-function isUserAdmin(telegramId, username) {
+async function isUserAdmin(telegramId, username) {
   const tid = String(telegramId || '').trim().toLowerCase();
   const uname = String(username || '').trim().toLowerCase().replace('@', '');
 
-  if (tid && (tid === FOUNDER_ID || adminIdSet.has(tid))) return true;
-  if (uname && (uname === FOUNDER_USERNAME || adminUsernameSet.has(uname))) return true;
-  return false;
+  if (tid && tid === FOUNDER_ID) return true;
+  if (uname && uname === FOUNDER_USERNAME) return true;
+
+  try {
+    const admin = await AdminModel.findOne({
+      $or: [{ target: tid }, { target: uname }]
+    });
+    return !!admin;
+  } catch (e) {
+    return false;
+  }
 }
 
 function isFounder(telegramId, username) {
@@ -104,7 +130,9 @@ const WEBAPP_URL = 'https://goldenmatch.onrender.com';
 
 const bot = BOT_TOKEN ? new Telegraf(BOT_TOKEN) : null;
 
+// ==========================================================================
 // TELEGRAM BOT KOMUTLARI
+// ==========================================================================
 if (bot) {
   bot.start((ctx) => {
     ctx.reply(
@@ -113,8 +141,7 @@ if (bot) {
     );
   });
 
-  // Kurucuya Özel: /ytekle @kullaniciadi veya ID
-  bot.command('ytekle', (ctx) => {
+  bot.command('ytekle', async (ctx) => {
     const senderId = String(ctx.from.id).toLowerCase();
     const senderUname = String(ctx.from.username || '').toLowerCase();
 
@@ -125,25 +152,22 @@ if (bot) {
     const args = ctx.message.text.split(/\s+/).slice(1);
     if (!args[0]) return ctx.reply('Kullanım: /ytekle @kullaniciadi veya /ytekle 123456789');
 
-    const raw = args[0].trim().toLowerCase();
+    const raw = args[0].trim().toLowerCase().replace('@', '');
     const isPureDigits = /^\d+$/.test(raw);
 
-    if (isPureDigits) {
-      adminIdSet.add(raw);
-      savePersistentAdmins();
-      console.log(`[BOT - YT Eklendi] Telegram ID: ${raw}`);
-      ctx.reply(`✅ ID: ${raw} başarıyla YT yetkilisi yapıldı. Kalıcı olarak kaydedildi.`);
-    } else {
-      const cleanUname = raw.replace('@', '');
-      adminUsernameSet.add(cleanUname);
-      savePersistentAdmins();
-      console.log(`[BOT - YT Eklendi] Kullanıcı Adı: @${cleanUname}`);
-      ctx.reply(`✅ @${cleanUname} başarıyla YT yetkilisi yapıldı. Kalıcı olarak kaydedildi.`);
+    try {
+      await AdminModel.findOneAndUpdate(
+        { target: raw },
+        { target: raw, type: isPureDigits ? 'id' : 'username' },
+        { upsert: true }
+      );
+      ctx.reply(`✅ ${isPureDigits ? 'ID: ' + raw : '@' + raw} kalıcı olarak veritabanına YT olarak kaydedildi.`);
+    } catch (e) {
+      ctx.reply('❌ Hata oluştu.');
     }
   });
 
-  // Kurucuya Özel: /ytcikar @kullaniciadi veya ID
-  bot.command('ytcikar', (ctx) => {
+  bot.command('ytcikar', async (ctx) => {
     const senderId = String(ctx.from.id).toLowerCase();
     const senderUname = String(ctx.from.username || '').toLowerCase();
 
@@ -154,46 +178,37 @@ if (bot) {
     const args = ctx.message.text.split(/\s+/).slice(1);
     if (!args[0]) return ctx.reply('Kullanım: /ytcikar @kullaniciadi veya /ytcikar 123456789');
 
-    const raw = args[0].trim().toLowerCase();
-    const isPureDigits = /^\d+$/.test(raw);
-
-    if (isPureDigits) {
-      adminIdSet.delete(raw);
-      savePersistentAdmins();
-      ctx.reply(`❌ ID: ${raw} YT yetkisi kaldırıldı.`);
-    } else {
-      const cleanUname = raw.replace('@', '');
-      adminUsernameSet.delete(cleanUname);
-      savePersistentAdmins();
-      ctx.reply(`❌ @${cleanUname} YT yetkisi kaldırıldı.`);
+    const raw = args[0].trim().toLowerCase().replace('@', '');
+    try {
+      await AdminModel.deleteOne({ target: raw });
+      ctx.reply(`❌ ${raw} YT yetkisi kalıcı olarak silindi.`);
+    } catch (e) {
+      ctx.reply('❌ Hata oluştu.');
     }
   });
 
-  // Kurucuya Özel: /ytsorgu (KURUCU GİZLİ LİSTE)
-  bot.command('ytsorgu', (ctx) => {
+  bot.command('ytsorgu', async (ctx) => {
     const senderId = String(ctx.from.id).toLowerCase();
     const senderUname = String(ctx.from.username || '').toLowerCase();
 
     if (!isFounder(senderId, senderUname)) return ctx.reply('⛔ Yetkisiz işlem.');
 
-    const visibleUsernames = Array.from(adminUsernameSet)
-      .filter(u => u !== FOUNDER_USERNAME)
-      .map(u => `@${u}`)
-      .join(', ');
+    try {
+      const all = await AdminModel.find();
+      const unames = all.filter(a => a.type === 'username' && a.target !== FOUNDER_USERNAME).map(a => `@${a.target}`);
+      const ids = all.filter(a => a.type === 'id' && a.target !== FOUNDER_ID).map(a => a.target);
 
-    const visibleIds = Array.from(adminIdSet)
-      .filter(id => id !== FOUNDER_ID)
-      .join(', ');
-
-    ctx.reply(
-      `👑 *Tanımlı Alt Yetkililer (YT):*\n\n` +
-      `Kullanıcı Adları: ${visibleUsernames || 'Atanmış yetkili yok'}\n` +
-      `ID'ler: ${visibleIds || 'Atanmış ID yok'}`,
-      { parse_mode: 'Markdown' }
-    );
+      ctx.reply(
+        `👑 *Tanımlı Alt Yetkililer (YT - Veritabanı):*\n\n` +
+        `Kullanıcı Adları: ${unames.join(', ') || 'Atanmış yetkili yok'}\n` +
+        `ID'ler: ${ids.join(', ') || 'Atanmış ID yok'}`,
+        { parse_mode: 'Markdown' }
+      );
+    } catch (e) {
+      ctx.reply('❌ Liste getirilemedi.');
+    }
   });
 
-  // Kurucuya Özel: /duyuru [mesaj]
   bot.command('duyuru', async (ctx) => {
     const senderId = String(ctx.from.id).toLowerCase();
     const senderUname = String(ctx.from.username || '').toLowerCase();
@@ -204,13 +219,18 @@ if (bot) {
     if (!msg) return ctx.reply('Lütfen duyuru metnini girin: /duyuru [metin]');
 
     let count = 0;
-    for (const u of users.values()) {
-      try {
-        await bot.telegram.sendMessage(u.telegramId, `📢 *GOLDENMATCH RESMİ DUYURU*\n\n${msg}`, { parse_mode: 'Markdown' });
-        count++;
-      } catch (e) {}
+    try {
+      const users = await UserModel.find();
+      for (const u of users) {
+        try {
+          await bot.telegram.sendMessage(u.telegramId, `📢 *GOLDENMATCH RESMİ DUYURU*\n\n${msg}`, { parse_mode: 'Markdown' });
+          count++;
+        } catch (e) {}
+      }
+      ctx.reply(`✅ Duyuru ${count} üyeye başarıyla gönderildi.`);
+    } catch (e) {
+      ctx.reply('❌ Duyuru gönderilirken hata oluştu.');
     }
-    ctx.reply(`✅ Duyuru ${count} üyeye başarıyla gönderildi.`);
   });
 
   bot.launch().catch(err => console.error('Bot başlatma hatası:', err));
@@ -218,21 +238,23 @@ if (bot) {
   process.once('SIGTERM', () => bot.stop('SIGTERM'));
 }
 
-// 1. API: Konumlar
+// ==========================================================================
+// REST API ROTALARI
+// ==========================================================================
+
 app.get('/api/locations', (req, res) => res.json({ success: true, locations: LOCATIONS_DATA }));
 
-// 2. API: Profil Sorgula
-app.get('/api/profile/:id', (req, res) => {
+app.get('/api/profile/:id', async (req, res) => {
   const tid = String(req.params.id);
   const uname = req.query.username || '';
-  const profile = users.get(tid);
-  const isAdmin = isUserAdmin(tid, uname);
+  const profile = await UserModel.findOne({ telegramId: tid });
+  const isAdmin = await isUserAdmin(tid, uname);
   const founder = isFounder(tid, uname);
+
   if (profile) return res.json({ exists: true, profile, isAdmin, isFounder: founder });
   return res.json({ exists: false, isAdmin, isFounder: founder });
 });
 
-// 3. API: Profil Kaydet
 app.post('/api/profile', async (req, res) => {
   try {
     const { telegramId, username, nickname, age, height, weight, role, interestedRole, city, district, archetype, expression, bio, photos } = req.body;
@@ -245,7 +267,7 @@ app.post('/api/profile', async (req, res) => {
       }
     }
 
-    const newProfile = {
+    const profileData = {
       telegramId: String(telegramId),
       username: username ? username.replace('@', '') : '',
       nickname,
@@ -261,48 +283,48 @@ app.post('/api/profile', async (req, res) => {
       bio,
       photos: photos || [],
       isVerified: false,
-      isBanned: false,
-      registeredAt: new Date().toISOString()
+      isBanned: false
     };
 
-    users.set(String(telegramId), newProfile);
-    return res.json({ success: true, message: 'Kaydedildi.', profile: newProfile });
+    await UserModel.findOneAndUpdate(
+      { telegramId: String(telegramId) },
+      profileData,
+      { upsert: true, new: true }
+    );
+
+    return res.json({ success: true, message: 'Kaydedildi.', profile: profileData });
   } catch (err) {
     return res.status(500).json({ success: false, message: 'Sunucu hatası.' });
   }
 });
 
-// 4. API: Hesap Silme
-app.delete('/api/profile/:id', (req, res) => {
+app.delete('/api/profile/:id', async (req, res) => {
   const tid = String(req.params.id);
-  if (!users.has(tid)) return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı.' });
-
-  users.delete(tid);
-  likes.delete(tid);
-  dailyPicks.delete(tid);
-
-  for (const [mId, m] of matches.entries()) {
-    if (m.user1 === tid || m.user2 === tid) matches.delete(mId);
-  }
-  for (const likeSet of likes.values()) likeSet.delete(tid);
-
-  res.json({ success: true, message: 'Hesap silindi.' });
+  await UserModel.deleteOne({ telegramId: tid });
+  await LikeModel.deleteMany({ $or: [{ fromUserId: tid }, { toUserId: tid }] });
+  await MatchModel.deleteMany({ $or: [{ user1: tid }, { user2: tid }] });
+  res.json({ success: true, message: 'Hesap kalıcı olarak silindi.' });
 });
 
-// 5. API: Keşfet Kartları
-app.get('/api/cards', (req, res) => {
+app.get('/api/cards', async (req, res) => {
   const currentUserId = String(req.query.userId);
   const filterCity = req.query.city;
   const filterRole = req.query.role;
-  const currentUser = users.get(currentUserId);
-  const userLikes = likes.get(currentUserId) || new Set();
 
-  const cards = [];
-  for (const [id, user] of users.entries()) {
-    if (id === currentUserId || userLikes.has(id) || user.isBanned) continue;
-    if (filterCity && filterCity !== 'Hepsi' && user.city !== filterCity) continue;
-    if (filterRole && filterRole !== 'Hepsi' && user.role !== filterRole) continue;
+  const currentUser = await UserModel.findOne({ telegramId: currentUserId });
+  const myLikes = await LikeModel.find({ fromUserId: currentUserId });
+  const likedUserIds = new Set(myLikes.map(l => l.toUserId));
 
+  let query = {
+    telegramId: { $ne: currentUserId,$nin: Array.from(likedUserIds) },
+    isBanned: false
+  };
+
+  if (filterCity && filterCity !== 'Hepsi') query.city = filterCity;
+  if (filterRole && filterRole !== 'Hepsi') query.role = filterRole;
+
+  const users = await UserModel.find(query);
+  const cards = users.map(user => {
     let distanceKm = null;
     if (currentUser?.city && user.city) {
       distanceKm = calculateExactDistance(
@@ -310,70 +332,54 @@ app.get('/api/cards', (req, res) => {
         { city: user.city, district: user.district }
       );
     }
-    cards.push({ ...user, distanceKm });
-  }
+    return { ...user.toObject(), distanceKm };
+  });
+
   res.json({ success: true, cards });
 });
 
-// 6. API: Günün Eşleşmesi
-app.get('/api/daily-pick', (req, res) => {
+app.get('/api/daily-pick', async (req, res) => {
   const userId = String(req.query.userId);
-  const currentUser = users.get(userId);
+  const currentUser = await UserModel.findOne({ telegramId: userId });
   if (!currentUser) return res.status(404).json({ success: false });
 
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const cached = dailyPicks.get(userId);
-  if (cached && cached.date === todayStr && users.has(cached.targetId)) {
-    const target = users.get(cached.targetId);
-    return res.json({ success: true, dailyPick: { ...target, distanceKm: calculateExactDistance(currentUser, target) } });
-  }
+  let query = { telegramId: { $ne: userId }, isBanned: false };
+  if (currentUser.interestedRole !== 'Hepsi') query.role = currentUser.interestedRole;
 
-  const candidates = [];
-  for (const [id, user] of users.entries()) {
-    if (id === userId || user.isBanned) continue;
-    if (currentUser.interestedRole !== 'Hepsi' && user.role !== currentUser.interestedRole) continue;
-    candidates.push(user);
-  }
+  const candidates = await UserModel.find(query);
   if (!candidates.length) return res.json({ success: true, dailyPick: null });
 
-  candidates.sort((a, b) => (calculateExactDistance(currentUser, a) ?? 9999) - (calculateExactDistance(currentUser, b) ?? 9999));
   const picked = candidates[0];
-  dailyPicks.set(userId, { targetId: picked.telegramId, date: todayStr });
-  res.json({ success: true, dailyPick: { ...picked, distanceKm: calculateExactDistance(currentUser, picked) } });
+  res.json({
+    success: true,
+    dailyPick: { ...picked.toObject(), distanceKm: calculateExactDistance(currentUser, picked) }
+  });
 });
 
-// 7. API: Beğeni / Eşleşme
 app.post('/api/like', async (req, res) => {
   const { fromUserId, toUserId, action } = req.body;
   const fromId = String(fromUserId);
   const toId = String(toUserId);
 
-  if (!likes.has(fromId)) likes.set(fromId, new Set());
-  likes.get(fromId).add(toId);
+  await LikeModel.create({ fromUserId: fromId, toUserId: toId });
 
   let isMatch = false;
   let matchId = null;
 
   if (action === 'like') {
-    const targetLikes = likes.get(toId);
-    if (targetLikes && targetLikes.has(fromId)) {
+    const targetLike = await LikeModel.findOne({ fromUserId: toId, toUserId: fromId });
+    if (targetLike) {
       isMatch = true;
       matchId = [fromId, toId].sort().join('_');
-      if (!matches.has(matchId)) {
-        matches.set(matchId, {
-          id: matchId,
-          user1: fromId,
-          user2: toId,
-          paravan1: false,
-          paravan2: false,
-          messages: [],
-          updatedAt: new Date().toISOString()
-        });
-      }
+      await MatchModel.findOneAndUpdate(
+        { matchId },
+        { matchId, user1: fromId, user2: toId, updatedAt: new Date() },
+        { upsert: true }
+      );
 
       if (bot) {
-        const u1 = users.get(fromId);
-        const u2 = users.get(toId);
+        const u1 = await UserModel.findOne({ telegramId: fromId });
+        const u2 = await UserModel.findOne({ telegramId: toId });
         try {
           await bot.telegram.sendMessage(fromId, `🎉 *Tebrikler, Eşleştiniz!*\n\n*${u2?.nickname || 'Biri'}* ile karşılıklı beğendiniz! DM kutusundan sohbete başlayabilirsin.`);
           await bot.telegram.sendMessage(toId, `🎉 *Tebrikler, Eşleştiniz!*\n\n*${u1?.nickname || 'Biri'}* ile karşılıklı beğendiniz! DM kutusundan sohbete başlayabilirsin.`);
@@ -384,56 +390,54 @@ app.post('/api/like', async (req, res) => {
   res.json({ success: true, isMatch, matchId });
 });
 
-// 8. API: DM Kutusu
-app.get('/api/chats', (req, res) => {
+app.get('/api/chats', async (req, res) => {
   const userId = String(req.query.userId);
+  const matches = await MatchModel.find({ $or: [{ user1: userId }, { user2: userId }] }).sort({ updatedAt: -1 });
   const userChats = [];
 
-  for (const match of matches.values()) {
-    if (match.user1 === userId || match.user2 === userId) {
-      const partnerId = match.user1 === userId ? match.user2 : match.user1;
-      const partner = users.get(partnerId);
-      const isMyParavanOpen = match.user1 === userId ? match.paravan1 : match.paravan2;
-      const bothRevealed = match.paravan1 && match.paravan2;
-      const lastMsg = match.messages[match.messages.length - 1];
+  for (const match of matches) {
+    const partnerId = match.user1 === userId ? match.user2 : match.user1;
+    const partner = await UserModel.findOne({ telegramId: partnerId });
+    const isMyParavanOpen = match.user1 === userId ? match.paravan1 : match.paravan2;
+    const bothRevealed = match.paravan1 && match.paravan2;
+    const lastMsg = match.messages[match.messages.length - 1];
 
-      userChats.push({
-        matchId: match.id,
-        partner: {
-          telegramId: partnerId,
-          nickname: partner?.nickname || 'Kullanıcı',
-          avatar: partner?.photos?.[0] || '',
-          city: partner?.city || '',
-          role: partner?.role || '',
-          username: bothRevealed ? (partner?.username ? `@${partner.username}` : `ID:${partnerId}`) : null
-        },
-        bothRevealed,
-        myParavanRequested: isMyParavanOpen,
-        lastMessage: lastMsg ? lastMsg.text : 'Yeni eşleşme! Selam ver ✨',
-        lastMessageTime: lastMsg ? lastMsg.time : match.updatedAt,
-        unread: lastMsg ? (lastMsg.senderId !== userId && !lastMsg.read) : true
-      });
-    }
+    userChats.push({
+      matchId: match.matchId,
+      partner: {
+        telegramId: partnerId,
+        nickname: partner?.nickname || 'Kullanıcı',
+        avatar: partner?.photos?.[0] || '',
+        city: partner?.city || '',
+        role: partner?.role || '',
+        username: bothRevealed ? (partner?.username ? `@${partner.username}` : `ID:${partnerId}`) : null
+      },
+      bothRevealed,
+      myParavanRequested: isMyParavanOpen,
+      lastMessage: lastMsg ? lastMsg.text : 'Yeni eşleşme! Selam ver ✨',
+      lastMessageTime: lastMsg ? lastMsg.time : match.updatedAt,
+      unread: lastMsg ? (lastMsg.senderId !== userId && !lastMsg.read) : true
+    });
   }
 
-  userChats.sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
   res.json({ success: true, chats: userChats, totalUnread: userChats.filter(c => c.unread).length });
 });
 
-// 9. API: Tekil Sohbet
-app.get('/api/chats/:matchId', (req, res) => {
-  const match = matches.get(req.params.matchId);
+app.get('/api/chats/:matchId', async (req, res) => {
+  const match = await MatchModel.findOne({ matchId: req.params.matchId });
   const userId = String(req.query.userId);
   if (!match) return res.status(404).json({ success: false, message: 'Sohbet bulunamadı.' });
 
   match.messages.forEach(m => { if (m.senderId !== userId) m.read = true; });
+  await match.save();
+
   const partnerId = match.user1 === userId ? match.user2 : match.user1;
-  const partner = users.get(partnerId);
+  const partner = await UserModel.findOne({ telegramId: partnerId });
   const bothRevealed = match.paravan1 && match.paravan2;
 
   res.json({
     success: true,
-    matchId: match.id,
+    matchId: match.matchId,
     partner: {
       telegramId: partnerId,
       nickname: partner?.nickname || 'Kullanıcı',
@@ -446,10 +450,9 @@ app.get('/api/chats/:matchId', (req, res) => {
   });
 });
 
-// 10. API: Mesaj Gönder
-app.post('/api/chats/:matchId/message', (req, res) => {
+app.post('/api/chats/:matchId/message', async (req, res) => {
   const { senderId, text } = req.body;
-  const match = matches.get(req.params.matchId);
+  const match = await MatchModel.findOne({ matchId: req.params.matchId });
   if (!match || !text?.trim()) return res.status(400).json({ success: false });
 
   const msg = {
@@ -461,22 +464,23 @@ app.post('/api/chats/:matchId/message', (req, res) => {
   };
 
   match.messages.push(msg);
-  match.updatedAt = new Date().toISOString();
+  match.updatedAt = new Date();
+  await match.save();
   res.json({ success: true, message: msg });
 });
 
-// 11. API: Paravanı Aç
-app.post('/api/chats/:matchId/reveal', (req, res) => {
+app.post('/api/chats/:matchId/reveal', async (req, res) => {
   const { userId } = req.body;
-  const match = matches.get(req.params.matchId);
+  const match = await MatchModel.findOne({ matchId: req.params.matchId });
   if (!match) return res.status(404).json({ success: false });
 
   if (match.user1 === String(userId)) match.paravan1 = true;
   if (match.user2 === String(userId)) match.paravan2 = true;
+  await match.save();
 
   const bothRevealed = match.paravan1 && match.paravan2;
   const partnerId = match.user1 === String(userId) ? match.user2 : match.user1;
-  const partner = users.get(partnerId);
+  const partner = await UserModel.findOne({ telegramId: partnerId });
 
   res.json({
     success: true,
@@ -485,29 +489,31 @@ app.post('/api/chats/:matchId/reveal', (req, res) => {
   });
 });
 
-// 12. API: Eşleşmeyi İptal Et
-app.post('/api/chats/:matchId/unmatch', (req, res) => {
+app.post('/api/chats/:matchId/unmatch', async (req, res) => {
   const { userId } = req.body;
-  const match = matches.get(req.params.matchId);
+  const match = await MatchModel.findOne({ matchId: req.params.matchId });
   if (!match) return res.status(404).json({ success: false });
 
   const partnerId = match.user1 === String(userId) ? match.user2 : match.user1;
-  matches.delete(req.params.matchId);
-  likes.get(String(userId))?.delete(partnerId);
-  likes.get(partnerId)?.delete(String(userId));
+  await MatchModel.deleteOne({ matchId: req.params.matchId });
+  await LikeModel.deleteMany({
+    $or: [
+      { fromUserId: String(userId), toUserId: partnerId },
+      { fromUserId: partnerId, toUserId: String(userId) }
+    ]
+  });
 
   res.json({ success: true, message: 'Eşleşme iptal edildi.' });
 });
 
-// 13. API: Şikayet Et
-app.post('/api/report', (req, res) => {
+app.post('/api/report', async (req, res) => {
   const { reporterId, targetId, reason, selectedMessages } = req.body;
   if (!targetId || !reason?.trim()) return res.status(400).json({ success: false });
 
-  const targetUser = users.get(String(targetId));
-  const reporterUser = users.get(String(reporterId));
+  const targetUser = await UserModel.findOne({ telegramId: String(targetId) });
+  const reporterUser = await UserModel.findOne({ telegramId: String(reporterId) });
 
-  const reportItem = {
+  await ReportModel.create({
     id: Date.now().toString(),
     targetId: String(targetId),
     targetNickname: targetUser?.nickname || 'Bilinmiyor',
@@ -517,46 +523,48 @@ app.post('/api/report', (req, res) => {
     reason: reason.trim(),
     evidenceMessages: selectedMessages || [],
     date: new Date().toLocaleString('tr-TR')
-  };
+  });
 
-  reports.unshift(reportItem);
   res.json({ success: true, message: 'Şikayet iletildi.' });
 });
 
-// 14. YT Yetki Middleware'i
-function checkAdminAuth(req, res, next) {
+// ==========================================================================
+// YT PANELİ VE AUTH
+// ==========================================================================
+
+async function checkAdminAuth(req, res, next) {
   const requesterId = req.headers['x-user-id'] || req.query.userId;
   const requesterUsername = req.headers['x-user-name'] || req.query.username;
   const secretKey = req.headers['x-admin-key'] || req.query.key;
 
-  if (isUserAdmin(requesterId, requesterUsername) || secretKey === ADMIN_SECRET) return next();
+  const isAdmin = await isUserAdmin(requesterId, requesterUsername);
+  if (isAdmin || secretKey === ADMIN_SECRET) return next();
   return res.status(403).json({ success: false, message: 'Yetki reddedildi.' });
 }
 
-// YT Yetki Kontrolü (Hassas ve Büyük/Küçük Harf Eşitlemeli)
-app.post('/api/admin/verify', (req, res) => {
+app.post('/api/admin/verify', async (req, res) => {
   const { telegramId, username, key } = req.body;
   const tid = String(telegramId || '').trim().toLowerCase();
   const uname = String(username || '').trim().toLowerCase().replace('@', '');
 
-  const isAdmin = isUserAdmin(tid, uname) || key === ADMIN_SECRET;
+  const isAdmin = (await isUserAdmin(tid, uname)) || key === ADMIN_SECRET;
   const founder = isFounder(tid, uname);
 
-  if (isAdmin) {
-    return res.json({ success: true, isFounder: founder });
-  }
+  if (isAdmin) return res.json({ success: true, isFounder: founder });
   return res.status(403).json({ success: false, message: 'YT yetkisi bulunmuyor.' });
 });
 
-// YT Dashboard Verisi
-app.get('/api/admin/dashboard-data', checkAdminAuth, (req, res) => {
-  const userList = Array.from(users.values());
+app.get('/api/admin/dashboard-data', checkAdminAuth, async (req, res) => {
+  const userList = await UserModel.find();
+  const reportsList = await ReportModel.find().sort({ _id: -1 });
+  const allAdmins = await AdminModel.find();
+
   const requesterId = req.headers['x-user-id'] || req.query.userId;
   const requesterUsername = req.headers['x-user-name'] || req.query.username;
 
   const visibleAdmins = {
-    ids: Array.from(adminIdSet).filter(id => id !== FOUNDER_ID),
-    usernames: Array.from(adminUsernameSet).filter(u => u !== FOUNDER_USERNAME)
+    ids: allAdmins.filter(a => a.type === 'id' && a.target !== FOUNDER_ID).map(a => a.target),
+    usernames: allAdmins.filter(a => a.type === 'username' && a.target !== FOUNDER_USERNAME).map(a => a.target)
   };
 
   res.json({
@@ -566,24 +574,23 @@ app.get('/api/admin/dashboard-data', checkAdminAuth, (req, res) => {
       total: userList.length,
       active: userList.filter(u => !u.isBanned).length,
       banned: userList.filter(u => u.isBanned).length,
-      reportsCount: reports.length
+      reportsCount: reportsList.length
     },
     users: userList,
-    reports: reports,
+    reports: reportsList,
     admins: visibleAdmins
   });
 });
 
-// YT: Kullanıcı Banla / Aç
-app.post('/api/admin/toggle-ban', checkAdminAuth, (req, res) => {
-  const user = users.get(String(req.body.targetTelegramId));
+app.post('/api/admin/toggle-ban', checkAdminAuth, async (req, res) => {
+  const user = await UserModel.findOne({ telegramId: String(req.body.targetTelegramId) });
   if (!user) return res.status(404).json({ success: false });
   user.isBanned = !user.isBanned;
+  await user.save();
   res.json({ success: true, isBanned: user.isBanned });
 });
 
-// YT: Ekleme/Çıkarma (Sadece Kurucu Yapabilir & Kalıcı Kaydeder)
-app.post('/api/admin/add-admin', checkAdminAuth, (req, res) => {
+app.post('/api/admin/add-admin', checkAdminAuth, async (req, res) => {
   const requesterId = req.headers['x-user-id'] || req.query.userId;
   const requesterUsername = req.headers['x-user-name'] || req.query.username;
 
@@ -592,27 +599,25 @@ app.post('/api/admin/add-admin', checkAdminAuth, (req, res) => {
   }
 
   const clean = String(req.body.target || '').trim().toLowerCase().replace('@', '');
-  if (!clean) return res.status(400).json({ success: false, message: 'Geçersiz hedef.' });
-
   const isPureDigits = /^\d+$/.test(clean);
-  if (isPureDigits) {
-    adminIdSet.add(clean);
-  } else {
-    adminUsernameSet.add(clean);
-  }
-  savePersistentAdmins();
 
+  await AdminModel.findOneAndUpdate(
+    { target: clean },
+    { target: clean, type: isPureDigits ? 'id' : 'username' },
+    { upsert: true }
+  );
+
+  const allAdmins = await AdminModel.find();
   res.json({
     success: true,
-    message: `${clean} başarıyla YT yapıldı ve kaydedildi.`,
     admins: {
-      ids: Array.from(adminIdSet).filter(id => id !== FOUNDER_ID),
-      usernames: Array.from(adminUsernameSet).filter(u => u !== FOUNDER_USERNAME)
+      ids: allAdmins.filter(a => a.type === 'id' && a.target !== FOUNDER_ID).map(a => a.target),
+      usernames: allAdmins.filter(a => a.type === 'username' && a.target !== FOUNDER_USERNAME).map(a => a.target)
     }
   });
 });
 
-app.post('/api/admin/remove-admin', checkAdminAuth, (req, res) => {
+app.post('/api/admin/remove-admin', checkAdminAuth, async (req, res) => {
   const requesterId = req.headers['x-user-id'] || req.query.userId;
   const requesterUsername = req.headers['x-user-name'] || req.query.username;
 
@@ -621,21 +626,14 @@ app.post('/api/admin/remove-admin', checkAdminAuth, (req, res) => {
   }
 
   const clean = String(req.body.target || '').trim().toLowerCase().replace('@', '');
-  const isPureDigits = /^\d+$/.test(clean);
+  await AdminModel.deleteOne({ target: clean });
 
-  if (isPureDigits) {
-    adminIdSet.delete(clean);
-  } else {
-    adminUsernameSet.delete(clean);
-  }
-  savePersistentAdmins();
-
+  const allAdmins = await AdminModel.find();
   res.json({
     success: true,
-    message: `${clean} yetkisi kaldırıldı.`,
     admins: {
-      ids: Array.from(adminIdSet).filter(id => id !== FOUNDER_ID),
-      usernames: Array.from(adminUsernameSet).filter(u => u !== FOUNDER_USERNAME)
+      ids: allAdmins.filter(a => a.type === 'id' && a.target !== FOUNDER_ID).map(a => a.target),
+      usernames: allAdmins.filter(a => a.type === 'username' && a.target !== FOUNDER_USERNAME).map(a => a.target)
     }
   });
 });
