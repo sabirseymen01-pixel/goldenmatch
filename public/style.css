@@ -269,6 +269,15 @@ html, body {
   display: none;
 }
 
+.photo-slot.has-image .slot-preview {
+  display: block;
+}
+
+.photo-slot.has-image .slot-placeholder,
+.photo-slot.has-image .plus-icon {
+  display: none;
+}
+
 /* ==========================================================================
    FORM KATMANLARI (GLASSMORPHISM)
    ========================================================================== */
@@ -341,6 +350,9 @@ input:focus, select:focus, textarea:focus {
   cursor: pointer;
   box-shadow: 0 8px 28px var(--gold-glow);
   transition: transform 0.16s var(--spring-ease), box-shadow 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .primary-btn:active {
@@ -569,7 +581,7 @@ input:focus, select:focus, textarea:focus {
   transition: transform 0.38s ease-in, opacity 0.3s ease-in !important;
 }
 
-.card-bg-img {
+.card-bg-img, .card-img {
   position: absolute;
   top: 0;
   left: 0;
@@ -579,126 +591,56 @@ input:focus, select:focus, textarea:focus {
   z-index: 1;
 }
 
-.card-gradient-overlay {
+.card-gradient-overlay, .card-overlay {
   position: absolute;
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 68%;
-  background: linear-gradient(to top, rgba(6, 6, 8, 1) 0%, rgba(6, 6, 8, 0.78) 50%, transparent 100%);
+  height: 70%;
+  background: linear-gradient(to top, rgba(6, 6, 8, 1) 0%, rgba(6, 6, 8, 0.82) 55%, transparent 100%);
   z-index: 2;
-  pointer-events: none;
-}
-
-.pill-badge {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  z-index: 3;
-  background: rgba(6, 6, 8, 0.85);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--gold-primary);
-  color: var(--gold-primary);
-  font-size: 11px;
-  font-weight: 800;
-  padding: 5px 12px;
-  border-radius: 30px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
-}
-
-.archetype-badge {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  z-index: 3;
-  background: var(--gold-gradient);
-  color: #000;
-  font-family: var(--font-display);
-  font-size: 10px;
-  font-weight: 900;
-  padding: 5px 12px;
-  border-radius: 14px;
-  letter-spacing: 0.8px;
-  box-shadow: 0 4px 14px rgba(229, 169, 60, 0.3);
-}
-
-.swipe-stamp {
-  position: absolute;
-  top: 45px;
-  padding: 8px 22px;
-  border-radius: 14px;
-  font-size: 26px;
-  font-weight: 900;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  z-index: 10;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.1s ease;
-}
-
-.stamp-like {
-  left: 24px;
-  color: var(--like-color);
-  border: 3.5px solid var(--like-color);
-  transform: rotate(-18deg);
-  box-shadow: 0 0 25px var(--like-glow);
-}
-
-.stamp-pass {
-  right: 24px;
-  color: var(--pass-color);
-  border: 3.5px solid var(--pass-color);
-  transform: rotate(18deg);
-  box-shadow: 0 0 25px var(--pass-glow);
-}
-
-.card-meta-box {
-  position: relative;
-  z-index: 3;
-  padding: 22px 20px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  justify-content: flex-end;
+  padding: 22px 20px;
 }
 
-.meta-name-age {
+.card-title {
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 800;
   color: #fff;
   letter-spacing: -0.4px;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
 }
 
-.meta-tags {
+.card-meta {
+  font-size: 13px;
+  color: var(--gold-light);
+  margin-top: 3px;
+  font-weight: 600;
+}
+
+.card-badge-row {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 4px;
+  margin-top: 8px;
 }
 
-.tag-pill {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  padding: 4px 11px;
-  border-radius: 9px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #f0f0f5;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.tag-pill.gold {
-  background: var(--gold-glass);
-  color: var(--gold-light);
+.card-chip {
+  background: rgba(229, 169, 60, 0.15);
   border: 1px solid var(--gold-border);
+  color: var(--gold-light);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-weight: 600;
 }
 
-.meta-bio {
-  font-size: 13px;
+.card-bio {
+  font-size: 12px;
   color: var(--text-secondary);
-  line-height: 1.45;
+  line-height: 1.4;
   margin-top: 6px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -710,6 +652,7 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-direction: column;
   height: 100%;
   color: var(--text-secondary);
   font-size: 14px;
@@ -793,7 +736,7 @@ input:focus, select:focus, textarea:focus {
   gap: 12px;
 }
 
-.inbox-card {
+.chat-item, .inbox-card {
   display: flex;
   align-items: center;
   background: var(--surface);
@@ -806,52 +749,48 @@ input:focus, select:focus, textarea:focus {
   transition: transform 0.18s var(--spring-ease), background 0.2s;
 }
 
-.inbox-card:active {
+.chat-item:active, .inbox-card:active {
   transform: scale(0.97);
   background: var(--surface-soft);
 }
 
-.inbox-avatar {
+.chat-avatar-wrap {
+  position: relative;
+  margin-right: 14px;
+}
+
+.chat-avatar, .inbox-avatar {
   width: 52px;
   height: 52px;
   border-radius: 50%;
   object-fit: cover;
-  margin-right: 14px;
   border: 1.5px solid var(--gold-primary);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
-.inbox-info {
+.chat-info, .inbox-info {
   flex: 1;
   overflow: hidden;
 }
 
-.inbox-top {
-  display: flex;
-  justify-content: space-between;
+.chat-name, .inbox-top {
   font-size: 15px;
   font-weight: 700;
   color: #fff;
 }
 
-.inbox-time {
+.chat-time, .inbox-time {
   font-size: 11px;
   color: var(--text-tertiary);
-  font-weight: normal;
 }
 
-.inbox-snippet {
+.chat-snippet, .inbox-snippet {
   font-size: 13px;
   color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   margin-top: 4px;
-}
-
-.inbox-snippet.unread {
-  color: var(--gold-light);
-  font-weight: 700;
 }
 
 /* ==========================================================================
@@ -980,17 +919,6 @@ input:focus, select:focus, textarea:focus {
   animation: iosSpringEnter 0.3s var(--spring-ease);
 }
 
-.chat-bubble.selectable {
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.chat-bubble.selected-for-report {
-  border: 2px solid #ff4757 !important;
-  box-shadow: 0 0 15px rgba(255, 71, 87, 0.45) !important;
-  transform: scale(1.02);
-}
-
 .chat-bubble.me {
   align-self: flex-end;
   background: var(--gold-gradient);
@@ -1000,7 +928,7 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 4px 16px var(--gold-glow);
 }
 
-.chat-bubble.partner {
+.chat-bubble.them, .chat-bubble.partner {
   align-self: flex-start;
   background: var(--surface-soft);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -1074,7 +1002,7 @@ input:focus, select:focus, textarea:focus {
 
 .admin-action-box {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--gold-border);
   border-radius: 16px;
   padding: 14px;
   margin-bottom: 14px;
@@ -1089,26 +1017,14 @@ input:focus, select:focus, textarea:focus {
   margin-top: 8px;
 }
 
-.report-row-card {
-  background: rgba(255, 71, 87, 0.08);
-  border: 1px solid rgba(255, 71, 87, 0.3);
-  border-radius: 12px;
-  padding: 10px 12px;
-  font-size: 12px;
-}
-
-.report-row-header {
+.admin-user-row {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  font-weight: 700;
-  color: #fff;
-  margin-bottom: 4px;
-}
-
-.report-reason-text {
-  color: #ff9f43;
-  font-style: italic;
-  margin: 4px 0;
+  background: var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 10px 14px;
 }
 
 .input-inline {
@@ -1151,30 +1067,6 @@ input:focus, select:focus, textarea:focus {
   gap: 10px;
   max-height: 480px;
   overflow-y: auto;
-}
-
-.admin-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: var(--surface);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 12px 14px;
-}
-
-.admin-row-user {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.admin-row-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1.5px solid var(--gold-primary);
 }
 
 /* ==========================================================================
@@ -1279,4 +1171,64 @@ input:focus, select:focus, textarea:focus {
   color: var(--text-secondary);
   line-height: 1.5;
   margin-bottom: 20px;
+}
+
+/* ==========================================================================
+   OLİMPOS AVATAR STÜDYOSU & 3D METAVERSE ÖZEL CSS STİLLERİ
+   ========================================================================== */
+
+#avatarCustomizerModal .modal-sheet {
+  border: 1.5px solid var(--gold-primary);
+  border-radius: 26px 26px 0 0;
+  background: #0e0d17;
+  box-shadow: 0 -15px 50px rgba(0, 0, 0, 0.95), 0 0 30px rgba(229, 169, 60, 0.2);
+}
+
+#avatar-preview-canvas {
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+#avatar-preview-canvas:active {
+  cursor: grabbing;
+}
+
+/* Ten Tonu ve Renk Çemberleri */
+.skin-tone-swatch {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.2s var(--spring-ease), border-color 0.2s;
+}
+
+.skin-tone-swatch:active,
+.skin-tone-swatch.active {
+  transform: scale(1.15);
+  border-color: var(--gold-light);
+  box-shadow: 0 0 12px var(--gold-glow);
+}
+
+/* 3D Metaverse Joystick & Arayüz Katmanları */
+#metaverseView {
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+#joystick-zone {
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.65));
+}
+
+#world-chat-input:focus {
+  border-color: var(--gold-primary);
+  box-shadow: 0 0 16px var(--gold-glow);
+}
+
+/* YT Hayalet Modu Kontrol Barı */
+#admin-konsept-bar {
+  animation: iosSpringEnter 0.4s var(--spring-ease);
 }
