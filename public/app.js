@@ -23,6 +23,10 @@ const username = tgUser ? (tgUser.username || '') : (localStorage.getItem('gm_un
 localStorage.setItem('gm_tid', telegramId);
 localStorage.setItem('gm_uname', username);
 
+// 3D Metaverse ve diğer modüller için global erişim
+window.currentUserId = telegramId;
+window.currentUsername = username;
+
 let selectedSlot = null;
 const images = [null, null, null, null];
 let currentCards = [];
@@ -218,13 +222,14 @@ function showRegisterView() {
   document.getElementById('inboxView').classList.add('hidden');
   document.getElementById('chatRoomView').classList.add('hidden');
   document.getElementById('adminPanelView').classList.add('hidden');
+  document.getElementById('metaverseView')?.classList.add('hidden');
 }
 
 function switchTab(tabName) {
   triggerHaptic('light');
   if (chatPollingInterval) clearInterval(chatPollingInterval);
 
-  const screens = ['registerView', 'exploreView', 'inboxView', 'chatRoomView', 'adminPanelView'];
+  const screens = ['registerView', 'exploreView', 'inboxView', 'chatRoomView', 'adminPanelView', 'metaverseView'];
   screens.forEach(s => {
     const el = document.getElementById(s);
     if (el) el.classList.add('hidden');
@@ -235,7 +240,8 @@ function switchTab(tabName) {
     inbox: 'inboxView',
     chatRoom: 'chatRoomView',
     adminPanel: 'adminPanelView',
-    register: 'registerView'
+    register: 'registerView',
+    metaverse: 'metaverseView'
   };
 
   const targetEl = document.getElementById(targetMap[tabName] || tabName);
@@ -246,9 +252,20 @@ function switchTab(tabName) {
     targetEl.style.animation = null;
   }
 
-  if (tabName === 'explore') loadExploreCards();
-  else if (tabName === 'inbox') loadInboxChats();
-  else if (tabName === 'adminPanel') loadAdminDashboard();
+  if (tabName === 'explore') {
+    loadExploreCards();
+  } else if (tabName === 'inbox') {
+    loadInboxChats();
+  } else if (tabName === 'adminPanel') {
+    loadAdminDashboard();
+  } else if (tabName === 'metaverse') {
+    // 3D motoru başlat ve canvas boyutunu tazele
+    setTimeout(() => {
+      if (typeof initMetaverse === 'function') {
+        initMetaverse();
+      }
+    }, 100);
+  }
   checkInboxBadge();
 }
 
@@ -970,6 +987,11 @@ async function loadAdminDashboard() {
     renderAdminUserCards(allAdminUsers);
     renderAdminReports(data.reports);
 
+    // 3D Metaverse Mekan Şikayetlerini Listele
+    if (data.worldReports) {
+      renderMetaverseReports(data.worldReports);
+    }
+
     const adminListEl = document.getElementById('activeAdminsList');
     if (adminListEl) {
       const uNames = data.admins.usernames.map(u => `@${u}`).join(', ');
@@ -977,6 +999,29 @@ async function loadAdminDashboard() {
       adminListEl.innerHTML = `<strong>Yetkililer:</strong> ${uNames || 'Yok'} ${ids ? `| ID'ler: ${ids}` : ''}`;
     }
   } catch (err) {}
+}
+
+function renderMetaverseReports(worldReports) {
+  const container = document.getElementById('metaverseReportsList');
+  if (!container) return;
+
+  if (!worldReports || worldReports.length === 0) {
+    container.innerHTML = '<div style="font-size: 12px; color: #777; padding: 10px;">Henüz mekan şikayeti bulunmuyor.</div>';
+    return;
+  }
+
+  container.innerHTML = worldReports.map(rep => `
+    <div style="background: rgba(255, 71, 87, 0.12); border-left: 3px solid #ff4757; padding: 6px 10px; border-radius: 4px; font-size: 11px; margin-bottom: 6px;">
+      <div style="display:flex; justify-content:space-between; color:#ff9f43; font-weight:bold;">
+        <span>Şikayet Eden: ${rep.reporterId}</span>
+        <span style="color:#aaa; font-weight:normal;">${new Date(rep.createdAt).toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'})}</span>
+      </div>
+      <div style="color:#fff; margin-top:2px;">"${rep.reason}"</div>
+      <div style="color:#888; font-size:10px; margin-top:2px;">
+        📍 Konum: X: ${rep.location?.x?.toFixed(1) || 0}, Z: ${rep.location?.z?.toFixed(1) || 0}
+      </div>
+    </div>
+  `).join('');
 }
 
 function renderAdminReports(reports) {
