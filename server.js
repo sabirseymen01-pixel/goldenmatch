@@ -64,6 +64,18 @@ const UserSchema = new mongoose.Schema({
   expression: String,
   bio: String,
   photos: [String],
+  // 3D Avatar Kişiselleştirme Konfigürasyonu
+  avatarConfig: {
+    gender: { type: String, default: 'male' },
+    skinColor: { type: String, default: '#f0c7a1' },
+    eyeColor: { type: String, default: '#2980b9' },
+    hairStyle: { type: String, default: 'greek_curls' },
+    hairColor: { type: String, default: '#4a2f1b' },
+    outfit: { type: String, default: 'greek_toga' },
+    outfitColor: { type: String, default: '#ffffff' },
+    accessory: { type: String, default: 'gold_wreath' },
+    shoes: { type: String, default: 'gladiator_sandals' }
+  },
   isVerified: { type: Boolean, default: false },
   isBanned: { type: Boolean, default: false },
   registeredAt: { type: Date, default: Date.now }
@@ -318,7 +330,12 @@ app.get('/api/profile/:id', async (req, res) => {
 
 app.post('/api/profile', async (req, res) => {
   try {
-    const { telegramId, username, nickname, age, height, weight, role, interestedRole, city, district, archetype, expression, bio, photos } = req.body;
+    const { 
+      telegramId, username, nickname, age, height, weight, 
+      role, interestedRole, city, district, archetype, expression, 
+      bio, photos, avatarConfig 
+    } = req.body;
+
     if (!telegramId || !city || !role) return res.status(400).json({ success: false, message: 'Eksik bilgi.' });
 
     if (photos && photos.length > 0) {
@@ -343,6 +360,17 @@ app.post('/api/profile', async (req, res) => {
       expression,
       bio,
       photos: photos || [],
+      avatarConfig: avatarConfig || {
+        gender: 'male',
+        skinColor: '#f0c7a1',
+        eyeColor: '#2980b9',
+        hairStyle: 'greek_curls',
+        hairColor: '#4a2f1b',
+        outfit: 'greek_toga',
+        outfitColor: '#ffffff',
+        accessory: 'gold_wreath',
+        shoes: 'gladiator_sandals'
+      },
       isVerified: false,
       isBanned: false
     };
@@ -469,6 +497,7 @@ app.get('/api/chats', async (req, res) => {
         telegramId: partnerId,
         nickname: partner?.nickname || 'Kullanıcı',
         avatar: partner?.photos?.[0] || '',
+        avatarConfig: partner?.avatarConfig || null,
         city: partner?.city || '',
         role: partner?.role || '',
         username: bothRevealed ? (partner?.username ? `@${partner.username}` : `ID:${partnerId}`) : null
@@ -503,6 +532,7 @@ app.get('/api/chats/:matchId', async (req, res) => {
       telegramId: partnerId,
       nickname: partner?.nickname || 'Kullanıcı',
       avatar: partner?.photos?.[0] || '',
+      avatarConfig: partner?.avatarConfig || null,
       username: bothRevealed ? (partner?.username ? `@${partner.username}` : `ID: ${partnerId}`) : null
     },
     bothRevealed,
@@ -766,12 +796,24 @@ const onlinePlayers = {};
 
 if (io) {
   io.on('connection', (socket) => {
+    // 1. Oyuncu 3D mekana girdiğinde
     socket.on('join_metaverse', (userData) => {
       onlinePlayers[socket.id] = {
         socketId: socket.id,
         telegramId: userData.telegramId,
         nickname: userData.nickname || 'Misafir',
         avatar: userData.avatar || '',
+        avatarConfig: userData.avatarConfig || {
+          gender: 'male',
+          skinColor: '#f0c7a1',
+          eyeColor: '#2980b9',
+          hairStyle: 'greek_curls',
+          hairColor: '#4a2f1b',
+          outfit: 'greek_toga',
+          outfitColor: '#ffffff',
+          accessory: 'gold_wreath',
+          shoes: 'gladiator_sandals'
+        },
         role: userData.role || '',
         city: userData.city || '',
         district: userData.district || '',
@@ -782,14 +824,17 @@ if (io) {
         isGhost: !!userData.isGhost
       };
 
+      // Mevcut görünür oyuncuları yeni gelene aktar
       const visiblePlayers = Object.values(onlinePlayers).filter(p => !p.isGhost && p.socketId !== socket.id);
       socket.emit('current_players', visiblePlayers);
 
+      // Hayalet modunda değilse diğer tüm oyunculara duyur
       if (!userData.isGhost) {
         socket.broadcast.emit('player_joined', onlinePlayers[socket.id]);
       }
     });
 
+    // 2. Oyuncu hareket ettiğinde
     socket.on('player_move', (data) => {
       if (onlinePlayers[socket.id]) {
         onlinePlayers[socket.id].x = data.x;
@@ -803,12 +848,30 @@ if (io) {
             x: data.x,
             y: data.y,
             z: data.z,
-            rotY: data.rotY
+            rotY: data.rotY,
+            isMoving: data.isMoving
           });
         }
       }
     });
 
+    // 3. Kullanıcı Avatar Stilini Değiştirdiğinde
+    socket.on('update_avatar_look', (data) => {
+      if (onlinePlayers[socket.id]) {
+        onlinePlayers[socket.id].avatarConfig = data.avatarConfig;
+        socket.broadcast.emit('player_updated_avatar', {
+          socketId: socket.id,
+          avatarConfig: data.avatarConfig
+        });
+      }
+    });
+
+    // 4. YT Masası: Canlı Mekan Konseptini Değiştirdiğinde
+    socket.on('change_venue_theme', (data) => {
+      io.emit('venue_theme_changed', { themeName: data.themeName });
+    });
+
+    // 5. Mekan içi sohbet baloncuğu
     socket.on('world_chat_message', (data) => {
       io.emit('player_said', {
         socketId: socket.id,
@@ -816,6 +879,7 @@ if (io) {
       });
     });
 
+    // 6. Mekan içinde karşılıklı kalp atma
     socket.on('send_world_heart', async ({ fromUserId, toUserId }) => {
       try {
         const fromId = String(fromUserId);
@@ -852,6 +916,7 @@ if (io) {
       }
     });
 
+    // 7. Oyuncu ayrıldığında
     socket.on('disconnect', () => {
       if (onlinePlayers[socket.id]) {
         socket.broadcast.emit('player_left', socket.id);
