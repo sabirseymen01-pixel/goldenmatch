@@ -6,15 +6,26 @@ const mongoose = require('mongoose');
 const rateLimit = require('express-rate-limit');
 const { Telegraf, Markup } = require('telegraf');
 const http = require('http');
-const { Server } = require('socket.io');
 const { LOCATIONS_DATA, calculateExactDistance } = require('./cities');
 const { verifyImageSafety } = require('./nsfwCheck');
 
+// SOCKET.IO GÜVENLİ YÜKLEME (Modül bulunamazsa sunucunun çökmesini engeller)
+let Server;
+try {
+  Server = require('socket.io').Server;
+} catch (e) {
+  console.warn('⚠️ socket.io modülü henüz yüklenemedi veya bulunamadı, dummy modda çalışıyor.');
+}
+
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: '*', methods: ['GET', 'POST'] }
-});
+
+let io = null;
+if (Server) {
+  io = new Server(server, {
+    cors: { origin: '*', methods: ['GET', 'POST'] }
+  });
+}
 
 const limiter = rateLimit({
   windowMs: 1 * 60 * 1000,
@@ -179,7 +190,7 @@ const WEBAPP_URL = 'https://goldenmatch.onrender.com';
 const bot = BOT_TOKEN ? new Telegraf(BOT_TOKEN) : null;
 
 // ==========================================================================
-// TELEGRAM BOT KOMUTLARI
+// TELEGRAM BOT KOMUTLARI & GÜVENLİ ÇALIŞMA
 // ==========================================================================
 if (bot) {
   bot.start((ctx) => {
@@ -281,20 +292,19 @@ if (bot) {
     }
   });
 
-  bot.launch().catch(err => console.warn('Bot başlatma uyarısı:', err.message));
+  bot.launch().catch(err => console.warn('Bot başlatma durumu:', err.message));
 
-  const handleBotStop = (signal) => {
+  // Render kapanış sinyali gönderdiğinde (SIGTERM/SIGINT) süreci çökertmeyen koruma
+  const safeBotShutdown = (signal) => {
     try {
       if (bot && typeof bot.stop === 'function') {
         bot.stop(signal);
       }
-    } catch (_) {
-      // Bot çalışmıyorsa hata fırlatmasını engelle
-    }
+    } catch (_) {}
   };
 
-  process.once('SIGINT', () => handleBotStop('SIGINT'));
-  process.once('SIGTERM', () => handleBotStop('SIGTERM'));
+  process.once('SIGINT', () => safeBotShutdown('SIGINT'));
+  process.once('SIGTERM', () => safeBotShutdown('SIGTERM'));
 }
 
 // ==========================================================================
@@ -762,100 +772,102 @@ app.post('/api/admin/remove-admin', checkAdminAuth, async (req, res) => {
 // ==========================================================================
 const onlinePlayers = {};
 
-io.on('connection', (socket) => {
-  socket.on('join_metaverse', (userData) => {
-    onlinePlayers[socket.id] = {
-      socketId: socket.id,
-      telegramId: userData.telegramId,
-      nickname: userData.nickname || 'Misafir',
-      avatar: userData.avatar || '',
-      role: userData.role || '',
-      city: userData.city || '',
-      district: userData.district || '',
-      x: userData.x || 0,
-      y: userData.y || 0,
-      z: userData.z || 0,
-      rotY: 0,
-      isGhost: !!userData.isGhost
-    };
+if (io) {
+  io.on('connection', (socket) => {
+    socket.on('join_metaverse', (userData) => {
+      onlinePlayers[socket.id] = {
+        socketId: socket.id,
+        telegramId: userData.telegramId,
+        nickname: userData.nickname || 'Misafir',
+        avatar: userData.avatar || '',
+        role: userData.role || '',
+        city: userData.city || '',
+        district: userData.district || '',
+        x: userData.x || 0,
+        y: userData.y || 0,
+        z: userData.z || 0,
+        rotY: 0,
+        isGhost: !!userData.isGhost
+      };
 
-    const visiblePlayers = Object.values(onlinePlayers).filter(p => !p.isGhost && p.socketId !== socket.id);
-    socket.emit('current_players', visiblePlayers);
+      const visiblePlayers = Object.values(onlinePlayers).filter(p => !p.isGhost && p.socketId !== socket.id);
+      socket.emit('current_players', visiblePlayers);
 
-    if (!userData.isGhost) {
-      socket.broadcast.emit('player_joined', onlinePlayers[socket.id]);
-    }
-  });
-
-  socket.on('player_move', (data) => {
-    if (onlinePlayers[socket.id]) {
-      onlinePlayers[socket.id].x = data.x;
-      onlinePlayers[socket.id].y = data.y;
-      onlinePlayers[socket.id].z = data.z;
-      onlinePlayers[socket.id].rotY = data.rotY;
-
-      if (!onlinePlayers[socket.id].isGhost) {
-        socket.broadcast.emit('player_moved', {
-          socketId: socket.id,
-          x: data.x,
-          y: data.y,
-          z: data.z,
-          rotY: data.rotY
-        });
+      if (!userData.isGhost) {
+        socket.broadcast.emit('player_joined', onlinePlayers[socket.id]);
       }
-    }
-  });
+    });
 
-  socket.on('world_chat_message', (data) => {
-    io.emit('player_said', {
-      socketId: socket.id,
-      text: data.text
+    socket.on('player_move', (data) => {
+      if (onlinePlayers[socket.id]) {
+        onlinePlayers[socket.id].x = data.x;
+        onlinePlayers[socket.id].y = data.y;
+        onlinePlayers[socket.id].z = data.z;
+        onlinePlayers[socket.id].rotY = data.rotY;
+
+        if (!onlinePlayers[socket.id].isGhost) {
+          socket.broadcast.emit('player_moved', {
+            socketId: socket.id,
+            x: data.x,
+            y: data.y,
+            z: data.z,
+            rotY: data.rotY
+          });
+        }
+      }
+    });
+
+    socket.on('world_chat_message', (data) => {
+      io.emit('player_said', {
+        socketId: socket.id,
+        text: data.text
+      });
+    });
+
+    socket.on('send_world_heart', async ({ fromUserId, toUserId }) => {
+      try {
+        const fromId = String(fromUserId);
+        const toId = String(toUserId);
+
+        await LikeModel.create({ fromUserId: fromId, toUserId: toId });
+        const targetLike = await LikeModel.findOne({ fromUserId: toId, toUserId: fromId });
+
+        if (targetLike) {
+          const matchId = [fromId, toId].sort().join('_');
+          await MatchModel.findOneAndUpdate(
+            { matchId },
+            { matchId, user1: fromId, user2: toId, updatedAt: new Date() },
+            { upsert: true }
+          );
+
+          if (bot) {
+            const u1 = await UserModel.findOne({ telegramId: fromId });
+            const u2 = await UserModel.findOne({ telegramId: toId });
+            try {
+              await bot.telegram.sendMessage(fromId, `🎉 *3D Metaverse'te Eşleştiniz!*\n\n*${u2?.nickname || 'Biri'}* ile karşılıklı kalpleştiniz! DM kutusundan sohbete başlayabilirsin.`);
+              await bot.telegram.sendMessage(toId, `🎉 *3D Metaverse'te Eşleştiniz!*\n\n*${u1?.nickname || 'Biri'}* ile karşılıklı kalpleştiniz! DM kutusundan sohbete başlayabilirsin.`);
+            } catch (e) {}
+          }
+
+          io.emit('match_notification', {
+            user1: fromId,
+            user2: toId,
+            matchId
+          });
+        }
+      } catch (err) {
+        console.error('Metaverse kalp gönderme hatası:', err);
+      }
+    });
+
+    socket.on('disconnect', () => {
+      if (onlinePlayers[socket.id]) {
+        socket.broadcast.emit('player_left', socket.id);
+        delete onlinePlayers[socket.id];
+      }
     });
   });
-
-  socket.on('send_world_heart', async ({ fromUserId, toUserId }) => {
-    try {
-      const fromId = String(fromUserId);
-      const toId = String(toUserId);
-
-      await LikeModel.create({ fromUserId: fromId, toUserId: toId });
-      const targetLike = await LikeModel.findOne({ fromUserId: toId, toUserId: fromId });
-
-      if (targetLike) {
-        const matchId = [fromId, toId].sort().join('_');
-        await MatchModel.findOneAndUpdate(
-          { matchId },
-          { matchId, user1: fromId, user2: toId, updatedAt: new Date() },
-          { upsert: true }
-        );
-
-        if (bot) {
-          const u1 = await UserModel.findOne({ telegramId: fromId });
-          const u2 = await UserModel.findOne({ telegramId: toId });
-          try {
-            await bot.telegram.sendMessage(fromId, `🎉 *3D Metaverse'te Eşleştiniz!*\n\n*${u2?.nickname || 'Biri'}* ile karşılıklı kalpleştiniz! DM kutusundan sohbete başlayabilirsin.`);
-            await bot.telegram.sendMessage(toId, `🎉 *3D Metaverse'te Eşleştiniz!*\n\n*${u1?.nickname || 'Biri'}* ile karşılıklı kalpleştiniz! DM kutusundan sohbete başlayabilirsin.`);
-          } catch (e) {}
-        }
-
-        io.emit('match_notification', {
-          user1: fromId,
-          user2: toId,
-          matchId
-        });
-      }
-    } catch (err) {
-      console.error('Metaverse kalp gönderme hatası:', err);
-    }
-  });
-
-  socket.on('disconnect', () => {
-    if (onlinePlayers[socket.id]) {
-      socket.broadcast.emit('player_left', socket.id);
-      delete onlinePlayers[socket.id];
-    }
-  });
-});
+}
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`GoldenMatch Sunucusu ${PORT} portunda aktif (Socket.io Canlı Motoru Hazır).`));
+server.listen(PORT, () => console.log(`GoldenMatch Sunucusu ${PORT} portunda aktif.`));
