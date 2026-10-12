@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "start": "npm install socket.io && node server.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "axios": "^1.7.9",
