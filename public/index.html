@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>GoldenMatch ✨</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  
+  <!-- 3D Metaverse & Mobil Joystick Kütüphaneleri -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
+
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,6 +24,10 @@
         <span class="gold-text">GOLDEN</span>MATCH
       </div>
       <div class="nav-actions">
+        <!-- 3D Metaverse Lounge Geçiş Butonu -->
+        <button class="nav-btn" onclick="switchTab('metaverse')" title="3D Lounge" aria-label="3D Lounge">
+          <span style="font-size: 17px;">🍸</span>
+        </button>
         <button id="ytNavBtn" class="nav-btn yt-badge hidden" onclick="switchTab('adminPanel')" title="Yönetici Paneli">👑 YT</button>
         <button class="nav-btn" onclick="openFilterModal()" aria-label="Filtrele">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
@@ -269,7 +278,23 @@
       </form>
     </main>
 
-    <!-- 5. EKRAN: YÖNETİCİ (YT) PANELİ -->
+    <!-- 5. EKRAN: 3D METAVERSE / GOLDEN LOUNGE -->
+    <main id="metaverseView" class="view-screen hidden" style="padding: 0; position: relative; overflow: hidden; background: #0b0c10; height: calc(100vh - 65px);">
+      <!-- Three.js 3D Sahne Konteyneri -->
+      <div id="canvas-container" style="width: 100%; height: 100%;"></div>
+
+      <!-- Dokunmatik Sanal Joystick Bölgesi (Sol Alt) -->
+      <div id="joystick-zone" style="position: absolute; bottom: 35px; left: 25px; width: 120px; height: 120px; z-index: 50; pointer-events: auto;"></div>
+
+      <!-- Canlı Sohbet ve Eylemler (Sağ Alt) -->
+      <div style="position: absolute; bottom: 30px; right: 20px; display: flex; align-items: center; gap: 8px; z-index: 50;">
+        <input type="text" id="world-chat-input" placeholder="Bir şeyler söyle..." style="background: rgba(15, 12, 27, 0.85); border: 1px solid #d4af37; color: #fff; padding: 10px 14px; border-radius: 20px; outline: none; font-size: 13px; width: 150px; backdrop-filter: blur(8px);">
+        <button onclick="sendWorldChat()" style="background: #d4af37; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.4);" title="Baloncuk Gönder">💬</button>
+        <button onclick="sendMetaverseReportPrompt()" style="background: rgba(255, 71, 87, 0.85); color: #fff; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.4);" title="Şikayet Bildir">🚨</button>
+      </div>
+    </main>
+
+    <!-- 6. EKRAN: YÖNETİCİ (YT) PANELİ -->
     <main id="adminPanelView" class="view-screen hidden">
       <div class="sub-header">
         <h2 class="gold-text">👑 YT Yönetim Masası</h2>
@@ -291,9 +316,25 @@
         </div>
       </div>
 
-      <!-- Kanıtlı Şikayetler Masası -->
+      <!-- 3D METAVERSE KONTROLÜ & HAYALET MODU (YT ÖZEL) -->
+      <div class="admin-action-box" style="border-color: rgba(212, 175, 55, 0.5); background: rgba(22, 22, 34, 0.7);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <label style="color: #d4af37; margin: 0; font-size: 14px;">🌐 3D Metaverse Masası</label>
+          <button onclick="enterMetaverseAsGhost()" style="background: linear-gradient(45deg, #6a11cb, #2575fc); color: #fff; border: none; padding: 7px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 12px; box-shadow: 0 2px 8px rgba(106, 17, 203, 0.4);">
+            👻 Hayalet Modunda Gir
+          </button>
+        </div>
+        <p style="font-size: 12px; color: #a0a0b0; margin: 0 0 10px 0;">Mekana görünmez olarak sızın, oyuncuları izleyin veya canlı dekor ekleyin.</p>
+        
+        <label style="color: #ff9f43; font-size: 12px; margin-bottom: 4px;">🚨 3D Metaverse Mekan Şikayetleri</label>
+        <div id="metaverseReportsList" class="reports-scroll-box" style="max-height: 140px;">
+          <div style="font-size: 12px; color: #777;">Henüz mekan şikayeti bulunmuyor.</div>
+        </div>
+      </div>
+
+      <!-- Kanıtlı DM Şikayetleri Masası -->
       <div class="admin-action-box" style="border-color: rgba(255, 71, 87, 0.4);">
-        <label style="color: #ff4757;">🚩 Bildirilen Mesaj Kanıtları & Şikayetler</label>
+        <label style="color: #ff4757;">🚩 Bildirilen DM Mesaj Kanıtları & Şikayetler</label>
         <div id="adminReportsList" class="reports-scroll-box">
           <div style="font-size: 12px; color: #777;">Henüz şikayet bulunmuyor.</div>
         </div>
@@ -389,5 +430,7 @@
   </div>
 
   <script src="app.js"></script>
+  <!-- 3D Metaverse Mantık ve Yönetim Motoru -->
+  <script src="metaverse.js"></script>
 </body>
 </html>
