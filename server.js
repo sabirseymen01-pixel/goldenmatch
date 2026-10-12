@@ -294,17 +294,9 @@ if (bot) {
 
   bot.launch().catch(err => console.warn('Bot başlatma durumu:', err.message));
 
-  // Render kapanış sinyali gönderdiğinde (SIGTERM/SIGINT) süreci çökertmeyen koruma
-  const safeBotShutdown = (signal) => {
-    try {
-      if (bot && typeof bot.stop === 'function') {
-        bot.stop(signal);
-      }
-    } catch (_) {}
-  };
-
-  process.once('SIGINT', () => safeBotShutdown('SIGINT'));
-  process.once('SIGTERM', () => safeBotShutdown('SIGTERM'));
+  // Render konteyner geçişlerinde Telegraf'ın "Bot is not running" hatası fırlatmasını önler
+  process.once('SIGINT', () => process.exit(0));
+  process.once('SIGTERM', () => process.exit(0));
 }
 
 // ==========================================================================
