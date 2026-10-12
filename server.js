@@ -91,11 +91,53 @@ const AdminSchema = new mongoose.Schema({
   type: String
 });
 
+// --- METAVERSE ŞEMALARI ---
+const WorldReportSchema = new mongoose.Schema({
+  reporterId: { type: String, required: true },
+  reportedUserId: { type: String, default: null },
+  type: { 
+    type: String, 
+    enum: ['chat_abuse', 'inappropriate_avatar', 'griefing', 'system_alert'],
+    default: 'chat_abuse'
+  },
+  reason: { type: String, required: true },
+  location: {
+    x: { type: Number, default: 0 },
+    y: { type: Number, default: 0 },
+    z: { type: Number, default: 0 }
+  },
+  status: { type: String, enum: ['pending', 'resolved', 'dismissed'], default: 'pending' },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const WorldItemSchema = new mongoose.Schema({
+  itemType: { type: String, required: true },
+  position: {
+    x: { type: Number, default: 0 },
+    y: { type: Number, default: 0 },
+    z: { type: Number, default: 0 }
+  },
+  rotation: {
+    x: { type: Number, default: 0 },
+    y: { type: Number, default: 0 },
+    z: { type: Number, default: 0 }
+  },
+  scale: {
+    x: { type: Number, default: 1 },
+    y: { type: Number, default: 1 },
+    z: { type: Number, default: 1 }
+  },
+  updatedBy: { type: String, default: 'Admin' },
+  updatedAt: { type: Date, default: Date.now }
+});
+
 const UserModel = mongoose.model('User', UserSchema);
 const LikeModel = mongoose.model('Like', LikeSchema);
 const MatchModel = mongoose.model('Match', MatchSchema);
 const ReportModel = mongoose.model('Report', ReportSchema);
 const AdminModel = mongoose.model('Admin', AdminSchema);
+const WorldReportModel = mongoose.model('WorldReport', WorldReportSchema);
+const WorldItemModel = mongoose.model('WorldItem', WorldItemSchema);
 
 // KURUCU BİLGİLERİ (GİZLİ SÜPER ADMİN)
 const FOUNDER_ID = String(process.env.FOUNDER_ID || '8245373459').trim().toLowerCase();
@@ -529,6 +571,67 @@ app.post('/api/report', async (req, res) => {
 });
 
 // ==========================================================================
+// 3D METAVERSE API ROTALARI
+// ==========================================================================
+
+// [Kullanıcı] Mekan içinden şikayet/bildirim gönderme
+app.post('/api/metaverse/report', async (req, res) => {
+  try {
+    const { reporterId, reportedUserId, type, reason, location } = req.body;
+    if (!reporterId || !reason) {
+      return res.status(400).json({ success: false, message: 'Eksik bilgi gönderildi.' });
+    }
+    const report = new WorldReportModel({ reporterId, reportedUserId, type, reason, location });
+    await report.save();
+    res.json({ success: true, message: 'Şikayet YT Masasına iletildi.' });
+  } catch (err) {
+    console.error('Metaverse rapor hatası:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// [YT / Admin] Metaverse şikayetlerini listeleme
+app.get('/api/admin/metaverse-reports', async (req, res) => {
+  try {
+    const reports = await WorldReportModel.find().sort({ createdAt: -1 }).limit(50);
+    res.json({ success: true, reports });
+  } catch (err) {
+    console.error('Metaverse rapor çekme hatası:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// [YT / Admin] Mekana yeni dekoratif eşya ekleme / kaydetme
+app.post('/api/admin/metaverse/item', async (req, res) => {
+  try {
+    const { itemType, position, rotation, scale, updatedBy } = req.body;
+    const newItem = new WorldItemModel({
+      itemType,
+      position,
+      rotation,
+      scale,
+      updatedBy: updatedBy || 'YT_Admin'
+    });
+    await newItem.save();
+    res.json({ success: true, item: newItem });
+  } catch (err) {
+    console.error('Mekan eşya kaydetme hatası:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// [Herkes] Aktif mekan eşyalarını sahneye çekme
+app.get('/api/metaverse/items', async (req, res) => {
+  try {
+    const items = await WorldItemModel.find();
+    res.json({ success: true, items });
+  } catch (err) {
+    console.error('Mekan eşyaları çekme hatası:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ==========================================================================
 // YT PANELİ VE AUTH
 // ==========================================================================
 
@@ -558,6 +661,7 @@ app.get('/api/admin/dashboard-data', checkAdminAuth, async (req, res) => {
   const userList = await UserModel.find();
   const reportsList = await ReportModel.find().sort({ _id: -1 });
   const allAdmins = await AdminModel.find();
+  const worldReports = await WorldReportModel.find().sort({ createdAt: -1 }).limit(25);
 
   const requesterId = req.headers['x-user-id'] || req.query.userId;
   const requesterUsername = req.headers['x-user-name'] || req.query.username;
@@ -574,10 +678,12 @@ app.get('/api/admin/dashboard-data', checkAdminAuth, async (req, res) => {
       total: userList.length,
       active: userList.filter(u => !u.isBanned).length,
       banned: userList.filter(u => u.isBanned).length,
-      reportsCount: reportsList.length
+      reportsCount: reportsList.length,
+      worldReportsCount: worldReports.length
     },
     users: userList,
     reports: reportsList,
+    worldReports: worldReports,
     admins: visibleAdmins
   });
 });
