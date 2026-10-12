@@ -145,7 +145,7 @@ const AdminModel = mongoose.model('Admin', AdminSchema);
 const WorldReportModel = mongoose.model('WorldReport', WorldReportSchema);
 const WorldItemModel = mongoose.model('WorldItem', WorldItemSchema);
 
-// KURUCU BİLGİLERİ (GİZLİ SÜPER ADMİN)
+// KURUCU BİLGİLERİ
 const FOUNDER_ID = String(process.env.FOUNDER_ID || '8245373459').trim().toLowerCase();
 const FOUNDER_USERNAME = String(process.env.FOUNDER_USERNAME || 'breskavica').trim().toLowerCase().replace('@', '');
 
@@ -281,20 +281,20 @@ if (bot) {
     }
   });
 
-  bot.launch().catch(err => console.warn('Bot başlatma uyarısı (Polling conflict olabilir):', err.message));
+  bot.launch().catch(err => console.warn('Bot başlatma uyarısı:', err.message));
 
-  const gracefulShutdown = (signal) => {
+  const handleBotStop = (signal) => {
     try {
       if (bot && typeof bot.stop === 'function') {
         bot.stop(signal);
       }
-    } catch (err) {
-      // Bot çalışmıyorsa hatayı yut, sunucunun kapanış sürecini kırma
+    } catch (_) {
+      // Bot çalışmıyorsa hata fırlatmasını engelle
     }
   };
 
-  process.once('SIGINT', () => gracefulShutdown('SIGINT'));
-  process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.once('SIGINT', () => handleBotStop('SIGINT'));
+  process.once('SIGTERM', () => handleBotStop('SIGTERM'));
 }
 
 // ==========================================================================
@@ -591,7 +591,6 @@ app.post('/api/report', async (req, res) => {
 // 3D METAVERSE API ROTALARI
 // ==========================================================================
 
-// [Kullanıcı] Mekan içinden şikayet/bildirim gönderme
 app.post('/api/metaverse/report', async (req, res) => {
   try {
     const { reporterId, reportedUserId, type, reason, location } = req.body;
@@ -607,7 +606,6 @@ app.post('/api/metaverse/report', async (req, res) => {
   }
 });
 
-// [YT / Admin] Metaverse şikayetlerini listeleme
 app.get('/api/admin/metaverse-reports', async (req, res) => {
   try {
     const reports = await WorldReportModel.find().sort({ createdAt: -1 }).limit(50);
@@ -618,7 +616,6 @@ app.get('/api/admin/metaverse-reports', async (req, res) => {
   }
 });
 
-// [YT / Admin] Mekana yeni dekoratif eşya ekleme / kaydetme
 app.post('/api/admin/metaverse/item', async (req, res) => {
   try {
     const { itemType, position, rotation, scale, updatedBy } = req.body;
@@ -637,7 +634,6 @@ app.post('/api/admin/metaverse/item', async (req, res) => {
   }
 });
 
-// [Herkes] Aktif mekan eşyalarını sahneye çekme
 app.get('/api/metaverse/items', async (req, res) => {
   try {
     const items = await WorldItemModel.find();
@@ -767,7 +763,6 @@ app.post('/api/admin/remove-admin', checkAdminAuth, async (req, res) => {
 const onlinePlayers = {};
 
 io.on('connection', (socket) => {
-  // 1. Oyuncu 3D mekana girdiğinde
   socket.on('join_metaverse', (userData) => {
     onlinePlayers[socket.id] = {
       socketId: socket.id,
@@ -784,17 +779,14 @@ io.on('connection', (socket) => {
       isGhost: !!userData.isGhost
     };
 
-    // Mevcut görünür oyuncuları yeni gelene gönder
     const visiblePlayers = Object.values(onlinePlayers).filter(p => !p.isGhost && p.socketId !== socket.id);
     socket.emit('current_players', visiblePlayers);
 
-    // Eğer katılan kişi hayalet DEĞİLSE, diğer oyunculara bildir
     if (!userData.isGhost) {
       socket.broadcast.emit('player_joined', onlinePlayers[socket.id]);
     }
   });
 
-  // 2. Oyuncu hareket ettiğinde
   socket.on('player_move', (data) => {
     if (onlinePlayers[socket.id]) {
       onlinePlayers[socket.id].x = data.x;
@@ -802,7 +794,6 @@ io.on('connection', (socket) => {
       onlinePlayers[socket.id].z = data.z;
       onlinePlayers[socket.id].rotY = data.rotY;
 
-      // Hayalet modundaysa koordinatları diğerlerine yayma
       if (!onlinePlayers[socket.id].isGhost) {
         socket.broadcast.emit('player_moved', {
           socketId: socket.id,
@@ -815,7 +806,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 3. Mekan içi sohbet baloncuğu
   socket.on('world_chat_message', (data) => {
     io.emit('player_said', {
       socketId: socket.id,
@@ -823,7 +813,6 @@ io.on('connection', (socket) => {
     });
   });
 
-  // 4. Mekan içinde karşılıklı kalp atma (Tinder Match tetikleyicisi)
   socket.on('send_world_heart', async ({ fromUserId, toUserId }) => {
     try {
       const fromId = String(fromUserId);
@@ -860,7 +849,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 5. Oyuncu ayrıldığında
   socket.on('disconnect', () => {
     if (onlinePlayers[socket.id]) {
       socket.broadcast.emit('player_left', socket.id);
