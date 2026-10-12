@@ -5,10 +5,16 @@ const path = require('path');
 const mongoose = require('mongoose');
 const rateLimit = require('express-rate-limit');
 const { Telegraf, Markup } = require('telegraf');
+const http = require('http');
+const { Server } = require('socket.io');
 const { LOCATIONS_DATA, calculateExactDistance } = require('./cities');
 const { verifyImageSafety } = require('./nsfwCheck');
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: { origin: '*', methods: ['GET', 'POST'] }
+});
 
 const limiter = rateLimit({
   windowMs: 1 * 60 * 1000,
@@ -744,5 +750,113 @@ app.post('/api/admin/remove-admin', checkAdminAuth, async (req, res) => {
   });
 });
 
+// ==========================================================================
+// SOCKET.IO - CANLI 3D METAVERSE EŞZAMANLAMA
+// ==========================================================================
+const onlinePlayers = {};
+
+io.on('connection', (socket) => {
+  // 1. Oyuncu 3D mekana girdiğinde
+  socket.on('join_metaverse', (userData) => {
+    onlinePlayers[socket.id] = {
+      socketId: socket.id,
+      telegramId: userData.telegramId,
+      nickname: userData.nickname || 'Misafir',
+      avatar: userData.avatar || '',
+      role: userData.role || '',
+      city: userData.city || '',
+      district: userData.district || '',
+      x: userData.x || 0,
+      y: userData.y || 0,
+      z: userData.z || 0,
+      rotY: 0,
+      isGhost: !!userData.isGhost
+    };
+
+    // Mevcut görünür oyuncuları yeni gelene gönder
+    const visiblePlayers = Object.values(onlinePlayers).filter(p => !p.isGhost && p.socketId !== socket.id);
+    socket.emit('current_players', visiblePlayers);
+
+    // Eğer katılan kişi hayalet DEĞİLSE, diğer oyunculara bildir
+    if (!userData.isGhost) {
+      socket.broadcast.emit('player_joined', onlinePlayers[socket.id]);
+    }
+  });
+
+  // 2. Oyuncu hareket ettiğinde
+  socket.on('player_move', (data) => {
+    if (onlinePlayers[socket.id]) {
+      onlinePlayers[socket.id].x = data.x;
+      onlinePlayers[socket.id].y = data.y;
+      onlinePlayers[socket.id].z = data.z;
+      onlinePlayers[socket.id].rotY = data.rotY;
+
+      // Hayalet modundaysa koordinatları diğerlerine yayma
+      if (!onlinePlayers[socket.id].isGhost) {
+        socket.broadcast.emit('player_moved', {
+          socketId: socket.id,
+          x: data.x,
+          y: data.y,
+          z: data.z,
+          rotY: data.rotY
+        });
+      }
+    }
+  });
+
+  // 3. Mekan içi sohbet baloncuğu
+  socket.on('world_chat_message', (data) => {
+    io.emit('player_said', {
+      socketId: socket.id,
+      text: data.text
+    });
+  });
+
+  // 4. Mekan içinde karşılıklı kalp atma (Tinder Match tetikleyicisi)
+  socket.on('send_world_heart', async ({ fromUserId, toUserId }) => {
+    try {
+      const fromId = String(fromUserId);
+      const toId = String(toUserId);
+
+      await LikeModel.create({ fromUserId: fromId, toUserId: toId });
+      const targetLike = await LikeModel.findOne({ fromUserId: toId, toUserId: fromId });
+
+      if (targetLike) {
+        const matchId = [fromId, toId].sort().join('_');
+        await MatchModel.findOneAndUpdate(
+          { matchId },
+          { matchId, user1: fromId, user2: toId, updatedAt: new Date() },
+          { upsert: true }
+        );
+
+        if (bot) {
+          const u1 = await UserModel.findOne({ telegramId: fromId });
+          const u2 = await UserModel.findOne({ telegramId: toId });
+          try {
+            await bot.telegram.sendMessage(fromId, `🎉 *3D Metaverse'te Eşleştiniz!*\n\n*${u2?.nickname || 'Biri'}* ile karşılıklı kalpleştiniz! DM kutusundan sohbete başlayabilirsin.`);
+            await bot.telegram.sendMessage(toId, `🎉 *3D Metaverse'te Eşleştiniz!*\n\n*${u1?.nickname || 'Biri'}* ile karşılıklı kalpleştiniz! DM kutusundan sohbete başlayabilirsin.`);
+          } catch (e) {}
+        }
+
+        io.emit('match_notification', {
+          user1: fromId,
+          user2: toId,
+          matchId
+        });
+      }
+    } catch (err) {
+      console.error('Metaverse kalp gönderme hatası:', err);
+    }
+  });
+
+  // 5. Oyuncu ayrıldığında
+  socket.on('disconnect', () => {
+    if (onlinePlayers[socket.id]) {
+      socket.broadcast.emit('player_left', socket.id);
+      delete onlinePlayers[socket.id];
+    }
+  });
+});
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`GoldenMatch Sunucusu ${PORT} portunda aktif.`));
+server.listen(PORT, () => console.log(`GoldenMatch Sunucusu ${PORT} portunda aktif (Socket.io Canlı Motoru Hazır).`));
