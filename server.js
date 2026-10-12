@@ -281,9 +281,20 @@ if (bot) {
     }
   });
 
-  bot.launch().catch(err => console.error('Bot başlatma hatası:', err));
-  process.once('SIGINT', () => bot.stop('SIGINT'));
-  process.once('SIGTERM', () => bot.stop('SIGTERM'));
+  bot.launch().catch(err => console.warn('Bot başlatma uyarısı (Polling conflict olabilir):', err.message));
+
+  const gracefulShutdown = (signal) => {
+    try {
+      if (bot && typeof bot.stop === 'function') {
+        bot.stop(signal);
+      }
+    } catch (err) {
+      // Bot çalışmıyorsa hatayı yut, sunucunun kapanış sürecini kırma
+    }
+  };
+
+  process.once('SIGINT', () => gracefulShutdown('SIGINT'));
+  process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
 }
 
 // ==========================================================================
