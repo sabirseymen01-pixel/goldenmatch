@@ -12,6 +12,7 @@
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.0",
     "mongoose": "^8.8.4",
+    "socket.io": "^4.8.1",
     "telegraf": "^4.16.3"
   }
 }
