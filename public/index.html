@@ -6,7 +6,7 @@
   <title>GoldenMatch ✨</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   
-  <!-- 3D Metaverse, Mobil Joystick & Socket.io Kütüphaneleri -->
+  <!-- 3D Kütüphaneleri & Socket.io -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
@@ -19,15 +19,15 @@
 <body>
   <div class="app-wrapper">
 
-    <!-- ÜST NAVİGASYON (TINDER BAR) -->
+    <!-- ÜST NAVİGASYON ÇUBUĞU -->
     <header id="appNav" class="app-nav hidden">
       <div class="brand-logo" onclick="switchTab('explore')">
         <span class="gold-text">GOLDEN</span>MATCH
       </div>
       <div class="nav-actions">
-        <!-- 3D Metaverse Lounge Geçiş Butonu -->
-        <button class="nav-btn" onclick="switchTab('metaverse')" title="3D Lounge" aria-label="3D Lounge">
-          <span style="font-size: 17px;">🍸</span>
+        <!-- Kullanıcılar İçin Canlı 3D Lounge Butonu -->
+        <button class="nav-btn metaverse-entry-btn" onclick="switchTab('metaverse')" title="3D Olimpos Lounge">
+          <span style="font-size: 16px;">🏛️</span>
         </button>
         <button id="ytNavBtn" class="nav-btn yt-badge hidden" onclick="switchTab('adminPanel')" title="Yönetici Paneli">👑 YT</button>
         <button class="nav-btn" onclick="openFilterModal()" aria-label="Filtrele">
@@ -43,11 +43,11 @@
       </div>
     </header>
 
-    <!-- 1. EKRAN: PROFİL DOLDURMA / DÜZENLEME -->
+    <!-- 1. EKRAN: PROFİL & AVATAR ATÖLYESİ GİRİŞİ -->
     <main id="registerView" class="view-screen">
       <div class="screen-header">
         <h1 class="gold-text">GOLDENMATCH</h1>
-        <p class="subtitle">Kutsal profilini mühürle, altın eşleşmeni bul.</p>
+        <p class="subtitle">Kutsal profilini ve 3D insansı avatarını mühürle.</p>
       </div>
 
       <div class="photo-grid">
@@ -73,17 +73,25 @@
       </div>
       <input type="file" id="fileSelector" accept="image/*" style="display:none" onchange="onFileSelected(event)">
 
-      <!-- 3D AVATAR STÜDYOSUNU AÇAN ÖZEL BUTON -->
-      <div style="margin: 10px 0 16px 0;">
-        <button type="button" class="ghost-btn full" style="border: 1.5px solid #d4af37; color: #d4af37; font-weight: 700; padding: 12px; border-radius: 12px; background: rgba(212, 175, 55, 0.08); display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="openAvatarCustomizer()">
-          <span>⚡ 3D Olimpos Avatarını Tasarla</span>
-          <span style="font-size: 11px; background: #d4af37; color: #000; padding: 2px 6px; border-radius: 6px;">GTA Modeli</span>
+      <!-- AVATAR DÜZENLEME KART BUTONU (ÖNİZLEME İLE) -->
+      <div style="margin: 8px 0 18px 0;">
+        <button type="button" class="avatar-studio-trigger-btn" onclick="openAvatarCustomizer()">
+          <div style="display:flex; align-items:center; gap: 12px;">
+            <div id="mini-avatar-badge" style="width: 44px; height: 44px; border-radius: 50%; background: #1a1926; border: 1.5px solid #d4af37; display:flex; align-items:center; justify-content:center; font-size: 20px;">
+              👤
+            </div>
+            <div style="text-align: left;">
+              <div style="font-family:'Cinzel',serif; font-size: 14px; font-weight:800; color: #fff;">3D Karakter Stüdyosu</div>
+              <div style="font-size: 11px; color: #d4af37;">Kıyafetleri giy/çıkar, şapka, gözlük, takı seç</div>
+            </div>
+          </div>
+          <span style="color: #d4af37; font-size: 18px;">➔</span>
         </button>
       </div>
 
       <form id="regForm" onsubmit="handleFormSubmit(event)" class="gold-form">
         <div class="form-group">
-          <label>Rumuz / Ad</label>
+          <label>Rumuz / İsim</label>
           <input type="text" id="nickname" placeholder="Mecliste görünecek adın" required>
         </div>
 
@@ -102,24 +110,21 @@
           </div>
         </div>
 
-        <!-- DOĞRUDAN GÖRÜNEN ŞEHİR SEÇİMİ -->
         <div class="form-group">
-          <label>Şehir Seçimi (Arama / Çipler)</label>
+          <label>Şehir Seçimi</label>
           <input type="text" id="citySearchInput" onkeyup="filterCityChips()" placeholder="🔍 Şehir ara... (Örn: İstanbul, İzmir)">
           <div class="chip-grid" id="cityChipGrid"></div>
           <input type="hidden" id="city" required>
         </div>
 
-        <!-- DOĞRUDAN GÖRÜNEN İLÇE SEÇİMİ -->
         <div class="form-group" id="districtGroup">
-          <label>İlçe / Semt Seçimi</label>
+          <label>İlçe / Semt</label>
           <div class="chip-grid" id="districtChipGrid">
             <span style="font-size: 12px; color: #777;">Önce yukarıdan bir şehir seçin.</span>
           </div>
           <input type="hidden" id="district" required>
         </div>
 
-        <!-- DOĞRUDAN GÖRÜNEN SENİN ROLÜN -->
         <div class="form-group">
           <label>Senin Rolün</label>
           <div class="chip-grid" data-target="role">
@@ -134,7 +139,6 @@
           <input type="hidden" id="role" required>
         </div>
 
-        <!-- DOĞRUDAN GÖRÜNEN ARADIĞIN ROL -->
         <div class="form-group">
           <label>Aradığın Rol</label>
           <div class="chip-grid" data-target="interestedRole">
@@ -150,9 +154,8 @@
           <input type="hidden" id="interestedRole" value="Hepsi" required>
         </div>
 
-        <!-- DOĞRUDAN GÖRÜNEN ARKETİP KARTLARI -->
         <div class="form-group">
-          <label>Olimpos Arketipi (Ruhunun Yansıması)</label>
+          <label>Olimpos Arketipi</label>
           <div class="chip-grid vertical-chips" data-target="archetype">
             <button type="button" class="choice-chip-card" onclick="selectChip('archetype', 'Apollon (Işık, Sanat & Karizma)', this)">
               <div class="chip-card-title">☀️ Apollon</div>
@@ -182,7 +185,6 @@
           <input type="hidden" id="archetype" required>
         </div>
 
-        <!-- DOĞRUDAN GÖRÜNEN TARZ / İFADE -->
         <div class="form-group">
           <label>Tarz / İfade</label>
           <div class="chip-grid" data-target="expression">
@@ -198,11 +200,11 @@
 
         <div class="form-group">
           <label>Biyografi</label>
-          <textarea id="bio" rows="3" placeholder="Kendinden ve aradığın ruh eşinden kısaca bahset..."></textarea>
+          <textarea id="bio" rows="3" placeholder="Kendinden ve ruh eşinden kısaca bahset..."></textarea>
         </div>
 
         <button type="submit" id="saveBtn" class="primary-btn gold-glow">
-          <span>Profili Kaydet & Başla</span>
+          <span>Profili Mühürle & Başla</span>
         </button>
 
         <button type="button" id="deleteAccountBtn" class="danger-outline-btn hidden" onclick="deleteMyAccount()">
@@ -217,8 +219,19 @@
       </div>
     </main>
 
-    <!-- 2. EKRAN: KEŞFET / TINDER DOKUNMATİK SAHNESİ -->
+    <!-- 2. EKRAN: KEŞFET / TINDER KARTLARI & METAVERSE'E GEÇİŞ BANNERI -->
     <main id="exploreView" class="view-screen hidden">
+      <!-- Canlı 3D Lounge Hızlı Giriş Kartı -->
+      <div class="lounge-quick-card" onclick="switchTab('metaverse')">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-family:'Cinzel',serif; font-size:15px; font-weight:800; color:#d4af37;">🏛️ Canlı 3D Olimpos Lounge</div>
+            <div style="font-size:12px; color:#aaa; margin-top:2px;">Karakterinle mekana katıl, insanlarla tanış, kalpleş!</div>
+          </div>
+          <button class="primary-btn sm-btn" style="padding: 6px 14px; font-size:11px;">Mekana Gir</button>
+        </div>
+      </div>
+
       <div id="dailyPickBanner" class="daily-pick-banner hidden">
         <div class="daily-badge">⭐ GÜNÜN KUTSAL SEÇİMİ</div>
         <div id="dailyPickContent" class="daily-content"></div>
@@ -243,7 +256,7 @@
       </div>
     </main>
 
-    <!-- 3. EKRAN: DM / SOHBET LİSTESİ -->
+    <!-- 3. EKRAN: DM / MESAJLAR (METAVERSE EŞLEŞMELERİ BURAYA DÜŞER) -->
     <main id="inboxView" class="view-screen hidden">
       <div class="sub-header">
         <h2>Mesajlar 💬</h2>
@@ -252,7 +265,7 @@
       <div id="chatList" class="inbox-list"></div>
     </main>
 
-    <!-- 4. EKRAN: BİREBİR ANONİM SOHBET -->
+    <!-- 4. EKRAN: BİREBİR SOHBET -->
     <main id="chatRoomView" class="view-screen hidden">
       <div class="chat-header">
         <button class="icon-back" onclick="switchTab('inbox')">
@@ -264,7 +277,7 @@
         </div>
         <div style="display: flex; gap: 6px; align-items: center;">
           <button id="paravanBtn" class="paravan-pill" onclick="requestParavanReveal()">🎭 Paravanı Aç</button>
-          <button class="report-chat-pill" onclick="openChatReportModal()" title="Mesajları Şikayet Et">🚩</button>
+          <button class="report-chat-pill" onclick="openChatReportModal()" title="Şikayet Et">🚩</button>
           <button class="unmatch-pill" onclick="cancelCurrentMatch()" title="Eşleşmeyi Bitir">✕</button>
         </div>
       </div>
@@ -272,7 +285,7 @@
       <div class="icebreakers-bar">
         <button type="button" class="ice-btn" onclick="sendIcebreaker('İlk buluşmada kahve mi kadeh mi? 🍷')">🍷 İlk Buluşma?</button>
         <button type="button" class="ice-btn" onclick="sendIcebreaker('Hangi Olimpos tanrısı ruh ikizin? ⚡')">⚡ Ruh İkizin?</button>
-        <button type="button" class="ice-btn" onclick="sendIcebreaker('Bu gece şehri ateşe verelim mi? 🔥')">🔥 Bu Gece?</button>
+        <button type="button" class="ice-btn" onclick="sendIcebreaker('Bu gece mekana gelsene, kalpleşelim! 🔥')">🔥 3D Mekan?</button>
       </div>
 
       <div id="paravanAlert" class="paravan-banner hidden"></div>
@@ -288,17 +301,49 @@
 
     <!-- 5. EKRAN: 3D METAVERSE / ANTİK YUNAN LOUNGE -->
     <main id="metaverseView" class="view-screen hidden" style="padding: 0; position: relative; overflow: hidden; background: #0a0b16; height: calc(100vh - 65px);">
-      <!-- Three.js 3D Sahne Konteyneri -->
+      <!-- 3D Tuval -->
       <div id="canvas-container" style="width: 100%; height: 100%;"></div>
 
-      <!-- Dokunmatik Sanal Joystick Bölgesi (Sol Alt) -->
+      <!-- Mekandan Güvenli Çıkış Butonu (Sol Üst) -->
+      <button class="metaverse-exit-btn" onclick="exitMetaverseToExplore()" title="Mekandan Ayrıl">
+        ← Ayrıl
+      </button>
+
+      <!-- YT Editör Butonu (Sadece Yöneticide Görünür) -->
+      <button id="yt-open-editor-btn" class="yt-floating-edit-btn hidden" onclick="toggleYtItemDrawer()" title="Eşya & Doku Editörü">
+        🛠️ Eşya Ekle
+      </button>
+
+      <!-- Dokunmatik Joystick (Sol Alt) -->
       <div id="joystick-zone" style="position: absolute; bottom: 35px; left: 25px; width: 120px; height: 120px; z-index: 50; pointer-events: auto;"></div>
 
-      <!-- Canlı Sohbet ve Eylemler (Sağ Alt) -->
+      <!-- Karakter Eylem Butonları: Oturma / Çömelme (Sol Alt, Joystick Yanı) -->
+      <div class="avatar-action-bar">
+        <button id="action-sit-btn" onclick="togglePlayerSit()" class="meta-action-circle" title="Otur / Kalk">🪑</button>
+        <button id="action-crouch-btn" onclick="togglePlayerCrouch()" class="meta-action-circle" title="Çömel">🧘</button>
+      </div>
+
+      <!-- Canlı Sohbet ve Şikayet (Sağ Alt) -->
       <div style="position: absolute; bottom: 30px; right: 20px; display: flex; align-items: center; gap: 8px; z-index: 50;">
-        <input type="text" id="world-chat-input" placeholder="Olimpos'a seslen..." style="background: rgba(14, 13, 23, 0.88); border: 1px solid #d4af37; color: #fff; padding: 10px 14px; border-radius: 20px; outline: none; font-size: 13px; width: 150px; backdrop-filter: blur(8px);">
-        <button onclick="sendWorldChat()" style="background: #d4af37; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.4);" title="Baloncuk Gönder">💬</button>
-        <button onclick="sendMetaverseReportPrompt()" style="background: rgba(255, 71, 87, 0.85); color: #fff; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.4);" title="Şikayet Bildir">🚨</button>
+        <input type="text" id="world-chat-input" placeholder="Mekana fısılda..." style="background: rgba(14, 13, 23, 0.88); border: 1px solid #d4af37; color: #fff; padding: 10px 14px; border-radius: 20px; outline: none; font-size: 13px; width: 140px; backdrop-filter: blur(8px);">
+        <button onclick="sendWorldChat()" class="meta-round-btn" title="Mesaj Gönder">💬</button>
+        <button onclick="sendMetaverseReportPrompt()" class="meta-round-btn danger" title="Şikayet Bildir">🚨</button>
+      </div>
+
+      <!-- YT ÇEKİLEBİLİR / KAYDIRILABİLİR ZENGİN EŞYA ÇEKMECESİ -->
+      <div id="ytItemDrawer" class="yt-item-drawer hidden">
+        <div class="drawer-header">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="color:#d4af37; font-weight:800; font-family:'Cinzel',serif;">🏛️ Mekan Tasarım Masası</span>
+            <button onclick="setVenueTheme('ancient_greek')" class="drawer-theme-pill">Olimpos</button>
+            <button onclick="setVenueTheme('cyber_lounge')" class="drawer-theme-pill">Cyber</button>
+            <button onclick="setVenueTheme('dionysus_rave')" class="drawer-theme-pill">Şölen</button>
+          </div>
+          <button class="icon-close" onclick="toggleYtItemDrawer()">✕</button>
+        </div>
+        <div class="drawer-scroll-grid" id="yt-items-catalog">
+          <!-- 30+ Zengin Eşya Dinamik Olarak Buraya Basılır -->
+        </div>
       </div>
     </main>
 
@@ -324,37 +369,26 @@
         </div>
       </div>
 
-      <!-- 3D METAVERSE KONTROLÜ & HAYALET MODU (YT ÖZEL) -->
       <div class="admin-action-box" style="border-color: rgba(212, 175, 55, 0.5); background: rgba(22, 22, 34, 0.7);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
           <label style="color: #d4af37; margin: 0; font-size: 14px;">🌐 3D Metaverse Masası</label>
-          <button onclick="enterMetaverseAsGhost()" style="background: linear-gradient(45deg, #6a11cb, #2575fc); color: #fff; border: none; padding: 7px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 12px; box-shadow: 0 2px 8px rgba(106, 17, 203, 0.4);">
+          <button onclick="enterMetaverseAsGhost()" style="background: linear-gradient(45deg, #6a11cb, #2575fc); color: #fff; border: none; padding: 7px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 12px;">
             👻 Hayalet Modunda Gir
           </button>
         </div>
-        <p style="font-size: 12px; color: #a0a0b0; margin: 0 0 10px 0;">Mekana görünmez olarak sızın, konsepti değiştirin ve canlı dekor ekleyin.[cite: 1]</p>
+        <p style="font-size: 12px; color: #a0a0b0; margin: 0 0 10px 0;">Mekanda görünmez olun, canlı eşya ve dokuları yönetin.</p>
         
-        <label style="color: #ff9f43; font-size: 12px; margin-bottom: 4px;">🚨 3D Metaverse Mekan Şikayetleri</label>
+        <label style="color: #ff9f43; font-size: 12px; margin-bottom: 4px;">🚨 3D Mekan Şikayetleri</label>
         <div id="metaverseReportsList" class="reports-scroll-box" style="max-height: 140px;">
           <div style="font-size: 12px; color: #777;">Henüz mekan şikayeti bulunmuyor.</div>
         </div>
       </div>
 
       <div class="admin-action-box" style="border-color: rgba(255, 71, 87, 0.4);">
-        <label style="color: #ff4757;">🚩 Bildirilen DM Mesaj Kanıtları & Şikayetler</label>
+        <label style="color: #ff4757;">🚩 DM Mesaj Kanıtları & Şikayetler</label>
         <div id="adminReportsList" class="reports-scroll-box">
           <div style="font-size: 12px; color: #777;">Henüz şikayet bulunmuyor.</div>
         </div>
-      </div>
-
-      <div class="admin-action-box" id="founderAdminBox">
-        <label>👑 [Kurucu] Yönetici Tanımla / Kaldır</label>
-        <div class="input-inline">
-          <input type="text" id="newAdminTarget" placeholder="@kullaniciadi veya TG ID">
-          <button class="sm-btn gold" onclick="addAdminTarget()">Ekle</button>
-          <button class="sm-btn danger" onclick="removeAdminTarget()">Çıkar</button>
-        </div>
-        <div id="activeAdminsList" class="admin-tags-list"></div>
       </div>
 
       <div class="search-bar">
@@ -364,132 +398,178 @@
       <div id="adminUserCards" class="admin-scroll-list"></div>
     </main>
 
-    <!-- AVATAR KİŞİSELLEŞTİRME MODALI (KULLANICI STÜDYOSU) -->
+    <!-- SNAPCHAT / SIMS TARZI CANLI AVATAR & KIYAFET ATÖLYESİ (MODAL) -->
     <div id="avatarCustomizerModal" class="modal-backdrop hidden">
-      <div class="modal-sheet" style="max-height: 92vh; overflow-y: auto; background: #0e0d17; border: 1px solid #d4af37;">
-        <div class="sheet-header" style="border-bottom: 1px solid rgba(212,175,55,0.3); padding-bottom: 8px;">
-          <h3 style="color: #d4af37; margin: 0; font-family: 'Cinzel', serif;">⚡ Olimpos Avatar Stüdyosu</h3>
+      <div class="modal-sheet avatar-studio-sheet">
+        <div class="sheet-header">
+          <h3 style="color: #d4af37; margin: 0; font-family: 'Cinzel', serif;">⚡ Olimpos Karakter Stüdyosu</h3>
           <button class="icon-close" onclick="closeAvatarCustomizer()">✕</button>
         </div>
 
         <!-- Canlı 3D Önizleme Sahnesi -->
-        <div style="width: 100%; height: 210px; background: radial-gradient(circle, #242238 0%, #0c0b14 100%); border-radius: 12px; margin: 12px 0; position: relative; overflow: hidden; border: 1px solid rgba(212,175,55,0.2);">
+        <div class="avatar-preview-box">
           <div id="avatar-preview-canvas" style="width: 100%; height: 100%;"></div>
-          <div style="position: absolute; bottom: 8px; right: 10px; font-size: 11px; color: #a0a0b0;">🔄 Döndürmek için kaydır</div>
+          <div class="preview-hint">🔄 Döndürmek için parmağını kaydır</div>
         </div>
 
-        <!-- Cinsiyet -->
-        <div class="form-group">
-          <label style="color:#d4af37; font-size:12px; font-weight:700;">CİNSİYET & ANATOMİ</label>
-          <div class="chip-grid">
-            <button type="button" class="choice-chip selected" id="gender-male-btn" onclick="setAvatarParam('gender', 'male', this)">Erkek</button>
-            <button type="button" class="choice-chip" id="gender-female-btn" onclick="setAvatarParam('gender', 'female', this)">Kadın</button>
+        <!-- Katmanlı Özelleştirme Alanı -->
+        <div class="avatar-options-scroller">
+          
+          <!-- Cinsiyet & Anatomi -->
+          <div class="customizer-section">
+            <label class="section-label">ANATOMİ</label>
+            <div class="chip-grid">
+              <button type="button" class="choice-chip selected" id="gender-male-btn" onclick="setAvatarParam('gender', 'male', this)">Erkek</button>
+              <button type="button" class="choice-chip" id="gender-female-btn" onclick="setAvatarParam('gender', 'female', this)">Kadın</button>
+            </div>
           </div>
+
+          <!-- Ten Rengi -->
+          <div class="customizer-section">
+            <label class="section-label">TEN TONU</label>
+            <div class="swatch-row">
+              <div class="skin-tone-swatch" onclick="setAvatarParam('skinColor', '#ffdfc4', this)" style="background: #ffdfc4;"></div>
+              <div class="skin-tone-swatch active" onclick="setAvatarParam('skinColor', '#f0c7a1', this)" style="background: #f0c7a1;"></div>
+              <div class="skin-tone-swatch" onclick="setAvatarParam('skinColor', '#d99f66', this)" style="background: #d99f66;"></div>
+              <div class="skin-tone-swatch" onclick="setAvatarParam('skinColor', '#ad6e3e', this)" style="background: #ad6e3e;"></div>
+              <div class="skin-tone-swatch" onclick="setAvatarParam('skinColor', '#663c1e', this)" style="background: #663c1e;"></div>
+              <div class="skin-tone-swatch" onclick="setAvatarParam('skinColor', '#e6c88f', this)" style="background: #e6c88f;" title="Altın Işıltı"></div>
+            </div>
+          </div>
+
+          <!-- Göz Rengi & Göz Tipi -->
+          <div class="customizer-section">
+            <label class="section-label">GÖZLER</label>
+            <div class="chip-grid">
+              <button type="button" class="choice-chip selected" onclick="setAvatarParam('eyeColor', '#2980b9', this)">Deniz Mavisi</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('eyeColor', '#27ae60', this)">Zümrüt Yeşili</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('eyeColor', '#d35400', this)">Bal Kehribar</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('eyeColor', '#2c3e50', this)">Kömür Karası</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('eyeColor', '#8e44ad', this)">Menekşe Moru</button>
+            </div>
+          </div>
+
+          <!-- Saç Modelleri & Renkleri -->
+          <div class="customizer-section">
+            <label class="section-label">SAÇ MODELİ & TONU</label>
+            <div class="chip-grid">
+              <button type="button" class="choice-chip" onclick="setAvatarParam('hairStyle', 'none', this)">Kel / Yok</button>
+              <button type="button" class="choice-chip selected" onclick="setAvatarParam('hairStyle', 'greek_curls', this)">Helenistik Dalgalı</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('hairStyle', 'short_modern', this)">Modern Fade</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('hairStyle', 'long_braid', this)">Olimpos Örgüsü</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('hairStyle', 'bob', this)">Klasik Bob</button>
+            </div>
+            <div class="chip-grid" style="margin-top: 6px;">
+              <button type="button" class="choice-chip selected" onclick="setAvatarParam('hairColor', '#1a1a1a', this)">Siyah</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('hairColor', '#4a2f1b', this)">Kestane</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('hairColor', '#d4af37', this)">Altın Sarısı</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('hairColor', '#c0392b', this)">Kızıl Bakır</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('hairColor', '#ecf0f1', this)">Platin Gri</button>
+            </div>
+          </div>
+
+          <!-- Şapkalar & Taçlar (Çıkarma Özellikli) -->
+          <div class="customizer-section">
+            <label class="section-label">ŞAPKALAR & TAÇLAR</label>
+            <div class="chip-grid">
+              <button type="button" class="choice-chip selected" onclick="setAvatarParam('hat', 'none', this)">Yok (Çıkar)</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('hat', 'gold_wreath', this)">🌿 Altın Defne Tacı</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('hat', 'party_cap', this)">🧢 Parti Şapkası</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('hat', 'fedora', this)">🎩 Asil Fötr</button>
+            </div>
+          </div>
+
+          <!-- Gözlükler (Çıkarma Özellikli) -->
+          <div class="customizer-section">
+            <label class="section-label">GÖZLÜKLER</label>
+            <div class="chip-grid">
+              <button type="button" class="choice-chip selected" onclick="setAvatarParam('glasses', 'none', this)">Yok (Çıkar)</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('glasses', 'sunglasses_dark', this)">🕶️ Gece Güneş Gözlüğü</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('glasses', 'aviator_gold', this)">👓 Altın Çerçeveli Damla</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('glasses', 'cyber_visor', this)">⚡ Cyber Vizör</button>
+            </div>
+          </div>
+
+          <!-- Kolyeler & Takılar (Çıkarma Özellikli) -->
+          <div class="customizer-section">
+            <label class="section-label">TAKILAR & KOLYELER</label>
+            <div class="chip-grid">
+              <button type="button" class="choice-chip selected" onclick="setAvatarParam('necklace', 'none', this)">Yok (Çıkar)</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('necklace', 'gold_chain', this)">✨ Kalın Altın Zincir</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('necklace', 'pearl_choker', this)">🦪 İnci Gerdanlık</button>
+            </div>
+          </div>
+
+          <!-- Üst Giyim (Çıkarma & Renk Değişimi Özellikli) -->
+          <div class="customizer-section">
+            <label class="section-label">ÜST GİYİM</label>
+            <div class="chip-grid">
+              <button type="button" class="choice-chip" onclick="setAvatarParam('outfitTop', 'none', this)">Çıplak / Yok</button>
+              <button type="button" class="choice-chip selected" onclick="setAvatarParam('outfitTop', 'greek_tunic', this)">🏛️ Antik Tunik</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('outfitTop', 'gala_blazer', this)">👔 Gala Ceketi</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('outfitTop', 'street_hoodie', this)">🔥 Oversize Hoodie</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('outfitTop', 'silk_corset', this)">🕊️ İpek Büstiyer</button>
+            </div>
+            <div class="chip-grid" style="margin-top: 6px;">
+              <button type="button" class="choice-chip selected" onclick="setAvatarParam('outfitTopColor', '#ffffff', this)">Beyaz</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('outfitTopColor', '#1a1a24', this)">Siyah</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('outfitTopColor', '#800020', this)">Bordo</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('outfitTopColor', '#d4af37', this)">Altın</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('outfitTopColor', '#ff6b81', this)">Pembe</button>
+            </div>
+          </div>
+
+          <!-- Alt Giyim (Çıkarma & Renk Değişimi Özellikli) -->
+          <div class="customizer-section">
+            <label class="section-label">ALT GİYİM</label>
+            <div class="chip-grid">
+              <button type="button" class="choice-chip selected" onclick="setAvatarParam('outfitBottom', 'classic_pants', this)">Klasik Pantolon</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('outfitBottom', 'toga_skirt', this)">🏛️ Dökümlü Toga Etek</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('outfitBottom', 'short_pants', this)">Kısa Şort</button>
+            </div>
+            <div class="chip-grid" style="margin-top: 6px;">
+              <button type="button" class="choice-chip selected" onclick="setAvatarParam('outfitBottomColor', '#1a1a24', this)">Siyah</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('outfitBottomColor', '#ffffff', this)">Beyaz</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('outfitBottomColor', '#4a2f1b', this)">Kahve</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('outfitBottomColor', '#d4af37', this)">Altın</button>
+            </div>
+          </div>
+
+          <!-- Ayakkabılar -->
+          <div class="customizer-section">
+            <label class="section-label">AYAKKABILAR</label>
+            <div class="chip-grid">
+              <button type="button" class="choice-chip" onclick="setAvatarParam('shoes', 'none', this)">Yalınayak</button>
+              <button type="button" class="choice-chip selected" onclick="setAvatarParam('shoes', 'gladiator_sandals', this)">Antik Gladyatör Sandalet</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('shoes', 'designer_sneakers', this)">Tasarım Sneaker</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('shoes', 'formal_heels', this)">Deri Loafer / Topuklu</button>
+            </div>
+          </div>
+
         </div>
 
-        <!-- Ten Tonu -->
-        <div class="form-group">
-          <label style="color:#d4af37; font-size:12px; font-weight:700;">TEN TONU</label>
-          <div style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;">
-            <div onclick="setAvatarParam('skinColor', '#ffdfc4', this)" style="width: 32px; height: 32px; border-radius: 50%; background: #ffdfc4; border: 2px solid #fff; cursor: pointer;"></div>
-            <div onclick="setAvatarParam('skinColor', '#f0c7a1', this)" style="width: 32px; height: 32px; border-radius: 50%; background: #f0c7a1; border: 1px solid #777; cursor: pointer;"></div>
-            <div onclick="setAvatarParam('skinColor', '#d99f66', this)" style="width: 32px; height: 32px; border-radius: 50%; background: #d99f66; border: 1px solid #777; cursor: pointer;"></div>
-            <div onclick="setAvatarParam('skinColor', '#ad6e3e', this)" style="width: 32px; height: 32px; border-radius: 50%; background: #ad6e3e; border: 1px solid #777; cursor: pointer;"></div>
-            <div onclick="setAvatarParam('skinColor', '#663c1e', this)" style="width: 32px; height: 32px; border-radius: 50%; background: #663c1e; border: 1px solid #777; cursor: pointer;"></div>
-            <div onclick="setAvatarParam('skinColor', '#e6c88f', this)" style="width: 32px; height: 32px; border-radius: 50%; background: #e6c88f; border: 1px solid #777; cursor: pointer;" title="Altın Işıltı"></div>
-          </div>
-        </div>
-
-        <!-- Göz Rengi -->
-        <div class="form-group">
-          <label style="color:#d4af37; font-size:12px; font-weight:700;">GÖZ RENGİ</label>
-          <div style="display: flex; gap: 8px; overflow-x: auto;">
-            <button type="button" class="choice-chip selected" onclick="setAvatarParam('eyeColor', '#2980b9', this)">Deniz Mavisi</button>
-            <button type="button" class="choice-chip" onclick="setAvatarParam('eyeColor', '#27ae60', this)">Zümrüt Yeşil</button>
-            <button type="button" class="choice-chip" onclick="setAvatarParam('eyeColor', '#d35400', this)">Bal Rengi</button>
-            <button type="button" class="choice-chip" onclick="setAvatarParam('eyeColor', '#2c3e50', this)">Kömür Siyahı</button>
-            <button type="button" class="choice-chip" onclick="setAvatarParam('eyeColor', '#8e44ad', this)">Menekşe</button>
-          </div>
-        </div>
-
-        <!-- Saç Modeli & Rengi -->
-        <div class="form-group">
-          <label style="color:#d4af37; font-size:12px; font-weight:700;">SAÇ MODELİ & TONU</label>
-          <div class="chip-grid">
-            <button type="button" class="choice-chip selected" onclick="setAvatarParam('hairStyle', 'greek_curls', this)">Helenistik Dalgalı</button>
-            <button type="button" class="choice-chip" onclick="setAvatarParam('hairStyle', 'short_modern', this)">Modern Fade</button>
-            <button type="button" class="choice-chip" onclick="setAvatarParam('hairStyle', 'long_braid', this)">Olimpos Örgüsü</button>
-            <button type="button" class="choice-chip" onclick="setAvatarParam('hairStyle', 'bob', this)">Klasik Bob</button>
-          </div>
-          <div style="display: flex; gap: 8px; margin-top: 8px;">
-            <button type="button" class="choice-chip selected" onclick="setAvatarParam('hairColor', '#1a1a1a', this)">Siyah</button>
-            <button type="button" class="choice-chip" onclick="setAvatarParam('hairColor', '#4a2f1b', this)">Kahve</button>
-            <button type="button" class="choice-chip" onclick="setAvatarParam('hairColor', '#d4af37', this)">Altın Sarısı</button>
-            <button type="button" class="choice-chip" onclick="setAvatarParam('hairColor', '#c0392b', this)">Kızıl</button>
-            <button type="button" class="choice-chip" onclick="setAvatarParam('hairColor', '#ecf0f1', this)">Platin</button>
-          </div>
-        </div>
-
-        <!-- Kıyafet Modeli & Rengi -->
-        <div class="form-group">
-          <label style="color:#d4af37; font-size:12px; font-weight:700;">KIYAFET KONSEPTİ</label>
-          <div class="chip-grid">
-            <button type="button" class="choice-chip selected" onclick="setAvatarParam('outfit', 'greek_toga', this)">🏛️ Antik Toga / Tunik</button>
-            <button type="button" class="choice-chip" onclick="setAvatarParam('outfit', 'luxury_suit', this)">👔 Gala Takım Elbise[cite: 2]</button>
-            <button type="button" class="choice-chip" onclick="setAvatarParam('outfit', 'street_hoodie', this)">🔥 Streetwear Hoodie[cite: 2]</button>
-            <button type="button" class="choice-chip" onclick="setAvatarParam('outfit', 'helen_dress', this)">🕊️ Helen İpeksi Elbise[cite: 2]</button>
-          </div>
-          <div style="display:flex; gap: 8px; margin-top: 8px;">
-            <button type="button" class="choice-chip selected" onclick="setAvatarParam('outfitColor', '#ffffff', this)">Saf Beyaz</button>
-            <button type="button" class="choice-chip" onclick="setAvatarParam('outfitColor', '#1a1a24', this)">Gece Siyahı</button>
-            <button type="button" class="choice-chip" onclick="setAvatarParam('outfitColor', '#800020', this)">Bordo Kraliyet</button>
-            <button type="button" class="choice-chip" onclick="setAvatarParam('outfitColor', '#d4af37', this)">Altın Dokuma</button>
-          </div>
-        </div>
-
-        <!-- Takı & Aksesuar -->
-        <div class="form-group">
-          <label style="color:#d4af37; font-size:12px; font-weight:700;">AKSESUAR & TAÇ</label>
-          <div class="chip-grid">
-            <button type="button" class="choice-chip selected" onclick="setAvatarParam('accessory', 'none', this)">Yok</button>
-            <button type="button" class="choice-chip" onclick="setAvatarParam('accessory', 'gold_wreath', this)">🌿 Altın Defne Tacı</button>
-            <button type="button" class="choice-chip" onclick="setAvatarParam('accessory', 'chain_necklace', this)">✨ Kalın Altın Kolye</button>
-            <button type="button" class="choice-chip" onclick="setAvatarParam('accessory', 'sunglasses', this)">🕶️ Gece Gözlüğü</button>
-          </div>
-        </div>
-
-        <!-- Ayakkabı -->
-        <div class="form-group">
-          <label style="color:#d4af37; font-size:12px; font-weight:700;">AYAKKABI</label>
-          <div class="chip-grid">
-            <button type="button" class="choice-chip selected" onclick="setAvatarParam('shoes', 'gladiator_sandals', this)">Antik Gladyatör Sandalet</button>
-            <button type="button" class="choice-chip" onclick="setAvatarParam('shoes', 'white_sneakers', this)">Tasarım Sneaker[cite: 2]</button>
-            <button type="button" class="choice-chip" onclick="setAvatarParam('shoes', 'party_shoes', this)">Resmi Deri / Topuklu[cite: 2]</button>
-          </div>
-        </div>
-
-        <div class="sheet-actions" style="margin-top: 15px;">
+        <div class="sheet-actions" style="margin-top: 14px;">
           <button class="primary-btn full" onclick="saveAvatarSettings()">
-            <span>✨ Avatarı Mühürle & Kaydet</span>
+            <span>✨ Karakteri Mühürle & Kaydet</span>
           </button>
         </div>
       </div>
     </div>
 
-    <!-- METAVERSE AVATAR ETKİLEŞİM & KALP KARTI -->
+    <!-- METAVERSE KULLANICI PROFİL KARTI (KALP ATINCA DM AÇILIR) -->
     <div id="metaverseProfileModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeMetaverseProfileModal()">
       <div class="modal-sheet" style="text-align: center;">
-        <div style="width: 70px; height: 70px; margin: 0 auto 10px; border-radius: 50%; overflow: hidden; border: 2px solid #d4af37;">
+        <div style="width: 76px; height: 76px; margin: 0 auto 10px; border-radius: 50%; overflow: hidden; border: 2.5px solid #d4af37; box-shadow: 0 0 20px rgba(212,175,55,0.4);">
           <img id="metaProfileImg" src="" style="width: 100%; height: 100%; object-fit: cover;" alt="Profil">
         </div>
-        <h3 id="metaProfileName" style="color: #fff; margin: 0 0 4px 0; font-size: 17px;">Rumuz</h3>
-        <div id="metaProfileMeta" style="color: #d4af37; font-size: 13px; margin-bottom: 8px;">Top • İstanbul</div>
-        <div id="metaProfileDistance" style="color: #aaa; font-size: 12px; margin-bottom: 15px;">📍 Merkez</div>
+        <h3 id="metaProfileName" style="color: #fff; margin: 0 0 4px 0; font-size: 18px;">Rumuz</h3>
+        <div id="metaProfileMeta" style="color: #d4af37; font-size: 13px; margin-bottom: 6px;">Top • İstanbul</div>
+        <div id="metaProfileDistance" style="color: #aaa; font-size: 12px; margin-bottom: 16px;">📍 Merkez</div>
 
         <div style="display: flex; gap: 10px; justify-content: center;">
           <button class="ghost-btn full" onclick="closeMetaverseProfileModal()">Kapat</button>
           <button id="metaSendHeartBtn" class="primary-btn full" style="background: linear-gradient(45deg, #ff4757, #ff6b81);" onclick="sendHeartToCurrentTarget()">
-            ❤️ Kalp Gönder
+            ❤️ Kalp At (Mesaj Başlat)
           </button>
         </div>
       </div>
@@ -501,24 +581,24 @@
         <div class="welcome-modal-card">
           <div class="welcome-seal">✨</div>
           <h2 class="welcome-title gold-text">HOŞ GELDİNİZ</h2>
-          <p class="welcome-desc">Kutsal profiliniz mühürlendi ve topluluk meclisine kabul edildiniz. Çevrenizdeki en uyumlu ruhlarla eşleşmeye hazırsınız.</p>
+          <p class="welcome-desc">Profiliniz ve insansı 3D avatarınız mühürlendi. Artık hem Keşfet kartlarında hem de 3D Olimpos Lounge'ta canlı olarak yer alıyorsunuz.</p>
           <button class="primary-btn full" onclick="closeWelcomeAndExplore()">
-            <span>Keşfetmeye Başla</span>
+            <span>Meclise Adım At</span>
           </button>
         </div>
       </div>
     </div>
 
-    <!-- ŞİKAYET MODALI (MESAJ KANITLI) -->
+    <!-- ŞİKAYET MODALI -->
     <div id="reportModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeReportModal()">
       <div class="modal-sheet">
         <div class="sheet-header">
           <h3 style="color: #ff4757;">🚩 Şikayet Bildirimi</h3>
           <button class="icon-close" onclick="closeReportModal()">✕</button>
         </div>
-        <p style="font-size: 12px; color: #8e8e9a;">Bu durumu topluluk yöneticilerine iletiyorsunuz. Lütfen sebebi belirtin:</p>
+        <p style="font-size: 12px; color: #8e8e9a;">Lütfen şikayet nedeninizi girin:</p>
         <div class="form-group">
-          <textarea id="reportReason" rows="3" placeholder="Taciz, uygunsuz dil, dolandırıcılık vb..."></textarea>
+          <textarea id="reportReason" rows="3" placeholder="Taciz, rahatsız edici dil, dolandırıcılık..."></textarea>
         </div>
         <div id="reportedMessagesPreview" style="font-size: 11px; color: #ff9f43; margin-top: 4px;"></div>
         <div class="sheet-actions">
@@ -559,7 +639,7 @@
 
         <div class="sheet-actions">
           <button class="ghost-btn full" onclick="closeFilterModal()">Vazgeç</button>
-          <button class="primary-btn full" onclick="applyFilters()">Filtreleri Uygula</button>
+          <button class="primary-btn full" onclick="applyFilters()">Uygula</button>
         </div>
       </div>
     </div>
