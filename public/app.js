@@ -73,8 +73,8 @@ function selectCity(city, btnElem) {
   document.querySelectorAll('#cityChipGrid .choice-chip').forEach(b => b.classList.remove('selected'));
   if (btnElem) btnElem.classList.add('selected');
 
-  // İlçeleri yükle
   const distContainer = document.getElementById('districtChipGrid');
+  if (!distContainer) return;
   distContainer.innerHTML = '';
   document.getElementById('district').value = '';
 
@@ -94,8 +94,9 @@ function selectCity(city, btnElem) {
 }
 
 function selectChip(fieldId, value, elem) {
-  document.getElementById(fieldId).value = value;
-  const parent = elem.closest('.chip-grid');
+  const input = document.getElementById(fieldId);
+  if (input) input.value = value;
+  const parent = elem ? elem.closest('.chip-grid') : null;
   if (parent) {
     parent.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
     elem.classList.add('selected');
@@ -115,12 +116,13 @@ async function checkUserProfile() {
     if (data.exists && data.profile) {
       currentProfile = data.profile;
 
-      // Kullanıcının kayıtlı 3D Avatarını yerel depolamaya ve motora eşitle
+      // Kayıtlı Katmanlı Avatar Verisini Eşitle
       if (currentProfile.avatarConfig) {
         localStorage.setItem('gm_avatar_config', JSON.stringify(currentProfile.avatarConfig));
         if (typeof myAvatarConfig !== 'undefined') {
           myAvatarConfig = Object.assign(myAvatarConfig, currentProfile.avatarConfig);
         }
+        updateMiniAvatarBadge(currentProfile.avatarConfig);
       }
 
       fillProfileForm(currentProfile);
@@ -132,9 +134,16 @@ async function checkUserProfile() {
       switchTab('register');
     }
   } catch (err) {
-    console.error('Profil çekme hatası:', err);
+    console.error('Profil kontrol hatası:', err);
     switchTab('register');
   }
+}
+
+function updateMiniAvatarBadge(cfg) {
+  const badge = document.getElementById('mini-avatar-badge');
+  if (!badge || !cfg) return;
+  badge.innerText = cfg.gender === 'female' ? '👩' : '👨';
+  badge.style.borderColor = cfg.outfitTopColor || '#d4af37';
 }
 
 function fillProfileForm(p) {
@@ -180,7 +189,7 @@ function findButtonByCard(targetName, text) {
   return Array.from(container.querySelectorAll('button')).find(b => b.innerText.includes(text.split(' ')[0]));
 }
 
-// Fotoğraf Seçimi & Yükleme
+// Fotoğraf Seçimi
 let activeSlotIndex = 0;
 function pickImage(slotIdx) {
   activeSlotIndex = slotIdx;
@@ -204,19 +213,18 @@ function onFileSelected(event) {
   reader.readAsDataURL(file);
 }
 
-// Profil Kaydetme (AvatarConfig ile Birlikte)
+// Profil & Avatar Kaydetme
 async function handleFormSubmit(event) {
   event.preventDefault();
   const saveBtn = document.getElementById('saveBtn');
   saveBtn.disabled = true;
-  saveBtn.innerText = '⚡ Olimpos Mührü İşleniyor...';
+  saveBtn.innerText = '⚡ Mühürleniyor...';
 
-  // Yerel hafızadaki güncel avatar ayarlarını çek
   let currentAvatarConfig = null;
   try {
     const raw = localStorage.getItem('gm_avatar_config');
     if (raw) currentAvatarConfig = JSON.parse(raw);
-  } catch(e) {}
+  } catch (e) {}
 
   const payload = {
     telegramId: window.currentUserId,
@@ -233,7 +241,7 @@ async function handleFormSubmit(event) {
     expression: document.getElementById('expression').value,
     bio: document.getElementById('bio').value.trim(),
     photos: userPhotos.filter(p => p !== ''),
-    avatarConfig: currentAvatarConfig // 3D Avatar Parametreleri
+    avatarConfig: currentAvatarConfig || (typeof myAvatarConfig !== 'undefined' ? myAvatarConfig : {})
   };
 
   try {
@@ -246,16 +254,17 @@ async function handleFormSubmit(event) {
 
     if (data.success) {
       currentProfile = data.profile;
+      updateMiniAvatarBadge(currentProfile.avatarConfig);
       document.getElementById('appNav').classList.remove('hidden');
       document.getElementById('welcomeModal').classList.remove('hidden');
     } else {
       alert(`Uyarı: ${data.message || 'Kayıt tamamlanamadı.'}`);
     }
   } catch (err) {
-    alert('Sunucu ile iletişim kurulurken hata oluştu.');
+    alert('Sunucu iletişim hatası oluştu.');
   } finally {
     saveBtn.disabled = false;
-    saveBtn.innerText = 'Profili Kaydet & Başla';
+    saveBtn.innerText = 'Profili Mühürle & Başla';
   }
 }
 
@@ -266,7 +275,7 @@ function closeWelcomeAndExplore() {
   loadDailyPick();
 }
 
-// Sekme Geçiş Yöneticisi
+// Sekme Geçişleri
 function switchTab(tabId) {
   if (chatPollingInterval) {
     clearInterval(chatPollingInterval);
@@ -298,7 +307,7 @@ function openProfileEdit() {
   switchTab('register');
 }
 
-// Keşfet & Kartlar
+// Keşfet / Kartlar
 async function loadExploreCards() {
   const stage = document.getElementById('activeCard');
   stage.innerHTML = '<div class="card-loader">Altın kader ağları taranıyor...</div>';
@@ -322,8 +331,11 @@ function renderCurrentCard() {
     cardElem.innerHTML = `
       <div class="card-loader">
         <h3 style="color:#d4af37;">Şimdilik Kimse Kalmadı ✨</h3>
-        <p style="font-size:12px; color:#888;">Filtreleri genişletebilir veya daha sonra tekrar bakabilirsin.</p>
-        <button class="ghost-btn" onclick="openFilterModal()" style="margin-top:10px;">Filtreleri Değiştir</button>
+        <p style="font-size:12px; color:#888;">3D Lounge'a geçebilir veya filtreleri değiştirebilirsin.</p>
+        <div style="display:flex; gap:8px; margin-top:12px;">
+          <button class="ghost-btn" onclick="openFilterModal()">Filtreler</button>
+          <button class="primary-btn sm-btn" onclick="switchTab('metaverse')">🏛️ 3D Mekana Gir</button>
+        </div>
       </div>`;
     return;
   }
@@ -399,10 +411,10 @@ async function likeDailyPick(targetId) {
     body: JSON.stringify({ fromUserId: window.currentUserId, toUserId: targetId, action: 'like' })
   });
   document.getElementById('dailyPickBanner')?.classList.add('hidden');
-  alert('Günün seçimi beğenildi! Karşılık geldiğinde bildirim alacaksınız.');
+  alert('Günün seçimi beğenildi!');
 }
 
-// DM / Mesajlaşma
+// DM Sohbetleri (3D Metaverse Eşleşmeleri Dahil)
 async function loadInboxChats() {
   const list = document.getElementById('chatList');
   list.innerHTML = '<div class="card-loader">Sohbetler yükleniyor...</div>';
@@ -412,7 +424,13 @@ async function loadInboxChats() {
     const data = await res.json();
     if (data.success && data.chats) {
       if (!data.chats.length) {
-        list.innerHTML = '<div class="card-loader">Henüz eşleşme yok. Keşfetmeye devam et! ✨</div>';
+        list.innerHTML = `
+          <div class="card-loader">
+            Henüz eşleşme yok.<br>
+            <span style="font-size:12px; color:#d4af37; margin-top:8px; display:block;" onclick="switchTab('metaverse')">
+              🏛️ 3D Lounge'a gidip insanlara kalp atabilirsin!
+            </span>
+          </div>`;
         return;
       }
       list.innerHTML = '';
@@ -420,13 +438,16 @@ async function loadInboxChats() {
         const item = document.createElement('div');
         item.className = 'chat-item';
         item.onclick = () => openChatRoom(chat.matchId, chat.partner);
+        
+        const badgeTag = chat.source === 'metaverse_heart' ? '<span style="font-size:10px; color:#ff4757; font-weight:bold;">❤️ 3D Lounge</span> ' : '';
+
         item.innerHTML = `
           <div class="chat-avatar-wrap">
             <img src="${chat.partner.avatar || 'https://via.placeholder.com/60'}" class="chat-avatar" alt="Profil">
           </div>
           <div class="chat-info">
             <div class="chat-name">${chat.partner.nickname}</div>
-            <div class="chat-snippet">${chat.lastMessage}</div>
+            <div class="chat-snippet">${badgeTag}${chat.lastMessage}</div>
           </div>
           <div class="chat-time">${chat.lastMessageTime || ''}</div>
         `;
@@ -522,14 +543,14 @@ async function requestParavanReveal() {
     if (data.bothRevealed) {
       alert(`🎉 İki taraf da onayladı! Kullanıcı adı: ${data.partnerUsername}`);
     } else {
-      alert('Paravan açma isteğiniz iletildi. Karşı taraf da açarsa Telegram kimlikleri görünecek.');
+      alert('Paravan isteğiniz iletildi. Karşı taraf da açarsa kimlikler görünecek.');
     }
     fetchMessages();
   } catch (e) {}
 }
 
 async function cancelCurrentMatch() {
-  if (!activeMatchId || !confirm('Bu eşleşmeyi kalıcı olarak sonlandırmak istiyor musun?')) return;
+  if (!activeMatchId || !confirm('Bu eşleşmeyi bitirmek istiyor musunuz?')) return;
   await fetch(`/api/chats/${activeMatchId}/unmatch`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -572,7 +593,7 @@ async function submitReport() {
     })
   });
   closeReportModal();
-  alert('Şikayetiniz topluluk yönetimine iletildi. Teşekkürler.');
+  alert('Şikayetiniz topluluk yönetimine iletildi.');
 }
 
 // Filtreler
@@ -616,13 +637,13 @@ function applyFilters() {
 
 // Hesap Silme
 async function deleteMyAccount() {
-  if (!confirm('Hesabınızı ve tüm eşleşmelerinizi kalıcı olarak silmek istediğinize emin misiniz?')) return;
+  if (!confirm('Hesabınızı silmek istediğinize emin misiniz?')) return;
   await fetch(`/api/profile/${window.currentUserId}`, { method: 'DELETE' });
   alert('Hesabınız kalıcı olarak silindi.');
   location.reload();
 }
 
-// YT Paneli
+// YT Paneli (Dashboard)
 async function loadAdminDashboard() {
   try {
     const res = await fetch(`/api/admin/dashboard-data?userId=${window.currentUserId}&username=${window.currentUsername}`);
@@ -632,36 +653,62 @@ async function loadAdminDashboard() {
       document.getElementById('ytStatActive').innerText = data.stats.active;
       document.getElementById('ytStatReports').innerText = data.stats.reportsCount;
 
-      // Şikayetler
       const rList = document.getElementById('adminReportsList');
-      rList.innerHTML = '';
-      if (!data.reports.length) rList.innerHTML = '<div style="font-size:12px;color:#777;">Şikayet yok.</div>';
-      data.reports.forEach(r => {
-        const item = document.createElement('div');
-        item.style = 'border-bottom: 1px solid #333; padding: 6px 0; font-size: 11px;';
-        item.innerHTML = `<strong>Hedef:</strong> ${r.targetNickname} (@${r.targetUsername})<br><strong>Sebep:</strong> ${r.reason}<br><small style="color:#aaa;">${r.date}</small>`;
-        rList.appendChild(item);
-      });
+      if (rList) {
+        rList.innerHTML = '';
+        if (!data.reports || !data.reports.length) {
+          rList.innerHTML = '<div style="font-size:12px;color:#777;">Henüz şikayet bulunmuyor.</div>';
+        } else {
+          data.reports.forEach(r => {
+            const item = document.createElement('div');
+            item.style = 'border-bottom: 1px solid #333; padding: 6px 0; font-size: 11px;';
+            item.innerHTML = `<strong>Hedef:</strong> ${r.targetNickname} (@${r.targetUsername})<br><strong>Sebep:</strong> ${r.reason}<br><small style="color:#aaa;">${r.date}</small>`;
+            rList.appendChild(item);
+          });
+        }
+      }
 
-      // Kullanıcılar
+      const mList = document.getElementById('metaverseReportsList');
+      if (mList && data.worldReports) {
+        mList.innerHTML = '';
+        if (!data.worldReports.length) {
+          mList.innerHTML = '<div style="font-size:12px;color:#777;">Henüz mekan şikayeti bulunmuyor.</div>';
+        } else {
+          data.worldReports.forEach(wr => {
+            const row = document.createElement('div');
+            row.style = 'border-bottom: 1px solid rgba(212,175,55,0.2); padding: 6px 0; font-size: 11px;';
+            row.innerHTML = `
+              <strong>Raporlayan:</strong> ${wr.reporterId}<br>
+              <strong>Sebep:</strong> <span style="color:#ff9f43;">${wr.reason}</span><br>
+              <small style="color:#aaa;">📍 X:${Math.round(wr.location.x)} Z:${Math.round(wr.location.z)} | ${new Date(wr.createdAt).toLocaleTimeString('tr-TR')}</small>
+            `;
+            mList.appendChild(row);
+          });
+        }
+      }
+
       const uList = document.getElementById('adminUserCards');
-      uList.innerHTML = '';
-      data.users.forEach(u => {
-        const card = document.createElement('div');
-        card.className = 'admin-user-row';
-        card.innerHTML = `
-          <div>
-            <strong>${u.nickname}</strong> (${u.role}) - ${u.city}<br>
-            <small style="color:#888;">TG ID: ${u.telegramId}</small>
-          </div>
-          <button class="sm-btn ${u.isBanned ? 'gold' : 'danger'}" onclick="toggleBanUser('${u.telegramId}')">
-            ${u.isBanned ? 'Yasağı Kaldır' : 'Yasakla'}
-          </button>
-        `;
-        uList.appendChild(card);
-      });
+      if (uList) {
+        uList.innerHTML = '';
+        data.users.forEach(u => {
+          const card = document.createElement('div');
+          card.className = 'admin-user-row';
+          card.innerHTML = `
+            <div>
+              <strong>${u.nickname}</strong> (${u.role}) - ${u.city}<br>
+              <small style="color:#888;">TG ID: ${u.telegramId}</small>
+            </div>
+            <button class="sm-btn ${u.isBanned ? 'gold' : 'danger'}" onclick="toggleBanUser('${u.telegramId}')">
+              ${u.isBanned ? 'Yasağı Kaldır' : 'Yasakla'}
+            </button>
+          `;
+          uList.appendChild(card);
+        });
+      }
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error('YT paneli yükleme hatası:', e);
+  }
 }
 
 async function toggleBanUser(targetId) {
