@@ -30,7 +30,7 @@
   --font-body: 'Plus Jakarta Sans', -apple-system, sans-serif;
   --font-display: 'Cinzel', serif;
 
-  /* iOS Spring Timing Eğrileri */
+  /* iOS Spring Timing */
   --spring-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
   --spring-smooth: cubic-bezier(0.16, 1, 0.3, 1);
   --exit-ease: cubic-bezier(0.4, 0, 1, 1);
@@ -70,18 +70,17 @@ html, body {
 }
 
 /* ==========================================================================
-   iOS BALON BÜYÜME (SCALE SPRING) EKRAN GEÇİŞ ANİMASYONLARI
+   EKRAN GEÇİŞ ANİMASYONLARI
    ========================================================================== */
-
 .view-screen {
-  animation: iosSpringEnter 0.48s var(--spring-ease) forwards;
+  animation: iosSpringEnter 0.44s var(--spring-ease) forwards;
   will-change: transform, opacity;
 }
 
 @keyframes iosSpringEnter {
   0% {
     opacity: 0;
-    transform: scale(0.92) translateY(12px);
+    transform: scale(0.93) translateY(12px);
   }
   100% {
     opacity: 1;
@@ -89,25 +88,9 @@ html, body {
   }
 }
 
-.screen-exit {
-  animation: iosSpringExit 0.22s var(--exit-ease) forwards !important;
-}
-
-@keyframes iosSpringExit {
-  0% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(0.94);
-  }
-}
-
 /* ==========================================================================
-   ÜST NAVİGASYON (TINDER LUXURY HEADER)
+   ÜST NAVİGASYON (TINDER HEADER)
    ========================================================================== */
-
 .app-nav {
   display: flex;
   justify-content: space-between;
@@ -115,7 +98,7 @@ html, body {
   padding: 14px 4px 12px 4px;
   position: sticky;
   top: 0;
-  background: rgba(6, 6, 8, 0.82);
+  background: rgba(6, 6, 8, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -165,6 +148,12 @@ html, body {
   transform: scale(0.88);
 }
 
+.nav-btn.metaverse-entry-btn {
+  border-color: var(--gold-primary);
+  background: var(--gold-glass);
+  box-shadow: 0 0 14px var(--gold-glow);
+}
+
 .nav-btn.yt-badge {
   width: auto;
   border-radius: 22px;
@@ -189,12 +178,11 @@ html, body {
 }
 
 /* ==========================================================================
-   FOTOĞRAF IZGARASI (ORGANİK DERİNLİK)
+   FOTOĞRAF IZGARASI
    ========================================================================== */
-
 .screen-header {
   text-align: center;
-  margin: 18px 0 22px 0;
+  margin: 18px 0 20px 0;
 }
 
 .screen-header h1 {
@@ -206,15 +194,14 @@ html, body {
   font-size: 13px;
   color: var(--text-secondary);
   margin-top: 6px;
-  letter-spacing: 0.3px;
 }
 
 .photo-grid {
   display: grid;
   grid-template-columns: 2fr 1fr;
-  grid-template-rows: repeat(3, 90px);
+  grid-template-rows: repeat(3, 88px);
   gap: 10px;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .photo-slot {
@@ -227,8 +214,8 @@ html, body {
   justify-content: center;
   overflow: hidden;
   cursor: pointer;
-  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8), 0 8px 20px rgba(0, 0, 0, 0.4);
-  transition: transform 0.22s var(--spring-ease), border-color 0.2s;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+  transition: transform 0.22s var(--spring-ease);
 }
 
 .photo-slot:active {
@@ -247,7 +234,7 @@ html, body {
 }
 
 .plus-icon {
-  font-size: 28px;
+  font-size: 26px;
   color: var(--gold-primary);
 }
 
@@ -256,7 +243,6 @@ html, body {
   font-size: 11px;
   font-weight: 800;
   color: var(--gold-light);
-  letter-spacing: 1px;
 }
 
 .slot-preview {
@@ -279,9 +265,47 @@ html, body {
 }
 
 /* ==========================================================================
-   FORM KATMANLARI (GLASSMORPHISM)
+   AVATAR STÜDYOSU TETİKLEYİCİ KARTI (PROFİL SAYFASI)
    ========================================================================== */
+.avatar-studio-trigger-btn {
+  width: 100%;
+  background: linear-gradient(135deg, rgba(229, 169, 60, 0.16) 0%, rgba(18, 18, 24, 0.95) 100%);
+  border: 1.5px solid var(--gold-primary);
+  border-radius: 18px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), 0 0 15px rgba(229, 169, 60, 0.15);
+  transition: transform 0.2s var(--spring-ease);
+}
 
+.avatar-studio-trigger-btn:active {
+  transform: scale(0.97);
+}
+
+/* ==========================================================================
+   CANLI 3D LOUNGE HIZLI GİRİŞ BANNERI (KEŞFET SAYFASI)
+   ========================================================================== */
+.lounge-quick-card {
+  background: linear-gradient(135deg, rgba(229, 169, 60, 0.24) 0%, rgba(14, 13, 23, 0.96) 100%);
+  border: 1.5px solid var(--gold-primary);
+  border-radius: 18px;
+  padding: 14px 18px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7), 0 0 20px rgba(229, 169, 60, 0.2);
+  transition: transform 0.2s var(--spring-ease);
+}
+
+.lounge-quick-card:active {
+  transform: scale(0.98);
+}
+
+/* ==========================================================================
+   FORM KATMANLARI
+   ========================================================================== */
 .gold-form {
   display: flex;
   flex-direction: column;
@@ -292,12 +316,6 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-}
-
-.form-row-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
 }
 
 .form-row-3 {
@@ -325,7 +343,6 @@ input, select, textarea {
   font-weight: 500;
   outline: none;
   backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
   transition: all 0.22s ease;
 }
@@ -349,7 +366,7 @@ input:focus, select:focus, textarea:focus {
   letter-spacing: 1.2px;
   cursor: pointer;
   box-shadow: 0 8px 28px var(--gold-glow);
-  transition: transform 0.16s var(--spring-ease), box-shadow 0.2s;
+  transition: transform 0.16s var(--spring-ease);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -357,6 +374,11 @@ input:focus, select:focus, textarea:focus {
 
 .primary-btn:active {
   transform: scale(0.96);
+}
+
+.primary-btn.sm-btn {
+  padding: 8px 14px;
+  font-size: 12px;
 }
 
 .danger-outline-btn {
@@ -369,12 +391,6 @@ input:focus, select:focus, textarea:focus {
   font-weight: 700;
   cursor: pointer;
   margin-top: 6px;
-  transition: transform 0.16s var(--spring-ease), background 0.2s;
-}
-
-.danger-outline-btn:active {
-  transform: scale(0.96);
-  background: rgba(255, 71, 87, 0.15);
 }
 
 .ghost-btn {
@@ -386,11 +402,6 @@ input:focus, select:focus, textarea:focus {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.15s;
-}
-
-.ghost-btn:active {
-  transform: scale(0.94);
 }
 
 .full {
@@ -413,9 +424,8 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* ==========================================================================
-   DOĞRUDAN GÖRÜNEN SEÇENEKLER (CHOICE CHIPS & CARDS)
+   SEÇİM ÇİPLERİ (CHOICE CHIPS & CARDS)
    ========================================================================== */
-
 .chip-grid {
   display: flex;
   flex-wrap: wrap;
@@ -435,7 +445,6 @@ input:focus, select:focus, textarea:focus {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -469,27 +478,9 @@ input:focus, select:focus, textarea:focus {
   padding: 10px 12px;
   text-align: left;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
   display: flex;
   flex-direction: column;
   gap: 2px;
-}
-
-.choice-chip-card:active {
-  transform: scale(0.94);
-}
-
-.chip-card-title {
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 800;
-  color: #ffffff;
-}
-
-.chip-card-sub {
-  font-size: 10px;
-  color: var(--text-secondary);
-  line-height: 1.2;
 }
 
 .choice-chip-card.selected {
@@ -503,22 +494,15 @@ input:focus, select:focus, textarea:focus {
   color: var(--gold-light);
 }
 
-.choice-chip-card.selected .chip-card-sub {
-  color: #ffffff;
-}
-
 /* ==========================================================================
-   TINDER HD KART SAHNESİ & DOKUNMATİK YAY MOTORU
+   TINDER HD KART SAHNESİ
    ========================================================================== */
-
 .daily-pick-banner {
   background: linear-gradient(135deg, rgba(229, 169, 60, 0.2) 0%, rgba(20, 20, 28, 0.95) 100%);
   border: 1px solid var(--gold-primary);
   border-radius: 16px;
   padding: 12px 16px;
   margin-bottom: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-  animation: iosSpringEnter 0.4s var(--spring-ease);
 }
 
 .daily-badge {
@@ -526,7 +510,6 @@ input:focus, select:focus, textarea:focus {
   font-size: 10px;
   font-weight: 900;
   color: var(--gold-light);
-  letter-spacing: 1px;
 }
 
 .daily-content {
@@ -538,10 +521,9 @@ input:focus, select:focus, textarea:focus {
 .card-stage {
   position: relative;
   width: 100%;
-  height: 520px;
+  height: 500px;
   margin-top: 4px;
   perspective: 1200px;
-  touch-action: pan-y;
 }
 
 .tinder-card {
@@ -552,36 +534,13 @@ input:focus, select:focus, textarea:focus {
   overflow: hidden;
   background: var(--surface-card);
   border: 1.5px solid var(--gold-border);
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.85), 0 0 25px rgba(229, 169, 60, 0.15);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.85);
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  will-change: transform, opacity;
-  cursor: grab;
-  touch-action: none;
 }
 
-.tinder-card:active {
-  cursor: grabbing;
-}
-
-.tinder-card.animate-spring {
-  transition: transform 0.46s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
-}
-
-.tinder-card.fly-right {
-  transform: translate3d(125vw, 40px, 0) rotate(38deg) !important;
-  opacity: 0 !important;
-  transition: transform 0.38s ease-in, opacity 0.3s ease-in !important;
-}
-
-.tinder-card.fly-left {
-  transform: translate3d(-125vw, 40px, 0) rotate(-38deg) !important;
-  opacity: 0 !important;
-  transition: transform 0.38s ease-in, opacity 0.3s ease-in !important;
-}
-
-.card-bg-img, .card-img {
+.card-img {
   position: absolute;
   top: 0;
   left: 0;
@@ -591,7 +550,7 @@ input:focus, select:focus, textarea:focus {
   z-index: 1;
 }
 
-.card-gradient-overlay, .card-overlay {
+.card-overlay {
   position: absolute;
   bottom: 0;
   left: 0;
@@ -610,14 +569,12 @@ input:focus, select:focus, textarea:focus {
   font-size: 24px;
   font-weight: 800;
   color: #fff;
-  letter-spacing: -0.4px;
 }
 
 .card-meta {
   font-size: 13px;
   color: var(--gold-light);
   margin-top: 3px;
-  font-weight: 600;
 }
 
 .card-badge-row {
@@ -634,7 +591,6 @@ input:focus, select:focus, textarea:focus {
   font-size: 11px;
   padding: 3px 8px;
   border-radius: 8px;
-  font-weight: 600;
 }
 
 .card-bio {
@@ -656,20 +612,15 @@ input:focus, select:focus, textarea:focus {
   height: 100%;
   color: var(--text-secondary);
   font-size: 14px;
-  text-align: center;
-  padding: 20px;
 }
 
-/* ==========================================================================
-   TINDER AKSİYON BUTONLARI (APPLE BOUNCE)
-   ========================================================================== */
-
+/* Aksiyon Butonları */
 .swipe-actions {
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 28px;
-  margin-top: 20px;
+  margin-top: 18px;
 }
 
 .action-circle {
@@ -680,7 +631,7 @@ input:focus, select:focus, textarea:focus {
   justify-content: center;
   cursor: pointer;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-  transition: transform 0.2s var(--spring-ease), box-shadow 0.2s;
+  transition: transform 0.2s var(--spring-ease);
 }
 
 .action-circle:active {
@@ -695,20 +646,12 @@ input:focus, select:focus, textarea:focus {
   color: var(--pass-color);
 }
 
-.pass-btn:active {
-  box-shadow: 0 0 25px var(--pass-glow);
-}
-
 .like-btn {
   width: 68px;
   height: 68px;
   background: #101c15;
   border: 2px solid var(--like-color);
   color: var(--like-color);
-}
-
-.like-btn:active {
-  box-shadow: 0 0 25px var(--like-glow);
 }
 
 .report-btn-small {
@@ -720,9 +663,8 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* ==========================================================================
-   DM KUTUSU & SOHBET LİSTESİ
+   DM & SOHBET LİSTESİ
    ========================================================================== */
-
 .sub-header {
   display: flex;
   justify-content: space-between;
@@ -736,7 +678,7 @@ input:focus, select:focus, textarea:focus {
   gap: 12px;
 }
 
-.chat-item, .inbox-card {
+.chat-item {
   display: flex;
   align-items: center;
   background: var(--surface);
@@ -744,47 +686,37 @@ input:focus, select:focus, textarea:focus {
   border-radius: 18px;
   padding: 12px 16px;
   cursor: pointer;
-  backdrop-filter: blur(14px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  transition: transform 0.18s var(--spring-ease), background 0.2s;
-}
-
-.chat-item:active, .inbox-card:active {
-  transform: scale(0.97);
-  background: var(--surface-soft);
 }
 
 .chat-avatar-wrap {
-  position: relative;
   margin-right: 14px;
 }
 
-.chat-avatar, .inbox-avatar {
+.chat-avatar {
   width: 52px;
   height: 52px;
   border-radius: 50%;
   object-fit: cover;
   border: 1.5px solid var(--gold-primary);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
-.chat-info, .inbox-info {
+.chat-info {
   flex: 1;
   overflow: hidden;
 }
 
-.chat-name, .inbox-top {
+.chat-name {
   font-size: 15px;
   font-weight: 700;
   color: #fff;
 }
 
-.chat-time, .inbox-time {
+.chat-time {
   font-size: 11px;
   color: var(--text-tertiary);
 }
 
-.chat-snippet, .inbox-snippet {
+.chat-snippet {
   font-size: 13px;
   color: var(--text-secondary);
   white-space: nowrap;
@@ -794,22 +726,14 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* ==========================================================================
-   BİREBİR CHAT ODASI, PARAVAN & BUZ KIRICILAR
+   BİREBİR CHAT ODASI
    ========================================================================== */
-
 .chat-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 10px 0 14px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.icon-back {
-  background: transparent;
-  border: none;
-  color: var(--text-main);
-  cursor: pointer;
 }
 
 .partner-meta {
@@ -838,21 +762,7 @@ input:focus, select:focus, textarea:focus {
   cursor: pointer;
 }
 
-.unmatch-pill {
-  background: rgba(255, 71, 87, 0.15);
-  border: 1px solid var(--pass-color);
-  color: var(--pass-color);
-  border-radius: 50%;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-.report-chat-pill {
+.unmatch-pill, .report-chat-pill {
   background: rgba(255, 71, 87, 0.15);
   border: 1px solid var(--pass-color);
   color: var(--pass-color);
@@ -885,21 +795,6 @@ input:focus, select:focus, textarea:focus {
   cursor: pointer;
 }
 
-.ice-btn:active {
-  transform: scale(0.92);
-}
-
-.paravan-banner {
-  background: linear-gradient(135deg, rgba(229, 169, 60, 0.2), rgba(18, 18, 24, 0.95));
-  border: 1px solid var(--gold-primary);
-  border-radius: 14px;
-  padding: 12px 16px;
-  font-size: 13px;
-  text-align: center;
-  margin: 12px 0;
-  animation: iosSpringEnter 0.38s var(--spring-ease);
-}
-
 .chat-stream {
   height: 420px;
   overflow-y: auto;
@@ -916,7 +811,6 @@ input:focus, select:focus, textarea:focus {
   font-size: 14px;
   line-height: 1.4;
   word-break: break-word;
-  animation: iosSpringEnter 0.3s var(--spring-ease);
 }
 
 .chat-bubble.me {
@@ -925,10 +819,9 @@ input:focus, select:focus, textarea:focus {
   color: #060608;
   font-weight: 600;
   border-bottom-right-radius: 4px;
-  box-shadow: 0 4px 16px var(--gold-glow);
 }
 
-.chat-bubble.them, .chat-bubble.partner {
+.chat-bubble.them {
   align-self: flex-start;
   background: var(--surface-soft);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -960,138 +853,264 @@ input:focus, select:focus, textarea:focus {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: transform 0.15s var(--spring-ease);
-}
-
-.composer-btn:active {
-  transform: scale(0.9);
 }
 
 /* ==========================================================================
-   YÖNETİCİ (YT) PANELİ & ŞİKAYETLER
+   3D METAVERSE & EYLEM BUTONLARI (OTURMA, ÇÖMELME, ÇIKIŞ)
    ========================================================================== */
-
-.stats-cards {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-.stat-pill {
-  background: var(--surface);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-left: 3px solid var(--gold-primary);
-  border-radius: 14px;
-  padding: 12px;
-  text-align: center;
-}
-
-.stat-pill span {
-  display: block;
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-
-.stat-pill strong {
-  display: block;
-  font-size: 19px;
-  color: #fff;
-  margin-top: 2px;
-}
-
-.admin-action-box {
-  background: var(--surface);
-  border: 1px solid var(--gold-border);
-  border-radius: 16px;
-  padding: 14px;
-  margin-bottom: 14px;
-}
-
-.reports-scroll-box {
-  max-height: 180px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.admin-user-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: var(--surface);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  padding: 10px 14px;
-}
-
-.input-inline {
-  display: flex;
-  gap: 6px;
-  margin-top: 6px;
-}
-
-.sm-btn {
-  border: none;
-  border-radius: 10px;
-  padding: 8px 14px;
-  font-size: 12px;
+.metaverse-exit-btn {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: rgba(14, 13, 23, 0.88);
+  border: 1px solid var(--gold-primary);
+  color: var(--gold-light);
   font-weight: 800;
+  font-size: 12px;
+  padding: 8px 14px;
+  border-radius: 20px;
   cursor: pointer;
-  transition: transform 0.15s;
+  z-index: 60;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+  transition: transform 0.2s var(--spring-ease);
 }
 
-.sm-btn:active {
+.metaverse-exit-btn:active {
   transform: scale(0.92);
 }
 
-.sm-btn.gold { background: var(--gold-primary); color: #000; }
-.sm-btn.danger { background: var(--pass-color); color: #fff; }
-
-.admin-tags-list {
-  font-size: 11px;
-  color: var(--text-secondary);
-  margin-top: 8px;
-  line-height: 1.4;
-}
-
-.search-bar input {
-  margin-bottom: 10px;
-}
-
-.admin-scroll-list {
+.avatar-action-bar {
+  position: absolute;
+  bottom: 35px;
+  left: 155px;
   display: flex;
-  flex-direction: column;
   gap: 10px;
-  max-height: 480px;
-  overflow-y: auto;
+  z-index: 50;
+}
+
+.meta-action-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(14, 13, 23, 0.88);
+  border: 1.5px solid var(--gold-primary);
+  color: #fff;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+  transition: transform 0.2s var(--spring-ease), background 0.2s;
+}
+
+.meta-action-circle:active, .meta-action-circle.active {
+  transform: scale(0.9);
+  background: var(--gold-primary);
+  color: #000;
+}
+
+.meta-round-btn {
+  background: #d4af37;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.meta-round-btn.danger {
+  background: rgba(255, 71, 87, 0.88);
+  color: #fff;
 }
 
 /* ==========================================================================
-   iOS BALON MODAL & HOŞ GELDİNİZ ONAY EKRANI (WELCOME SHEET)
+   YT MEKAN TASARIM ÇEKMECESİ (DRAWER)
    ========================================================================== */
+.yt-floating-edit-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: linear-gradient(135deg, #6a11cb, #2575fc);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  font-weight: 800;
+  font-size: 12px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  z-index: 60;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+}
 
+.yt-item-drawer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  max-height: 280px;
+  background: rgba(14, 13, 23, 0.96);
+  border-top: 2px solid var(--gold-primary);
+  border-radius: 24px 24px 0 0;
+  z-index: 80;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  backdrop-filter: blur(16px);
+  animation: iosSheetSlideUp 0.35s var(--spring-ease) forwards;
+}
+
+.drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.drawer-theme-pill {
+  background: #252436;
+  border: 1px solid var(--gold-primary);
+  color: var(--gold-light);
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.drawer-scroll-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 10px;
+  overflow-y: auto;
+  max-height: 200px;
+  padding-bottom: 10px;
+}
+
+.drawer-item-card {
+  background: #1c1a29;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 8px 4px;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.18s var(--spring-ease);
+}
+
+.drawer-item-card:active {
+  transform: scale(0.92);
+  border-color: var(--gold-primary);
+}
+
+.drawer-item-icon {
+  font-size: 22px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.drawer-item-name {
+  font-size: 10px;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ==========================================================================
+   SIMS / SNAPCHAT TARZI CANLI AVATAR STÜDYOSU (MODAL)
+   ========================================================================== */
+.avatar-studio-sheet {
+  max-height: 94vh;
+  border: 1.5px solid var(--gold-primary);
+  background: #0d0c16;
+  border-radius: 28px 28px 0 0;
+  padding: 20px 18px;
+  display: flex;
+  flex-direction: column;
+}
+
+.avatar-preview-box {
+  width: 100%;
+  height: 220px;
+  background: radial-gradient(circle, #252238 0%, #0a0914 100%);
+  border-radius: 16px;
+  margin: 10px 0;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(229, 169, 60, 0.3);
+}
+
+.preview-hint {
+  position: absolute;
+  bottom: 8px;
+  right: 10px;
+  font-size: 10px;
+  color: #a0a0b0;
+}
+
+.avatar-options-scroller {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.customizer-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.section-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--gold-primary);
+  letter-spacing: 0.8px;
+}
+
+.swatch-row {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 4px 2px;
+}
+
+.skin-tone-swatch {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.2s var(--spring-ease), border-color 0.2s;
+}
+
+.skin-tone-swatch.active {
+  transform: scale(1.15);
+  border-color: var(--gold-light);
+  box-shadow: 0 0 14px var(--gold-glow);
+}
+
+/* ==========================================================================
+   MODAL GENEL KATMANLARI
+   ========================================================================== */
 .modal-backdrop {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
+  inset: 0;
   background: rgba(0, 0, 0, 0.82);
   backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   display: flex;
   align-items: flex-end;
   justify-content: center;
   z-index: 999;
-  animation: backdropFadeIn 0.25s ease-out;
-}
-
-@keyframes backdropFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }
 
 .modal-sheet {
@@ -1101,10 +1120,6 @@ input:focus, select:focus, textarea:focus {
   width: 100%;
   max-width: 440px;
   padding: 24px 22px 34px 22px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  box-shadow: 0 -15px 50px rgba(0, 0, 0, 0.9);
   animation: iosSheetSlideUp 0.44s var(--spring-ease) forwards;
 }
 
@@ -1130,12 +1145,6 @@ input:focus, select:focus, textarea:focus {
 .sheet-actions {
   display: flex;
   gap: 10px;
-  margin-top: 8px;
-}
-
-.welcome-modal-card {
-  text-align: center;
-  padding: 10px 0;
 }
 
 .welcome-seal {
@@ -1150,13 +1159,6 @@ input:focus, select:focus, textarea:focus {
   font-size: 38px;
   margin: 0 auto 16px auto;
   box-shadow: 0 0 30px var(--gold-glow);
-  animation: sealPop 0.6s var(--spring-ease);
-}
-
-@keyframes sealPop {
-  0% { transform: scale(0) rotate(-45deg); opacity: 0; }
-  70% { transform: scale(1.15) rotate(10deg); }
-  100% { transform: scale(1) rotate(0deg); opacity: 1; }
 }
 
 .welcome-title {
@@ -1171,64 +1173,4 @@ input:focus, select:focus, textarea:focus {
   color: var(--text-secondary);
   line-height: 1.5;
   margin-bottom: 20px;
-}
-
-/* ==========================================================================
-   OLİMPOS AVATAR STÜDYOSU & 3D METAVERSE ÖZEL CSS STİLLERİ
-   ========================================================================== */
-
-#avatarCustomizerModal .modal-sheet {
-  border: 1.5px solid var(--gold-primary);
-  border-radius: 26px 26px 0 0;
-  background: #0e0d17;
-  box-shadow: 0 -15px 50px rgba(0, 0, 0, 0.95), 0 0 30px rgba(229, 169, 60, 0.2);
-}
-
-#avatar-preview-canvas {
-  width: 100%;
-  height: 100%;
-  cursor: grab;
-}
-
-#avatar-preview-canvas:active {
-  cursor: grabbing;
-}
-
-/* Ten Tonu ve Renk Çemberleri */
-.skin-tone-swatch {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: transform 0.2s var(--spring-ease), border-color 0.2s;
-}
-
-.skin-tone-swatch:active,
-.skin-tone-swatch.active {
-  transform: scale(1.15);
-  border-color: var(--gold-light);
-  box-shadow: 0 0 12px var(--gold-glow);
-}
-
-/* 3D Metaverse Joystick & Arayüz Katmanları */
-#metaverseView {
-  user-select: none;
-  -webkit-user-select: none;
-  touch-action: none;
-}
-
-#joystick-zone {
-  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.65));
-}
-
-#world-chat-input:focus {
-  border-color: var(--gold-primary);
-  box-shadow: 0 0 16px var(--gold-glow);
-}
-
-/* YT Hayalet Modu Kontrol Barı */
-#admin-konsept-bar {
-  animation: iosSpringEnter 0.4s var(--spring-ease);
 }
