@@ -1,5 +1,5 @@
 // ==========================================================================
-// GOLDENMATCH - 3D METAVERSE İNSANSI ANİMASYON, AVATAR & MEKAN MOTORU
+// GOLDENMATCH - ULTRA-HD PARAMETRİK MEKAN & STİLİZE İNSANSI AVATAR MOTORU
 // ==========================================================================
 
 let scene, camera, renderer, player, joystick;
@@ -18,24 +18,25 @@ let isMoving = false;
 // Yönetici & Hayalet Modu
 let isGhostMode = false;
 let isAdminEditor = false;
-let currentVenueTheme = 'ancient_greek';
+let currentVenueTheme = 'golden_parametric';
 
-// Kullanıcı Katmanlı Avatar Konfigürasyonu
+// Kullanıcı Katmanlı & Stilize Avatar Konfigürasyonu (Görsel Referanslı)
 let myAvatarConfig = {
-  gender: 'male',
-  skinColor: '#f0c7a1',
-  eyeColor: '#2980b9',
+  gender: 'female',
+  skinColor: '#f7d2b7',
+  eyeColor: '#9b59b6',
   eyeShape: 'almond',
-  hairStyle: 'greek_curls',
-  hairColor: '#4a2f1b',
+  hairStyle: 'twin_pigtails',
+  hairColor: '#00d2d3',
   hat: 'none',
-  glasses: 'none',
-  necklace: 'none',
-  outfitTop: 'greek_tunic',
-  outfitTopColor: '#ffffff',
-  outfitBottom: 'classic_pants',
-  outfitBottomColor: '#1a1a24',
-  shoes: 'gladiator_sandals'
+  glasses: 'cyber_sunglasses',
+  necklace: 'heavy_chain',
+  outfitTop: 'bandage_corset',
+  outfitTopColor: '#f0f0f5',
+  outfitBottom: 'strapped_shorts',
+  outfitBottomColor: '#f0f0f5',
+  shoes: 'laced_boots',
+  shoesColor: '#ffffff'
 };
 
 try {
@@ -44,7 +45,7 @@ try {
 } catch (e) {}
 
 // ==========================================================================
-// 1. SAHNE VE ATMOSFER (ANTİK YUNAN OLİMPOS MİMARİSİ)
+// 1. SAHNE VE PARAMETRİK DALGALI MEKAN KURULUMU
 // ==========================================================================
 function initMetaverse() {
   const container = document.getElementById('canvas-container');
@@ -56,40 +57,38 @@ function initMetaverse() {
   }
 
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x090a14);
-  scene.fog = new THREE.FogExp2(0x090a14, 0.024);
+  scene.background = new THREE.Color(0x35658e);
+  scene.fog = new THREE.FogExp2(0x35658e, 0.015);
 
   camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
 
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setSize(container.clientWidth, container.clientHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.15;
+  renderer.toneMappingExposure = 1.25;
   container.innerHTML = '';
   container.appendChild(renderer.domElement);
 
-  // Işıklandırma
-  const ambientLight = new THREE.AmbientLight(0xffeedd, 0.7);
-  scene.add(ambientLight);
+  // Doğal Gün Işığı & Amfitiyatro Aydınlatması
+  const hemiLight = new THREE.HemisphereLight(0xffffff, 0xd47a88, 0.85);
+  scene.add(hemiLight);
 
-  const moonLight = new THREE.DirectionalLight(0x8fa3bf, 1.3);
-  moonLight.position.set(25, 45, 20);
-  moonLight.castShadow = true;
-  moonLight.shadow.mapSize.width = 1024;
-  moonLight.shadow.mapSize.height = 1024;
-  scene.add(moonLight);
+  const sunLight = new THREE.DirectionalLight(0xfff7ea, 1.8);
+  sunLight.position.set(30, 60, 25);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.width = 2048;
+  sunLight.shadow.mapSize.height = 2048;
+  sunLight.shadow.bias = -0.0001;
+  scene.add(sunLight);
 
-  const goldCenterSpot = new THREE.SpotLight(0xd4af37, 3.2, 55, Math.PI / 3, 0.45);
-  goldCenterSpot.position.set(0, 19, 0);
-  goldCenterSpot.castShadow = true;
-  scene.add(goldCenterSpot);
+  // Parametrik Kademeli Mekanın İnşası
+  buildParametricGoldenAuditorium();
 
-  buildAncientGreekLounge();
-
-  player = buildHumanoidAvatarMesh(myAvatarConfig);
+  // Oyuncu Avatarının Yüklenmesi
+  player = buildStylizedAvatarMesh(myAvatarConfig);
   scene.add(player);
 
   setupJoystick();
@@ -102,118 +101,128 @@ function initMetaverse() {
   animate();
 }
 
-function buildAncientGreekLounge() {
-  // Mermer Zemin
-  const floorGeo = new THREE.PlaneGeometry(100, 100);
-  const floorMat = new THREE.MeshStandardMaterial({
-    color: 0x202128,
-    roughness: 0.28,
-    metalness: 0.35
-  });
-  const floor = new THREE.Mesh(floorGeo, floorMat);
-  floor.rotation.x = -Math.PI / 2;
-  floor.receiveShadow = true;
-  scene.add(floor);
+function buildParametricGoldenAuditorium() {
+  const pinkMat = new THREE.MeshStandardMaterial({ color: 0xdf5d78, roughness: 0.35, metalness: 0.05 });
+  const whiteMat = new THREE.MeshStandardMaterial({ color: 0xfdfdfd, roughness: 0.25, metalness: 0.1 });
+  const goldSculptMat = new THREE.MeshStandardMaterial({ color: 0xe5a93c, metalness: 0.95, roughness: 0.15 });
 
-  // Mermer Dorik Sütunlar
-  const pillarMat = new THREE.MeshStandardMaterial({ color: 0xdfdfdf, roughness: 0.22 });
-  const goldMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.15 });
+  // 1. Kademeli Amfitiyatro Terasları
+  for (let i = 0; i < 7; i++) {
+    const radius = 32 - i * 3.8;
+    const height = 0.5;
+    const ringGeo = new THREE.CylinderGeometry(radius, radius + 1.2, height, 48);
+    const stepMesh = new THREE.Mesh(ringGeo, pinkMat);
+    stepMesh.position.set(0, (6 - i) * height - 2.5, 0);
+    stepMesh.receiveShadow = true;
+    stepMesh.castShadow = true;
+    scene.add(stepMesh);
+  }
 
-  const coords = [
-    [-15, -15], [15, -15], [-15, 15], [15, 15],
-    [-8, -19], [8, -19], [-19, 0], [19, 0]
-  ];
+  // Zemin Tabanı
+  const centerFloor = new THREE.Mesh(new THREE.CylinderGeometry(8, 8, 0.6, 32), pinkMat);
+  centerFloor.position.set(0, -2.6, 0);
+  centerFloor.receiveShadow = true;
+  scene.add(centerFloor);
 
-  coords.forEach(([px, pz]) => {
-    const colGroup = new THREE.Group();
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.5, 0.7, 20), pillarMat);
-    base.position.y = 0.35;
-    colGroup.add(base);
+  // 2. Tavandaki Organik Parametrik Dalga Şeritleri
+  for (let j = 0; j < 12; j++) {
+    const ribbonGroup = new THREE.Group();
+    const curveRadius = 14 + j * 2.2;
+    const tubeGeo = new THREE.TorusGeometry(curveRadius, 0.45, 12, 64, Math.PI * 1.4);
+    const ribbonMat = j % 2 === 0 ? whiteMat : pinkMat;
+    const ribbon = new THREE.Mesh(tubeGeo, ribbonMat);
+    ribbon.rotation.x = Math.PI / 2 + (j * 0.06);
+    ribbon.rotation.y = (j * 0.18);
+    ribbon.position.set(Math.sin(j) * 3, 14 + (j * 0.9), Math.cos(j) * 2);
+    ribbon.castShadow = true;
+    ribbonGroup.add(ribbon);
+    scene.add(ribbonGroup);
+  }
 
-    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.95, 10.5, 24), pillarMat);
-    shaft.position.y = 5.6;
-    shaft.castShadow = true;
-    shaft.receiveShadow = true;
-    colGroup.add(shaft);
+  // 3. Altın Sarmal Heykeller
+  spawnGoldenSpiralSculpture(16, 1.2, -6, goldSculptMat);
+  spawnGoldenSpiralSculpture(19, 1.6, -10, goldSculptMat);
 
-    const cap = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.8, 2.2), goldMat);
-    cap.position.y = 11;
-    colGroup.add(cap);
+  // 4. Arka Fütüristik Ekran Paneli & Bar Bankosu
+  const screenMat = new THREE.MeshBasicMaterial({ color: 0x111116 });
+  const mainScreen = new THREE.Mesh(new THREE.BoxGeometry(22, 6, 0.4), screenMat);
+  mainScreen.position.set(-10, 4, -20);
+  scene.add(mainScreen);
 
-    colGroup.position.set(px, 0, pz);
-    scene.add(colGroup);
-  });
-
-  // U-Bar Tezgahı
-  const barGroup = new THREE.Group();
-  const marbleBarMat = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.15, metalness: 0.1 });
-  const woodTopMat = new THREE.MeshStandardMaterial({ color: 0x3d2314, roughness: 0.35 });
-
-  const frontBar = new THREE.Mesh(new THREE.BoxGeometry(17, 2.6, 2.6), marbleBarMat);
-  frontBar.position.set(0, 1.3, -13.5);
-  frontBar.castShadow = true;
-  frontBar.receiveShadow = true;
-  barGroup.add(frontBar);
-
-  const topWood = new THREE.Mesh(new THREE.BoxGeometry(17.4, 0.25, 3.0), woodTopMat);
-  topWood.position.set(0, 2.65, -13.5);
-  barGroup.add(topWood);
-
-  scene.add(barGroup);
-
-  // Meşaleler
-  spawnTorchFire(-8, 3.8, -14);
-  spawnTorchFire(8, 3.8, -14);
-
-  // Sabit Amforalar
-  renderItemMesh('ancient_urn', { x: -6, y: 0.8, z: -11.5 });
-  renderItemMesh('ancient_urn', { x: 6, y: 0.8, z: -11.5 });
+  buildModernCurvedBar();
 }
 
-function spawnTorchFire(x, y, z) {
-  const torchLight = new THREE.PointLight(0xff7a00, 3.4, 20, 1.4);
-  torchLight.position.set(x, y, z);
-  scene.add(torchLight);
+function spawnGoldenSpiralSculpture(x, y, z, mat) {
+  const group = new THREE.Group();
+  for (let i = 0; i < 18; i++) {
+    const geom = new THREE.TorusGeometry(1.6 - (i * 0.04), 0.14, 12, 32, Math.PI * 1.2);
+    const ring = new THREE.Mesh(geom, mat);
+    ring.rotation.x = Math.PI / 3;
+    ring.rotation.z = i * 0.38;
+    ring.position.y = i * 0.55;
+    ring.castShadow = true;
+    group.add(ring);
+  }
+  group.position.set(x, y, z);
+  scene.add(group);
+}
 
-  const flame = new THREE.Mesh(
-    new THREE.SphereGeometry(0.35, 12, 12),
-    new THREE.MeshBasicMaterial({ color: 0xffa033 })
-  );
-  flame.position.set(x, y, z);
-  scene.add(flame);
+function buildModernCurvedBar() {
+  const barMat = new THREE.MeshStandardMaterial({ color: 0x1e1e24, roughness: 0.2 });
+  const goldTrim = new THREE.MeshStandardMaterial({ color: 0xe5a93c, metalness: 0.95, roughness: 0.1 });
+
+  const barMesh = new THREE.Mesh(new THREE.CylinderGeometry(9, 9, 2.4, 32, 1, false, 0, Math.PI), barMat);
+  barMesh.rotation.y = -Math.PI / 2;
+  barMesh.position.set(0, 1.2, -12);
+  barMesh.castShadow = true;
+  barMesh.receiveShadow = true;
+  scene.add(barMesh);
+
+  const trim = new THREE.Mesh(new THREE.CylinderGeometry(9.2, 9.2, 0.2, 32, 1, false, 0, Math.PI), goldTrim);
+  trim.rotation.y = -Math.PI / 2;
+  trim.position.set(0, 2.4, -12);
+  scene.add(trim);
 }
 
 // ==========================================================================
-// 2. İNSANSI EKLEMLİ AVATAR & KATMANLI KIYAFET DONATIMI
+// 2. STİLİZE İNSANSI AVATAR MİMARİSİ (CYBER-GLAM / GEN-Z)
 // ==========================================================================
-function buildHumanoidAvatarMesh(cfg) {
+function buildStylizedAvatarMesh(cfg) {
   const root = new THREE.Group();
   const isFemale = cfg.gender === 'female';
 
-  const skinMat = new THREE.MeshStandardMaterial({ color: cfg.skinColor || '#f0c7a1', roughness: 0.55 });
-  const eyeMat = new THREE.MeshStandardMaterial({ color: cfg.eyeColor || '#2980b9', roughness: 0.2 });
-  const hairMat = new THREE.MeshStandardMaterial({ color: cfg.hairColor || '#4a2f1b', roughness: 0.5 });
-  const topMat = new THREE.MeshStandardMaterial({ color: cfg.outfitTopColor || '#ffffff', roughness: 0.45 });
-  const bottomMat = new THREE.MeshStandardMaterial({ color: cfg.outfitBottomColor || '#1a1a24', roughness: 0.45 });
-  const shoesMat = new THREE.MeshStandardMaterial({ color: '#2a1a10', roughness: 0.55 });
-  const goldMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.15 });
+  const skinMat = new THREE.MeshStandardMaterial({ color: cfg.skinColor || '#f7d2b7', roughness: 0.55 });
+  const eyeMat = new THREE.MeshStandardMaterial({ color: cfg.eyeColor || '#9b59b6', roughness: 0.1 });
+  const hairMat = new THREE.MeshStandardMaterial({ color: cfg.hairColor || '#00d2d3', roughness: 0.35, metalness: 0.1 });
+  const topMat = new THREE.MeshStandardMaterial({ color: cfg.outfitTopColor || '#ffffff', roughness: 0.4 });
+  const bottomMat = new THREE.MeshStandardMaterial({ color: cfg.outfitBottomColor || '#1a1a24', roughness: 0.4 });
+  const goldMat = new THREE.MeshStandardMaterial({ color: 0xe5a93c, metalness: 0.95, roughness: 0.15 });
+  const bootsMat = new THREE.MeshStandardMaterial({ color: cfg.shoesColor || '#ffffff', roughness: 0.3 });
 
-  // 1. Pelvis (Kök Eklem)
+  // 1. Pelvis (Kök)
   const pelvis = new THREE.Group();
-  pelvis.position.y = 1.8;
+  pelvis.position.y = 1.85;
   root.add(pelvis);
 
-  // 2. Gövde & Üst Giyim Katmanı
-  const torsoWidth = isFemale ? 0.72 : 0.92;
-  const torsoChest = isFemale ? 0.82 : 1.05;
-  const torsoGeo = new THREE.CylinderGeometry(torsoChest * 0.45, torsoWidth * 0.4, 1.3, 16);
-  const torso = new THREE.Mesh(torsoGeo, cfg.outfitTop !== 'none' ? topMat : skinMat);
+  // 2. Gövde & Korse Katmanı
+  const torsoWidth = isFemale ? 0.68 : 0.92;
+  const chestWidth = isFemale ? 0.82 : 1.08;
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(chestWidth * 0.45, torsoWidth * 0.4, 1.3, 20), cfg.outfitTop !== 'none' ? topMat : skinMat);
   torso.position.y = 0.65;
   torso.castShadow = true;
   pelvis.add(torso);
 
-  // 3. Boyun & Baş
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.35, 12), skinMat);
+  if (cfg.outfitTop === 'bandage_corset') {
+    for (let b = 0; b < 3; b++) {
+      const strap = new THREE.Mesh(new THREE.TorusGeometry(0.36 + (b * 0.02), 0.02, 8, 24), goldMat);
+      strap.rotation.x = Math.PI / 2.3 + (b * 0.08);
+      strap.position.set(0, 0.45 + (b * 0.22), 0);
+      pelvis.add(strap);
+    }
+  }
+
+  // 3. Boyun, Baş ve Yüz Detayları
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.35, 16), skinMat);
   neck.position.y = 1.45;
   pelvis.add(neck);
 
@@ -221,25 +230,29 @@ function buildHumanoidAvatarMesh(cfg) {
   headGroup.position.y = 1.85;
   pelvis.add(headGroup);
 
-  const headGeo = new THREE.SphereGeometry(0.38, 20, 20);
-  headGeo.scale(1, 1.18, 1.08);
+  const headGeo = new THREE.SphereGeometry(0.38, 24, 24);
+  headGeo.scale(1, 1.2, 1.08);
   const head = new THREE.Mesh(headGeo, skinMat);
   head.castShadow = true;
   headGroup.add(head);
 
-  // Gözler
+  // Çekik Gözler
   const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.065, 12, 12), eyeMat);
-  eyeL.position.set(-0.13, 0.05, 0.34);
+  eyeL.position.set(-0.13, 0.06, 0.34);
   headGroup.add(eyeL);
 
   const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.065, 12, 12), eyeMat);
-  eyeR.position.set(0.13, 0.05, 0.34);
+  eyeR.position.set(0.13, 0.06, 0.34);
   headGroup.add(eyeR);
 
-  // Saç Modeli
-  if (cfg.hairStyle && cfg.hairStyle !== 'none') {
-    attachHairStyle(headGroup, cfg.hairStyle, hairMat);
-  }
+  // Yüz Dövmesi / Makyaj Şeridi
+  const faceDecal = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.015, 8, 16, Math.PI), new THREE.MeshBasicMaterial({ color: 0x9b59b6 }));
+  faceDecal.position.set(0.16, 0.12, 0.33);
+  faceDecal.rotation.z = -Math.PI / 4;
+  headGroup.add(faceDecal);
+
+  // Saç Modelleri
+  attachStylizedHair(headGroup, cfg.hairStyle, hairMat);
 
   // Şapka / Taç Katmanı
   if (cfg.hat === 'gold_wreath') {
@@ -247,101 +260,82 @@ function buildHumanoidAvatarMesh(cfg) {
     wreath.rotation.x = Math.PI / 2.2;
     wreath.position.set(0, 0.22, 0.02);
     headGroup.add(wreath);
-  } else if (cfg.hat === 'party_cap') {
-    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.6, 16), topMat);
-    cap.position.set(0, 0.55, 0);
-    headGroup.add(cap);
-  } else if (cfg.hat === 'fedora') {
-    const fedora = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.58, 0.28, 16), bottomMat);
-    fedora.position.set(0, 0.36, 0);
-    headGroup.add(fedora);
   }
 
-  // Gözlük Katmanı
-  if (cfg.glasses === 'sunglasses_dark') {
-    const glasses = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.12, 0.14), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1 }));
+  // Gözlükler
+  if (cfg.glasses === 'cyber_sunglasses') {
+    const glasses = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.14, 0.16), new THREE.MeshStandardMaterial({ color: 0x111116, roughness: 0.1 }));
     glasses.position.set(0, 0.06, 0.37);
     headGroup.add(glasses);
-  } else if (cfg.glasses === 'aviator_gold') {
-    const glasses = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.13, 0.12), goldMat);
-    glasses.position.set(0, 0.06, 0.37);
-    headGroup.add(glasses);
-  } else if (cfg.glasses === 'cyber_visor') {
-    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.14, 0.2), new THREE.MeshBasicMaterial({ color: 0x00f0ff }));
-    visor.position.set(0, 0.06, 0.37);
-    headGroup.add(visor);
   }
 
-  // Kolye / Gerdanlık Katmanı
-  if (cfg.necklace === 'gold_chain') {
-    const chain = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.035, 12, 24), goldMat);
-    chain.rotation.x = Math.PI / 2.4;
-    chain.position.set(0, 1.35, 0.08);
+  // Kolye
+  if (cfg.necklace === 'heavy_chain') {
+    const chain = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.04, 12, 28), goldMat);
+    chain.rotation.x = Math.PI / 2.3;
+    chain.position.set(0, 1.34, 0.08);
     pelvis.add(chain);
-  } else if (cfg.necklace === 'pearl_choker') {
-    const choker = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.03, 12, 24), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 }));
-    choker.rotation.x = Math.PI / 2.4;
-    choker.position.set(0, 1.38, 0.06);
-    pelvis.add(choker);
   }
 
-  // 4. Eklemli Kollar (Omuz & Dirsek)
-  const armOffset = isFemale ? 0.46 : 0.60;
+  // 4. Kollar
+  const armOffset = isFemale ? 0.45 : 0.60;
 
   const leftArm = new THREE.Group();
   leftArm.position.set(-armOffset, 1.25, 0);
   pelvis.add(leftArm);
-  const leftBicep = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.11, 0.65, 12), cfg.outfitTop !== 'none' ? topMat : skinMat);
+  const leftBicep = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.1, 0.65, 14), skinMat);
   leftBicep.position.y = -0.32;
   leftArm.add(leftBicep);
-  const leftForearm = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.09, 0.65, 12), skinMat);
+  const leftForearm = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.65, 14), topMat);
   leftForearm.position.y = -0.85;
   leftArm.add(leftForearm);
 
   const rightArm = new THREE.Group();
   rightArm.position.set(armOffset, 1.25, 0);
   pelvis.add(rightArm);
-  const rightBicep = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.11, 0.65, 12), cfg.outfitTop !== 'none' ? topMat : skinMat);
+  const rightBicep = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.1, 0.65, 14), skinMat);
   rightBicep.position.y = -0.32;
   rightArm.add(rightBicep);
-  const rightForearm = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.09, 0.65, 12), skinMat);
+  const rightForearm = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.65, 14), topMat);
   rightForearm.position.y = -0.85;
   rightArm.add(rightForearm);
 
-  // 5. Eklemli Bacaklar (Kalça & Diz)
+  // 5. Bacaklar & Yüksek Platform Çizmeler
   const legOffset = isFemale ? 0.21 : 0.27;
 
   const leftLeg = new THREE.Group();
   leftLeg.position.set(-legOffset, 0, 0);
   pelvis.add(leftLeg);
-  const leftThigh = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.14, 0.85, 12), cfg.outfitBottom !== 'none' ? bottomMat : skinMat);
+  const leftThigh = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.14, 0.85, 14), cfg.outfitBottom !== 'none' ? bottomMat : skinMat);
   leftThigh.position.y = -0.42;
   leftThigh.castShadow = true;
   leftLeg.add(leftThigh);
-  const leftShin = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.11, 0.85, 12), skinMat);
-  leftShin.position.y = -1.18;
-  leftLeg.add(leftShin);
-  if (cfg.shoes !== 'none') {
-    const leftFoot = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.14, 0.42), shoesMat);
-    leftFoot.position.set(0, -1.65, 0.1);
-    leftLeg.add(leftFoot);
-  }
+  
+  const leftBoot = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.14, 1.15, 14), bootsMat);
+  leftBoot.position.y = -1.15;
+  leftBoot.castShadow = true;
+  leftLeg.add(leftBoot);
+
+  const leftFoot = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.18, 0.44), bootsMat);
+  leftFoot.position.set(0, -1.68, 0.1);
+  leftLeg.add(leftFoot);
 
   const rightLeg = new THREE.Group();
   rightLeg.position.set(legOffset, 0, 0);
   pelvis.add(rightLeg);
-  const rightThigh = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.14, 0.85, 12), cfg.outfitBottom !== 'none' ? bottomMat : skinMat);
+  const rightThigh = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.14, 0.85, 14), cfg.outfitBottom !== 'none' ? bottomMat : skinMat);
   rightThigh.position.y = -0.42;
   rightThigh.castShadow = true;
   rightLeg.add(rightThigh);
-  const rightShin = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.11, 0.85, 12), skinMat);
-  rightShin.position.y = -1.18;
-  rightLeg.add(rightShin);
-  if (cfg.shoes !== 'none') {
-    const rightFoot = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.14, 0.42), shoesMat);
-    rightFoot.position.set(0, -1.65, 0.1);
-    rightLeg.add(rightFoot);
-  }
+
+  const rightBoot = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.14, 1.15, 14), bootsMat);
+  rightBoot.position.y = -1.15;
+  rightBoot.castShadow = true;
+  rightLeg.add(rightBoot);
+
+  const rightFoot = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.18, 0.44), bootsMat);
+  rightFoot.position.set(0, -1.68, 0.1);
+  rightLeg.add(rightFoot);
 
   root.userData.joints = {
     pelvis,
@@ -356,39 +350,46 @@ function buildHumanoidAvatarMesh(cfg) {
   return root;
 }
 
-function attachHairStyle(headGroup, style, hairMat) {
-  if (style === 'greek_curls') {
-    const curls = new THREE.Group();
-    for (let i = 0; i < 9; i++) {
-      const curl = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 8), hairMat);
-      const angle = (i / 9) * Math.PI * 1.6 - Math.PI * 0.8;
-      curl.position.set(Math.sin(angle) * 0.32, 0.28 + Math.random() * 0.08, Math.cos(angle) * 0.28);
-      curls.add(curl);
-    }
-    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.39, 16, 16), hairMat);
-    cap.position.set(0, 0.1, -0.05);
-    curls.add(cap);
-    headGroup.add(curls);
-  } else if (style === 'long_braid') {
-    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 16), hairMat);
-    cap.position.set(0, 0.1, -0.06);
+function attachStylizedHair(headGroup, style, hairMat) {
+  if (style === 'twin_pigtails') {
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.41, 16, 16), hairMat);
+    cap.position.set(0, 0.12, -0.04);
     headGroup.add(cap);
-    const braid = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.06, 1.4, 12), hairMat);
-    braid.position.set(0, -0.5, -0.32);
-    headGroup.add(braid);
-  } else if (style === 'bob') {
-    const bob = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.46, 0.6, 16), hairMat);
-    bob.position.set(0, 0.12, -0.04);
-    headGroup.add(bob);
+
+    const bangs = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.16, 0.1), hairMat);
+    bangs.position.set(0, 0.32, 0.33);
+    headGroup.add(bangs);
+
+    const tailL = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.08, 1.6, 12), hairMat);
+    tailL.position.set(-0.48, 0.65, -0.15);
+    tailL.rotation.z = Math.PI / 3.8;
+    headGroup.add(tailL);
+
+    const tailR = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.08, 1.6, 12), hairMat);
+    tailR.position.set(0.48, 0.65, -0.15);
+    tailR.rotation.z = -Math.PI / 3.8;
+    headGroup.add(tailR);
+  } else if (style === 'dreadlocks') {
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 16), hairMat);
+    cap.position.set(0, 0.12, -0.04);
+    headGroup.add(cap);
+
+    for (let d = 0; d < 12; d++) {
+      const lock = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.8, 8), hairMat);
+      const angle = (d / 12) * Math.PI * 2;
+      lock.position.set(Math.sin(angle) * 0.35, 0.1 - (d % 3 * 0.1), Math.cos(angle) * 0.35);
+      lock.rotation.z = Math.sin(angle) * 0.4;
+      headGroup.add(lock);
+    }
   } else {
     const shortHair = new THREE.Mesh(new THREE.SphereGeometry(0.41, 16, 16), hairMat);
-    shortHair.position.set(0, 0.15, -0.04);
+    shortHair.position.set(0, 0.14, -0.04);
     headGroup.add(shortHair);
   }
 }
 
 // ==========================================================================
-// 3. ANİMASYON DÖNGÜSÜ & İNSANSI EYLEMLER (YÜRÜME, OTURMA, ÇÖMELME)
+// 3. ANİMASYON DÖNGÜSÜ & İNSANSI EYLEMLER
 // ==========================================================================
 let lastSendTime = 0;
 
@@ -397,10 +398,9 @@ function animate() {
 
   const joints = player?.userData?.joints;
 
-  // 1. Hareket Halinde (Yürüme)
   if (player && (moveVector.x !== 0 || moveVector.y !== 0)) {
     currentActionState = 'walk';
-    const speed = 0.13;
+    const speed = 0.14;
     player.position.x += moveVector.x * speed;
     player.position.z -= moveVector.y * speed;
 
@@ -411,9 +411,9 @@ function animate() {
     if (joints) {
       joints.leftLeg.rotation.x = Math.sin(walkCycle) * 0.65;
       joints.rightLeg.rotation.x = -Math.sin(walkCycle) * 0.65;
-      joints.leftArm.rotation.x = -Math.sin(walkCycle) * 0.5;
-      joints.rightArm.rotation.x = Math.sin(walkCycle) * 0.5;
-      joints.pelvis.position.y = 1.8 + Math.abs(Math.sin(walkCycle * 2)) * 0.06;
+      joints.leftArm.rotation.x = -Math.sin(walkCycle) * 0.48;
+      joints.rightArm.rotation.x = Math.sin(walkCycle) * 0.48;
+      joints.pelvis.position.y = 1.85 + Math.abs(Math.sin(walkCycle * 2)) * 0.06;
     }
 
     const now = Date.now();
@@ -428,7 +428,6 @@ function animate() {
       });
     }
   } else if (player) {
-    // 2. Durma Eylemleri
     if (currentActionState === 'sit') {
       if (joints) {
         joints.pelvis.position.y = 1.0;
@@ -446,7 +445,6 @@ function animate() {
         joints.rightArm.rotation.x = -Math.PI / 4;
       }
     } else {
-      // Idle (Nefes Alma Salınımı)
       currentActionState = 'idle';
       walkCycle += 0.035;
       if (joints) {
@@ -454,16 +452,15 @@ function animate() {
         joints.rightLeg.rotation.x = 0;
         joints.leftArm.rotation.x = 0;
         joints.rightArm.rotation.x = 0;
-        joints.pelvis.position.y = 1.8 + Math.sin(walkCycle) * 0.02;
+        joints.pelvis.position.y = 1.85 + Math.sin(walkCycle) * 0.02;
       }
     }
   }
 
-  // Kamera Takibi
   if (player) {
     camera.position.x = player.position.x;
-    camera.position.y = player.position.y + 4.3;
-    camera.position.z = player.position.z + 7.8;
+    camera.position.y = player.position.y + 4.2;
+    camera.position.z = player.position.z + 8.2;
     camera.lookAt(player.position.x, player.position.y + 1.6, player.position.z);
   }
 
@@ -472,30 +469,28 @@ function animate() {
   }
 }
 
-// Otur / Kalk Butonu
 function togglePlayerSit() {
   const btn = document.getElementById('action-sit-btn');
   if (currentActionState === 'sit') {
     currentActionState = 'idle';
-    btn.classList.remove('active');
+    btn?.classList.remove('active');
   } else {
     currentActionState = 'sit';
     document.getElementById('action-crouch-btn')?.classList.remove('active');
-    btn.classList.add('active');
+    btn?.classList.add('active');
   }
   syncActionStateWithSocket();
 }
 
-// Çömel Butonu
 function togglePlayerCrouch() {
   const btn = document.getElementById('action-crouch-btn');
   if (currentActionState === 'crouch') {
     currentActionState = 'idle';
-    btn.classList.remove('active');
+    btn?.classList.remove('active');
   } else {
     currentActionState = 'crouch';
     document.getElementById('action-sit-btn')?.classList.remove('active');
-    btn.classList.add('active');
+    btn?.classList.add('active');
   }
   syncActionStateWithSocket();
 }
@@ -512,7 +507,6 @@ function syncActionStateWithSocket() {
   }
 }
 
-// Mekandan Çıkış (Keşfet'e Dönüş)
 function exitMetaverseToExplore() {
   if (socket) {
     socket.disconnect();
@@ -542,9 +536,9 @@ function openAvatarCustomizer() {
     previewRenderer.setSize(container.clientWidth, container.clientHeight);
     container.appendChild(previewRenderer.domElement);
 
-    const light = new THREE.AmbientLight(0xffffff, 0.9);
+    const light = new THREE.AmbientLight(0xffffff, 0.95);
     previewScene.add(light);
-    const pSpot = new THREE.PointLight(0xd4af37, 2.4, 25);
+    const pSpot = new THREE.PointLight(0xe5a93c, 2.5, 25);
     pSpot.position.set(3, 4, 3);
     previewScene.add(pSpot);
 
@@ -569,7 +563,7 @@ function setAvatarParam(key, val, btnElem) {
 
 function updatePreviewMesh() {
   if (previewMesh) previewScene.remove(previewMesh);
-  previewMesh = buildHumanoidAvatarMesh(myAvatarConfig);
+  previewMesh = buildStylizedAvatarMesh(myAvatarConfig);
   previewScene.add(previewMesh);
 }
 
@@ -590,7 +584,7 @@ function saveAvatarSettings() {
   if (player) {
     const curPos = { x: player.position.x, y: player.position.y, z: player.position.z };
     scene.remove(player);
-    player = buildHumanoidAvatarMesh(myAvatarConfig);
+    player = buildStylizedAvatarMesh(myAvatarConfig);
     player.position.set(curPos.x, curPos.y, curPos.z);
     scene.add(player);
   }
@@ -602,25 +596,19 @@ function saveAvatarSettings() {
     });
   }
 
-  alert("✨ Yeni tarzın mühürlendi! Karakterin güncellendi.");
+  alert('✨ Yeni tarzın mühürlendi! Karakterin güncellendi.');
 }
 
 // ==========================================================================
-// 5. YT MASASI: ÇEKİLEBİLİR 30+ ZENGİN EŞYA KATALOĞU
+// 5. YT MASASI: PARAMETRİK EŞYALAR & KATALOG
 // ==========================================================================
 const YT_CATALOG_ITEMS = [
-  { type: 'greek_column', name: 'Mermer Sütun', icon: '🏛️' },
-  { type: 'ancient_throne', name: 'Olimpos Tahtı', icon: '👑' },
-  { type: 'marble_table', name: 'Ziyafet Masası', icon: '🍽️' },
-  { type: 'bar_stool', name: 'Sedir Tabure', icon: '🪑' },
-  { type: 'ancient_urn', name: 'Şarap Amforası', icon: '🏺' },
-  { type: 'torch_post', name: 'Ateş Meşalesi', icon: '🔥' },
-  { type: 'bronze_statue', name: 'Tanrı Heykeli', icon: '🗿' },
-  { type: 'vip_sofa', name: 'Deri VIP Koltuk', icon: '🛋️' },
-  { type: 'mosaic_fountain', name: 'Mozaik Çeşme', icon: '⛲' },
-  { type: 'crystal_goblet', name: 'Altın Kadeh', icon: '🍷' },
-  { type: 'cyber_orb', name: 'Neon Işık Küresi', icon: '🔮' },
-  { type: 'dj_booth', name: 'Parti DJ Kabini', icon: '🎧' }
+  { type: 'golden_spiral', name: 'Altın Spiral Anıt', icon: '🎗️' },
+  { type: 'pink_terrace', name: 'Kavisli Teras', icon: '🏛️' },
+  { type: 'lounge_sofa', name: 'Fütüristik Loca Koltuğu', icon: '🛋️' },
+  { type: 'modern_bar_counter', name: 'Kavisli Bar Masası', icon: '🍸' },
+  { type: 'amphora_gold', name: 'Altın Küp', icon: '🏺' },
+  { type: 'neon_sphere', name: 'Işık Küresi', icon: '🔮' }
 ];
 
 function enterMetaverseAsGhost() {
@@ -628,7 +616,7 @@ function enterMetaverseAsGhost() {
   isAdminEditor = true;
   switchTab('metaverse');
   document.getElementById('yt-open-editor-btn')?.classList.remove('hidden');
-  alert("👻 Hayalet Modu Devrede!\nMekandasınız, oyuncular sizi görmüyor. Eşya ekleyip temayı yönetebilirsiniz.");
+  alert('👻 Hayalet Modu Devrede!\nMekandasınız, oyuncular sizi görmüyor.');
 
   if (player) {
     player.traverse(child => {
@@ -642,7 +630,7 @@ function enterMetaverseAsGhost() {
 
 function toggleYtItemDrawer() {
   const drawer = document.getElementById('ytItemDrawer');
-  drawer.classList.toggle('hidden');
+  drawer?.classList.toggle('hidden');
 }
 
 function populateYtItemDrawer() {
@@ -685,53 +673,22 @@ function spawnItem(itemType) {
 
 function renderItemMesh(itemType, pos) {
   let group = new THREE.Group();
-  const goldMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.15 });
+  const goldMat = new THREE.MeshStandardMaterial({ color: 0xe5a93c, metalness: 0.95, roughness: 0.15 });
+  const pinkMat = new THREE.MeshStandardMaterial({ color: 0xdf5d78, roughness: 0.35 });
 
-  if (itemType === 'marble_table') {
-    const top = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 0.15, 24), new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.2 }));
-    top.position.y = 1.1;
-    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.35, 1.1, 16), goldMat);
-    leg.position.y = 0.55;
-    group.add(top); group.add(leg);
-  } else if (itemType === 'ancient_throne') {
-    const seat = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.6, 1.2), goldMat);
-    seat.position.y = 0.5;
-    const back = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.8, 0.25), goldMat);
-    back.position.set(0, 1.5, -0.45);
-    group.add(seat); group.add(back);
-  } else if (itemType === 'ancient_urn') {
-    const urnMat = new THREE.MeshStandardMaterial({ color: 0xb35422, roughness: 0.55 });
-    const belly = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 16), urnMat);
-    belly.position.y = 0.7;
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 0.5, 12), urnMat);
-    neck.position.y = 1.2;
-    group.add(belly); group.add(neck);
-  } else if (itemType === 'greek_column') {
-    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.8, 7.5, 20), new THREE.MeshStandardMaterial({ color: 0xededed, roughness: 0.25 }));
-    col.position.y = 3.75;
-    group.add(col);
-  } else if (itemType === 'bar_stool') {
-    const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.12, 16), new THREE.MeshStandardMaterial({ color: 0x8b0000 }));
-    seat.position.y = 1.0;
-    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.18, 1.0, 12), goldMat);
-    leg.position.y = 0.5;
-    group.add(seat); group.add(leg);
-  } else if (itemType === 'torch_post') {
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 3.2, 12), new THREE.MeshStandardMaterial({ color: 0x3d2716 }));
-    post.position.y = 1.6;
-    const fire = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff7700 }));
-    fire.position.y = 3.3;
-    group.add(post); group.add(fire);
-  } else if (itemType === 'vip_sofa') {
-    const sofa = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.8, 1.2), new THREE.MeshStandardMaterial({ color: 0x1a1a24, roughness: 0.3 }));
+  if (itemType === 'golden_spiral') {
+    spawnGoldenSpiralSculpture(pos.x, pos.y, pos.z, goldMat);
+    return;
+  } else if (itemType === 'pink_terrace') {
+    const terrace = new THREE.Mesh(new THREE.CylinderGeometry(4, 4.4, 0.6, 24), pinkMat);
+    terrace.position.y = 0.3;
+    group.add(terrace);
+  } else if (itemType === 'lounge_sofa') {
+    const sofa = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.8, 1.2), new THREE.MeshStandardMaterial({ color: 0x1a1a24 }));
     sofa.position.y = 0.4;
     group.add(sofa);
-  } else if (itemType === 'cyber_orb') {
-    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 16), new THREE.MeshBasicMaterial({ color: 0x00f0ff }));
-    orb.position.y = 1.2;
-    group.add(orb);
   } else {
-    const box = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0x555555 }));
+    const box = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), goldMat);
     box.position.y = 0.5;
     group.add(box);
   }
@@ -748,27 +705,6 @@ function loadSavedWorldItems() {
         data.items.forEach(item => renderItemMesh(item.itemType, item.position));
       }
     });
-}
-
-function setVenueTheme(themeName) {
-  currentVenueTheme = themeName;
-  if (themeName === 'cyber_lounge') {
-    scene.background = new THREE.Color(0x05050f);
-    scene.fog.color = new THREE.Color(0x05050f);
-    alert("🌃 Konsept: Cyber Neon aktif!");
-  } else if (themeName === 'dionysus_rave') {
-    scene.background = new THREE.Color(0x18050e);
-    scene.fog.color = new THREE.Color(0x18050e);
-    alert("🍷 Konsept: Dionysos Kızıl Şölen aktif!");
-  } else {
-    scene.background = new THREE.Color(0x090a14);
-    scene.fog.color = new THREE.Color(0x090a14);
-    alert("🏛 Konsept: Antik Olimpos Partisi aktif!");
-  }
-
-  if (socket) {
-    socket.emit('change_venue_theme', { themeName });
-  }
 }
 
 // ==========================================================================
@@ -825,11 +761,11 @@ function setupSocket() {
           joints.rightLeg.rotation.x = -Math.PI / 3.5;
         } else if (data.actionState === 'walk') {
           pGroup.userData.step = (pGroup.userData.step || 0) + 0.22;
-          joints.pelvis.position.y = 1.8;
+          joints.pelvis.position.y = 1.85;
           joints.leftLeg.rotation.x = Math.sin(pGroup.userData.step) * 0.6;
           joints.rightLeg.rotation.x = -Math.sin(pGroup.userData.step) * 0.6;
         } else {
-          joints.pelvis.position.y = 1.8;
+          joints.pelvis.position.y = 1.85;
           joints.leftLeg.rotation.x = 0;
           joints.rightLeg.rotation.x = 0;
         }
@@ -852,20 +788,15 @@ function setupSocket() {
     }
   });
 
-  socket.on('venue_theme_changed', data => {
-    setVenueTheme(data.themeName);
-  });
-
   socket.on('player_said', data => {
     if (otherPlayers[data.socketId]) {
       showBubbleOnMesh(otherPlayers[data.socketId].group, data.text);
     }
   });
 
-  // METAVERSE ↔ DM EŞLEŞME BİLDİRİMİ
   socket.on('match_notification', ({ user1, user2 }) => {
     if (window.currentUserId === user1 || window.currentUserId === user2) {
-      alert("🎉 TEBRİKLER! Karşılıklı kalpleştiniz!\nDM kutunuza mesaj düştü, sohbete başlayabilirsiniz.");
+      alert('🎉 TEBRİKLER! Karşılıklı kalpleştiniz!\nDM kutunuza mesaj düştü, sohbete başlayabilirsiniz.');
       if (typeof checkUserProfile === 'function') checkUserProfile();
     }
   });
@@ -882,7 +813,7 @@ function addOtherHumanoidPlayer(pData) {
   if (otherPlayers[pData.socketId] || pData.telegramId === window.currentUserId) return;
 
   const cfg = pData.avatarConfig || {};
-  const group = buildHumanoidAvatarMesh(cfg);
+  const group = buildStylizedAvatarMesh(cfg);
 
   const nameSprite = createNameSprite(pData.nickname);
   nameSprite.position.set(0, 3.8, 0);
@@ -900,10 +831,10 @@ function createNameSprite(name) {
   const canvas = document.createElement('canvas');
   canvas.width = 256; canvas.height = 64;
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = 'rgba(10, 11, 22, 0.8)';
+  ctx.fillStyle = 'rgba(10, 11, 22, 0.85)';
   ctx.roundRect(8, 8, 240, 48, 14);
   ctx.fill();
-  ctx.strokeStyle = '#d4af37';
+  ctx.strokeStyle = '#e5a93c';
   ctx.lineWidth = 3;
   ctx.stroke();
   ctx.fillStyle = '#ffffff';
@@ -918,7 +849,7 @@ function createNameSprite(name) {
 }
 
 // ==========================================================================
-// 7. ETKİLEŞİM, SOHBET BALONU & ŞİKAYET BİLDİRİMİ
+// 7. ETKİLEŞİM & ŞİKAYET BİLDİRİMİ
 // ==========================================================================
 function onSceneClick(event) {
   const container = document.getElementById('canvas-container');
@@ -962,7 +893,7 @@ function sendHeartToCurrentTarget() {
     fromUserId: window.currentUserId,
     toUserId: currentTargetUser.telegramId
   });
-  alert(`❤️ ${currentTargetUser.nickname} kullanıcısına kalp atıldı! Karşı taraf da kalpleşirse DM kutusunda sohbet açılacak.`);
+  alert(`❤️ ${currentTargetUser.nickname} kullanıcısına kalp atıldı! Karşı taraf da kalpleşirse DM kutunda mesaj olarak açılacak.`);
   closeMetaverseProfileModal();
 }
 
@@ -984,7 +915,7 @@ function showBubbleOnMesh(targetMesh, text) {
   ctx.fillStyle = 'rgba(14, 13, 23, 0.9)';
   ctx.roundRect(10, 10, 280, 110, 18);
   ctx.fill();
-  ctx.strokeStyle = '#d4af37';
+  ctx.strokeStyle = '#e5a93c';
   ctx.lineWidth = 4;
   ctx.stroke();
   ctx.fillStyle = '#fff';
@@ -1000,7 +931,7 @@ function showBubbleOnMesh(targetMesh, text) {
 }
 
 function sendMetaverseReportPrompt() {
-  const reason = prompt("🚨 Olimpos Meclisine Şikayet Bildir:\n(Uygunsuz davranış, hile veya rahatsızlık sebebi)");
+  const reason = prompt("🚨 Mekan Yönetimine Şikayet Bildir:\n(Uygunsuz davranış veya rahatsızlık sebebi)");
   if (!reason || !reason.trim()) return;
 
   fetch('/api/metaverse/report', {
@@ -1016,10 +947,10 @@ function sendMetaverseReportPrompt() {
   })
   .then(r => r.json())
   .then(res => {
-    if (res.success) alert("✅ Şikayetiniz YT Masasına koordinatlarınızla iletildi.");
-    else alert("Hata: " + (res.message || "Bilinmiyor"));
+    if (res.success) alert('✅ Şikayetiniz koordinatlarınızla iletildi.');
+    else alert('Hata: ' + (res.message || 'Bilinmiyor'));
   })
-  .catch(() => alert("Sunucu bağlantı hatası oluştu."));
+  .catch(() => alert('Sunucu bağlantı hatası oluştu.'));
 }
 
 function setupJoystick() {
@@ -1031,7 +962,7 @@ function setupJoystick() {
     zone: zone,
     mode: 'static',
     position: { left: '60px', top: '60px' },
-    color: '#d4af37',
+    color: '#e5a93c',
     size: 90
   });
 
