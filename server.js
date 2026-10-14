@@ -19,8 +19,11 @@ try {
 const app = express();
 const server = http.createServer(app);
 
-// Render / Proxy arkasında gerçek IP tespiti (ERR_ERL_UNEXPECTED_X_FORWARDED_FOR Çözümü)
+// 1. Render Proxy arkasında gerçek IP'leri al (Rate-limit çökmesini engeller)
 app.set('trust proxy', 1);
+
+// 2. HEALTH CHECK - Render'ın servisi canlı görmesi için RateLimit'ten ÖNCE olmalı
+app.get('/health', (req, res) => res.status(200).send('GOLDENMATCH_OK'));
 
 let io = null;
 if (Server) {
@@ -29,7 +32,7 @@ if (Server) {
   });
 }
 
-// Rate Limiter - Proxy başlık kontrolü devre dışı bırakılarak çökme kesin olarak engellendi
+// 3. Rate Limiter - xForwardedForHeader doğrulaması devre dışı bırakılarak çökme önlenir
 const limiter = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 400,
@@ -41,8 +44,6 @@ app.use(limiter);
 app.use(cors());
 app.use(express.json({ limit: '35mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
-
-app.get('/health', (req, res) => res.status(200).send('GOLDENMATCH_OK'));
 
 // ==========================================================================
 // MONGODB ATLAS VERİTABANI BAĞLANTISI VE ŞEMALAR
@@ -69,23 +70,22 @@ const UserSchema = new mongoose.Schema({
   bio: String,
   photos: [String],
   
-  // Zengin Sims/Snapchat Tarzı Avatar Anatomisi & Giysi Katmanları
   avatarConfig: {
-    gender: { type: String, default: 'male' },
-    skinColor: { type: String, default: '#f0c7a1' },
-    eyeColor: { type: String, default: '#2980b9' },
+    gender: { type: String, default: 'female' },
+    skinColor: { type: String, default: '#f7d2b7' },
+    eyeColor: { type: String, default: '#9b59b6' },
     eyeShape: { type: String, default: 'almond' },
-    hairStyle: { type: String, default: 'greek_curls' },
-    hairColor: { type: String, default: '#4a2f1b' },
-    hat: { type: String, default: 'none' },              // Şapkalar / Taçlar
-    glasses: { type: String, default: 'none' },          // Gözlükler
-    necklace: { type: String, default: 'none' },         // Kolyeler
-    outfitTop: { type: String, default: 'greek_tunic' }, // Üst giyim
+    hairStyle: { type: String, default: 'twin_pigtails' },
+    hairColor: { type: String, default: '#00d2d3' },
+    hat: { type: String, default: 'none' },
+    glasses: { type: String, default: 'cyber_sunglasses' },
+    necklace: { type: String, default: 'heavy_chain' },
+    outfitTop: { type: String, default: 'bandage_corset' },
     outfitTopColor: { type: String, default: '#ffffff' },
-    outfitBottom: { type: String, default: 'classic_pants' }, // Alt giyim
-    outfitBottomColor: { type: String, default: '#1a1a24' },
-    shoes: { type: String, default: 'gladiator_sandals' },    // Ayakkabılar
-    shoesColor: { type: String, default: '#8b4513' }
+    outfitBottom: { type: String, default: 'strapped_shorts' },
+    outfitBottomColor: { type: String, default: '#ffffff' },
+    shoes: { type: String, default: 'laced_boots' },
+    shoesColor: { type: String, default: '#ffffff' }
   },
   
   isVerified: { type: Boolean, default: false },
@@ -222,7 +222,6 @@ if (bot) {
     );
   });
 
-  // 409 Conflict çakışmasını önlemek için dropPendingUpdates eklendi
   bot.launch({ dropPendingUpdates: true }).catch(err => console.warn('Bot başlatma uyarısı:', err.message));
 
   process.once('SIGINT', () => process.exit(0));
@@ -602,7 +601,6 @@ const onlinePlayers = {};
 if (io) {
   io.on('connection', (socket) => {
     
-    // 1. Odaya Giriş
     socket.on('join_metaverse', (userData) => {
       onlinePlayers[socket.id] = {
         socketId: socket.id,
@@ -629,7 +627,6 @@ if (io) {
       }
     });
 
-    // 2. Hareket, Oturma, Çömelme Senkronizasyonu
     socket.on('player_move', (data) => {
       if (onlinePlayers[socket.id]) {
         onlinePlayers[socket.id].x = data.x;
@@ -651,7 +648,6 @@ if (io) {
       }
     });
 
-    // 3. Giysi / Avatar Canlı Değişimi
     socket.on('update_avatar_look', (data) => {
       if (onlinePlayers[socket.id]) {
         onlinePlayers[socket.id].avatarConfig = data.avatarConfig;
@@ -662,12 +658,10 @@ if (io) {
       }
     });
 
-    // 4. Mekan Konsepti Değiştirme (YT)
     socket.on('change_venue_theme', (data) => {
       io.emit('venue_theme_changed', { themeName: data.themeName });
     });
 
-    // 5. Sohbet Baloncuğu
     socket.on('world_chat_message', (data) => {
       io.emit('player_said', {
         socketId: socket.id,
@@ -675,7 +669,6 @@ if (io) {
       });
     });
 
-    // 6. METAVERSE ↔ DM ENTEGRASYONU (Karşılıklı Kalp)
     socket.on('send_world_heart', async ({ fromUserId, toUserId }) => {
       try {
         const fromId = String(fromUserId);
@@ -718,7 +711,6 @@ if (io) {
       }
     });
 
-    // 7. Çıkış
     socket.on('disconnect', () => {
       if (onlinePlayers[socket.id]) {
         socket.broadcast.emit('player_left', socket.id);
@@ -728,5 +720,8 @@ if (io) {
   });
 }
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`GoldenMatch Sunucusu ${PORT} portunda aktif.`));
+// 4. PORT BINDING - '0.0.0.0' arayüzü ile Render proxy bağlantısını doğrudan karşıla
+const PORT = process.env.PORT || 10000;
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`GoldenMatch Sunucusu ${PORT} portunda (0.0.0.0) aktif.`);
+});
