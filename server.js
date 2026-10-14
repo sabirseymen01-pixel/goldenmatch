@@ -19,6 +19,9 @@ try {
 const app = express();
 const server = http.createServer(app);
 
+// Render / Proxy arkasında gerçek IP tespiti (ERR_ERL_UNEXPECTED_X_FORWARDED_FOR Çözümü)
+app.set('trust proxy', 1);
+
 let io = null;
 if (Server) {
   io = new Server(server, {
@@ -26,9 +29,11 @@ if (Server) {
   });
 }
 
+// Rate Limiter - Proxy başlık kontrolü devre dışı bırakılarak çökme kesin olarak engellendi
 const limiter = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 400,
+  validate: { xForwardedForHeader: false },
   message: { success: false, message: 'İstek limiti aşıldı.' }
 });
 app.use(limiter);
@@ -107,7 +112,7 @@ const MatchSchema = new mongoose.Schema({
     time: String,
     read: { type: Boolean, default: false }
   }],
-  source: { type: String, default: 'explore' }, // 'explore' veya 'metaverse_heart'
+  source: { type: String, default: 'explore' },
   updatedAt: { type: Date, default: Date.now }
 });
 
@@ -217,7 +222,8 @@ if (bot) {
     );
   });
 
-  bot.launch().catch(err => console.warn('Bot başlatma uyarısı:', err.message));
+  // 409 Conflict çakışmasını önlemek için dropPendingUpdates eklendi
+  bot.launch({ dropPendingUpdates: true }).catch(err => console.warn('Bot başlatma uyarısı:', err.message));
 
   process.once('SIGINT', () => process.exit(0));
   process.once('SIGTERM', () => process.exit(0));
@@ -611,7 +617,7 @@ if (io) {
         y: userData.y || 0,
         z: userData.z || 0,
         rotY: 0,
-        actionState: 'idle', // 'idle', 'walk', 'sit', 'crouch'
+        actionState: 'idle',
         isGhost: !!userData.isGhost
       };
 
