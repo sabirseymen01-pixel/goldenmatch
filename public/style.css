@@ -1,39 +1,41 @@
 /* ==========================================================================
-   GOLDENMATCH - iOS SPRING FLUID ENGINE & ULTRA-HD LUXURY DESIGN
+   GOLDENMATCH - iOS SPRING FLUID ENGINE & PARAMETRIC LUXURY DESIGN
    ========================================================================== */
 
 :root {
-  --bg: #060608;
-  --surface: rgba(18, 18, 24, 0.82);
-  --surface-solid: #121218;
-  --surface-card: #14141c;
-  --surface-soft: #1a1a23;
-  --surface-elevated: rgba(28, 28, 38, 0.7);
+  --bg: #07080f;
+  --surface: rgba(18, 19, 29, 0.84);
+  --surface-solid: #12131d;
+  --surface-card: #151624;
+  --surface-soft: #1c1d2d;
+  --surface-elevated: rgba(28, 29, 44, 0.75);
   
+  /* Parametrik Amfitiyatro & Altın Heykel Renk Paleti */
   --gold-primary: #e5a93c;
   --gold-light: #fbe29d;
   --gold-deep: #b0781a;
   --gold-glow: rgba(229, 169, 60, 0.45);
   --gold-gradient: linear-gradient(135deg, #fbe29d 0%, #e5a93c 50%, #9e6912 100%);
   --gold-glass: rgba(229, 169, 60, 0.12);
-  --gold-border: rgba(229, 169, 60, 0.28);
+  --gold-border: rgba(229, 169, 60, 0.32);
+
+  --pink-terrace: #df5d78;
+  --pink-glow: rgba(223, 93, 120, 0.4);
+  --cyber-purple: #9b59b6;
+  --cyber-cyan: #00d2d3;
 
   --text-main: #ffffff;
-  --text-secondary: #9a9aa8;
-  --text-tertiary: #606070;
+  --text-secondary: #9ea0b4;
+  --text-tertiary: #65677d;
 
   --like-color: #2ed573;
-  --like-glow: rgba(46, 213, 115, 0.4);
   --pass-color: #ff4757;
-  --pass-glow: rgba(255, 71, 87, 0.4);
 
   --font-body: 'Plus Jakarta Sans', -apple-system, sans-serif;
   --font-display: 'Cinzel', serif;
 
-  /* iOS Spring Timing */
   --spring-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
   --spring-smooth: cubic-bezier(0.16, 1, 0.3, 1);
-  --exit-ease: cubic-bezier(0.4, 0, 1, 1);
 }
 
 * {
@@ -51,8 +53,8 @@ html, body {
   overflow-x: hidden;
   user-select: none;
   background-image: 
-    radial-gradient(circle at 50% 0%, rgba(229, 169, 60, 0.12) 0%, transparent 60%),
-    radial-gradient(circle at 10% 80%, rgba(176, 120, 26, 0.05) 0%, transparent 50%);
+    radial-gradient(circle at 50% 0%, rgba(229, 169, 60, 0.15) 0%, transparent 60%),
+    radial-gradient(circle at 10% 80%, rgba(223, 93, 120, 0.08) 0%, transparent 50%);
 }
 
 .app-wrapper {
@@ -98,7 +100,7 @@ html, body {
   padding: 14px 4px 12px 4px;
   position: sticky;
   top: 0;
-  background: rgba(6, 6, 8, 0.85);
+  background: rgba(7, 8, 15, 0.88);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -151,7 +153,7 @@ html, body {
 .nav-btn.metaverse-entry-btn {
   border-color: var(--gold-primary);
   background: var(--gold-glass);
-  box-shadow: 0 0 14px var(--gold-glow);
+  box-shadow: 0 0 16px var(--gold-glow);
 }
 
 .nav-btn.yt-badge {
@@ -173,7 +175,6 @@ html, body {
   height: 10px;
   background-color: var(--pass-color);
   border-radius: 50%;
-  box-shadow: 0 0 10px var(--pass-glow);
   border: 2px solid var(--bg);
 }
 
@@ -265,11 +266,11 @@ html, body {
 }
 
 /* ==========================================================================
-   AVATAR STÜDYOSU TETİKLEYİCİ KARTI (PROFİL SAYFASI)
+   AVATAR STÜDYOSU TETİKLEYİCİ BUTONU (PROFİL SAYFASI)
    ========================================================================== */
 .avatar-studio-trigger-btn {
   width: 100%;
-  background: linear-gradient(135deg, rgba(229, 169, 60, 0.16) 0%, rgba(18, 18, 24, 0.95) 100%);
+  background: linear-gradient(135deg, rgba(229, 169, 60, 0.18) 0%, rgba(223, 93, 120, 0.12) 60%, rgba(18, 19, 29, 0.98) 100%);
   border: 1.5px solid var(--gold-primary);
   border-radius: 18px;
   padding: 12px 16px;
@@ -277,7 +278,7 @@ html, body {
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), 0 0 15px rgba(229, 169, 60, 0.15);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), 0 0 18px rgba(229, 169, 60, 0.18);
   transition: transform 0.2s var(--spring-ease);
 }
 
@@ -289,13 +290,13 @@ html, body {
    CANLI 3D LOUNGE HIZLI GİRİŞ BANNERI (KEŞFET SAYFASI)
    ========================================================================== */
 .lounge-quick-card {
-  background: linear-gradient(135deg, rgba(229, 169, 60, 0.24) 0%, rgba(14, 13, 23, 0.96) 100%);
-  border: 1.5px solid var(--gold-primary);
+  background: linear-gradient(135deg, rgba(223, 93, 120, 0.3) 0%, rgba(229, 169, 60, 0.25) 50%, rgba(14, 13, 23, 0.98) 100%);
+  border: 1.5px solid var(--pink-terrace);
   border-radius: 18px;
   padding: 14px 18px;
   margin-bottom: 12px;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7), 0 0 20px rgba(229, 169, 60, 0.2);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.7), 0 0 22px var(--pink-glow);
   transition: transform 0.2s var(--spring-ease);
 }
 
@@ -862,17 +863,17 @@ input:focus, select:focus, textarea:focus {
   position: absolute;
   top: 16px;
   left: 16px;
-  background: rgba(14, 13, 23, 0.88);
-  border: 1px solid var(--gold-primary);
+  background: rgba(14, 15, 26, 0.9);
+  border: 1.5px solid var(--gold-primary);
   color: var(--gold-light);
   font-weight: 800;
   font-size: 12px;
-  padding: 8px 14px;
+  padding: 8px 16px;
   border-radius: 20px;
   cursor: pointer;
   z-index: 60;
   backdrop-filter: blur(8px);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
   transition: transform 0.2s var(--spring-ease);
 }
 
@@ -893,7 +894,7 @@ input:focus, select:focus, textarea:focus {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: rgba(14, 13, 23, 0.88);
+  background: rgba(14, 15, 26, 0.9);
   border: 1.5px solid var(--gold-primary);
   color: #fff;
   font-size: 20px;
@@ -913,7 +914,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .meta-round-btn {
-  background: #d4af37;
+  background: #e5a93c;
   border: none;
   border-radius: 50%;
   width: 40px;
@@ -938,16 +939,16 @@ input:focus, select:focus, textarea:focus {
   position: absolute;
   top: 16px;
   right: 16px;
-  background: linear-gradient(135deg, #6a11cb, #2575fc);
+  background: linear-gradient(135deg, #df5d78, #e5a93c);
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.3);
   font-weight: 800;
   font-size: 12px;
-  padding: 8px 14px;
+  padding: 8px 16px;
   border-radius: 20px;
   cursor: pointer;
   z-index: 60;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
 }
 
 .yt-item-drawer {
@@ -956,7 +957,7 @@ input:focus, select:focus, textarea:focus {
   left: 0;
   width: 100%;
   max-height: 280px;
-  background: rgba(14, 13, 23, 0.96);
+  background: rgba(14, 15, 26, 0.98);
   border-top: 2px solid var(--gold-primary);
   border-radius: 24px 24px 0 0;
   z-index: 80;
@@ -974,19 +975,9 @@ input:focus, select:focus, textarea:focus {
   margin-bottom: 10px;
 }
 
-.drawer-theme-pill {
-  background: #252436;
-  border: 1px solid var(--gold-primary);
-  color: var(--gold-light);
-  font-size: 10px;
-  padding: 3px 8px;
-  border-radius: 10px;
-  cursor: pointer;
-}
-
 .drawer-scroll-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
   gap: 10px;
   overflow-y: auto;
   max-height: 200px;
@@ -994,7 +985,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .drawer-item-card {
-  background: #1c1a29;
+  background: #1c1d2d;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   padding: 8px 4px;
@@ -1009,7 +1000,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .drawer-item-icon {
-  font-size: 22px;
+  font-size: 24px;
   display: block;
   margin-bottom: 4px;
 }
@@ -1023,12 +1014,12 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* ==========================================================================
-   SIMS / SNAPCHAT TARZI CANLI AVATAR STÜDYOSU (MODAL)
+   CYBER-GLAM / GEN-Z CANLI AVATAR STÜDYOSU (MODAL)
    ========================================================================== */
 .avatar-studio-sheet {
   max-height: 94vh;
   border: 1.5px solid var(--gold-primary);
-  background: #0d0c16;
+  background: #0d0e17;
   border-radius: 28px 28px 0 0;
   padding: 20px 18px;
   display: flex;
@@ -1037,13 +1028,13 @@ input:focus, select:focus, textarea:focus {
 
 .avatar-preview-box {
   width: 100%;
-  height: 220px;
-  background: radial-gradient(circle, #252238 0%, #0a0914 100%);
+  height: 230px;
+  background: radial-gradient(circle, #252844 0%, #0d0e18 100%);
   border-radius: 16px;
   margin: 10px 0;
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(229, 169, 60, 0.3);
+  border: 1.5px solid rgba(229, 169, 60, 0.35);
 }
 
 .preview-hint {
@@ -1051,7 +1042,7 @@ input:focus, select:focus, textarea:focus {
   bottom: 8px;
   right: 10px;
   font-size: 10px;
-  color: #a0a0b0;
+  color: #9ea0b4;
 }
 
 .avatar-options-scroller {
