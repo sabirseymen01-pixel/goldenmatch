@@ -103,7 +103,7 @@ function selectChip(fieldId, value, elem) {
   }
 }
 
-// Profil Kontrolü
+// Profil Kontrolü & Yeni Stilize Avatar Senkronizasyonu
 async function checkUserProfile() {
   try {
     const res = await fetch(`/api/profile/${window.currentUserId}?username=${window.currentUsername}`);
@@ -116,7 +116,7 @@ async function checkUserProfile() {
     if (data.exists && data.profile) {
       currentProfile = data.profile;
 
-      // Kayıtlı Katmanlı Avatar Verisini Eşitle
+      // Kayıtlı Stilize Avatar Verisini Eşitle
       if (currentProfile.avatarConfig) {
         localStorage.setItem('gm_avatar_config', JSON.stringify(currentProfile.avatarConfig));
         if (typeof myAvatarConfig !== 'undefined') {
@@ -142,8 +142,8 @@ async function checkUserProfile() {
 function updateMiniAvatarBadge(cfg) {
   const badge = document.getElementById('mini-avatar-badge');
   if (!badge || !cfg) return;
-  badge.innerText = cfg.gender === 'female' ? '👩' : '👨';
-  badge.style.borderColor = cfg.outfitTopColor || '#d4af37';
+  badge.innerText = cfg.gender === 'female' ? '💃' : '🕺';
+  badge.style.borderColor = cfg.hairColor || '#e5a93c';
 }
 
 function fillProfileForm(p) {
@@ -213,7 +213,7 @@ function onFileSelected(event) {
   reader.readAsDataURL(file);
 }
 
-// Profil & Avatar Kaydetme
+// Profil Kaydetme
 async function handleFormSubmit(event) {
   event.preventDefault();
   const saveBtn = document.getElementById('saveBtn');
@@ -275,7 +275,7 @@ function closeWelcomeAndExplore() {
   loadDailyPick();
 }
 
-// Sekme Geçişleri
+// Sekme Yöneticisi
 function switchTab(tabId) {
   if (chatPollingInterval) {
     clearInterval(chatPollingInterval);
@@ -330,8 +330,8 @@ function renderCurrentCard() {
   if (!cardsList.length || currentCardIndex >= cardsList.length) {
     cardElem.innerHTML = `
       <div class="card-loader">
-        <h3 style="color:#d4af37;">Şimdilik Kimse Kalmadı ✨</h3>
-        <p style="font-size:12px; color:#888;">3D Lounge'a geçebilir veya filtreleri değiştirebilirsin.</p>
+        <h3 style="color:#e5a93c;">Şimdilik Kimse Kalmadı ✨</h3>
+        <p style="font-size:12px; color:#888;">Parametrik 3D Lounge'a geçebilir veya filtreleri değiştirebilirsin.</p>
         <div style="display:flex; gap:8px; margin-top:12px;">
           <button class="ghost-btn" onclick="openFilterModal()">Filtreler</button>
           <button class="primary-btn sm-btn" onclick="switchTab('metaverse')">🏛️ 3D Mekana Gir</button>
@@ -341,7 +341,7 @@ function renderCurrentCard() {
   }
 
   const user = cardsList[currentCardIndex];
-  const photo = user.photos?.[0] || 'https://via.placeholder.com/400x600/181726/d4af37?text=Foto%C4%9Fraf+Yok';
+  const photo = user.photos?.[0] || 'https://via.placeholder.com/400x600/181726/e5a93c?text=Foto%C4%9Fraf+Yok';
   const distText = user.distanceKm !== null ? `📍 ${user.distanceKm} km uzakta` : `📍 ${user.city}`;
 
   cardElem.innerHTML = `
@@ -414,7 +414,7 @@ async function likeDailyPick(targetId) {
   alert('Günün seçimi beğenildi!');
 }
 
-// DM Sohbetleri (3D Metaverse Eşleşmeleri Dahil)
+// DM Sohbetleri (3D Metaverse Kalp Eşleşmeleri Dahil)
 async function loadInboxChats() {
   const list = document.getElementById('chatList');
   list.innerHTML = '<div class="card-loader">Sohbetler yükleniyor...</div>';
@@ -427,8 +427,8 @@ async function loadInboxChats() {
         list.innerHTML = `
           <div class="card-loader">
             Henüz eşleşme yok.<br>
-            <span style="font-size:12px; color:#d4af37; margin-top:8px; display:block;" onclick="switchTab('metaverse')">
-              🏛️ 3D Lounge'a gidip insanlara kalp atabilirsin!
+            <span style="font-size:12px; color:#e5a93c; margin-top:8px; display:block; cursor:pointer;" onclick="switchTab('metaverse')">
+              🏛️ 3D Parametrik Lounge'a gidip insanlara kalp atabilirsin!
             </span>
           </div>`;
         return;
@@ -439,7 +439,7 @@ async function loadInboxChats() {
         item.className = 'chat-item';
         item.onclick = () => openChatRoom(chat.matchId, chat.partner);
         
-        const badgeTag = chat.source === 'metaverse_heart' ? '<span style="font-size:10px; color:#ff4757; font-weight:bold;">❤️ 3D Lounge</span> ' : '';
+        const badgeTag = chat.source === 'metaverse_heart' ? '<span style="font-size:10px; color:#df5d78; font-weight:bold;">❤️ 3D Lounge</span> ' : '';
 
         item.innerHTML = `
           <div class="chat-avatar-wrap">
@@ -676,7 +676,7 @@ async function loadAdminDashboard() {
         } else {
           data.worldReports.forEach(wr => {
             const row = document.createElement('div');
-            row.style = 'border-bottom: 1px solid rgba(212,175,55,0.2); padding: 6px 0; font-size: 11px;';
+            row.style = 'border-bottom: 1px solid rgba(229,169,60,0.2); padding: 6px 0; font-size: 11px;';
             row.innerHTML = `
               <strong>Raporlayan:</strong> ${wr.reporterId}<br>
               <strong>Sebep:</strong> <span style="color:#ff9f43;">${wr.reason}</span><br>
