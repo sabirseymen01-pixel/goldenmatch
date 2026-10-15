@@ -1,8 +1,9 @@
 // ==========================================================================
-// GOLDENMATCH - ULTRA-HD PARAMETRİK MEKAN & STİLİZE İNSANSI AVATAR MOTORU
+// GOLDENMATCH - ULTRA-HD 4D PARAMETRİK MEKAN & GTA-TPS İNSANSI MOTORU
 // ==========================================================================
 
 let scene, camera, renderer, player, joystick;
+let composer, bloomPass;
 let moveVector = { x: 0, y: 0 };
 let socket = null;
 let otherPlayers = {};
@@ -10,17 +11,29 @@ let currentTargetUser = null;
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
-// Animasyon & Eylem Durumları ('idle', 'walk', 'sit', 'crouch')
+// GTA / Minecraft Tarzı 3. Şahıs Dinamik Kamera Değişkenleri
+let camYaw = 0;          // Yatay dönüş açısı
+let camPitch = 0.22;     // Dikey bakış açısı
+let camDistance = 5.2;   // Karakter ile kamera mesafesi
+const camTarget = new THREE.Vector3();
+let isPointerOrbiting = false;
+let lastPointerX = 0, lastPointerY = 0;
+
+// Animasyon & Eylem Durumları
 let currentActionState = 'idle';
 let walkCycle = 0;
 let isMoving = false;
+let isSprinting = false;
+
+// Işıklar & Ambiyans
+let hemiLight, sunLight, chandelierLight;
 
 // Yönetici & Hayalet Modu
 let isGhostMode = false;
 let isAdminEditor = false;
 let currentVenueTheme = 'golden_parametric';
 
-// Kullanıcı Katmanlı & Stilize Avatar Konfigürasyonu (Görsel Referanslı)
+// Kullanıcı Katmanlı & Stilize Avatar Konfigürasyonu
 let myAvatarConfig = {
   gender: 'female',
   skinColor: '#f7d2b7',
@@ -45,7 +58,59 @@ try {
 } catch (e) {}
 
 // ==========================================================================
-// 1. SAHNE VE PARAMETRİK DALGALI MEKAN KURULUMU
+// 1. PROCEDURAL THE SIMS PBR DOKU ÜRETECİLERİ (ROBLOX HİSSİNİ BİTİREN KISIM)
+// ==========================================================================
+function createProceduralParquet() {
+  const c = document.createElement('canvas');
+  c.width = 1024; c.height = 1024;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#2d180f';
+  ctx.fillRect(0, 0, 1024, 1024);
+
+  const rows = 16, cols = 8;
+  const w = 1024 / cols, h = 1024 / rows;
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      const shift = (i % 2) * (w / 2);
+      const x = (j * w + shift) % 1024;
+      const y = i * h;
+      const tone = 20 + Math.floor(Math.sin(i * 3 + j * 5) * 8);
+      ctx.fillStyle = `rgb(${tone + 40}, ${tone + 20}, ${tone + 8})`;
+      ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+    }
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(4, 4);
+  return tex;
+}
+
+function createProceduralMarble() {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 512;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#f7f5ef';
+  ctx.fillRect(0, 0, 512, 512);
+
+  ctx.strokeStyle = 'rgba(212, 175, 55, 0.28)';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(0, 90);
+  ctx.bezierCurveTo(150, 220, 310, 130, 512, 430);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(100, 90, 85, 0.18)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(110, 0);
+  ctx.bezierCurveTo(230, 270, 360, 380, 512, 190);
+  ctx.stroke();
+
+  return new THREE.CanvasTexture(c);
+}
+
+// ==========================================================================
+// 2. SAHNE, SİNEMATİK POST-PROCESSING VE PARAMETRİK MEKAN
 // ==========================================================================
 function initMetaverse() {
   const container = document.getElementById('canvas-container');
@@ -57,34 +122,53 @@ function initMetaverse() {
   }
 
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x35658e);
-  scene.fog = new THREE.FogExp2(0x35658e, 0.015);
+  scene.background = new THREE.Color(0x161320);
+  scene.fog = new THREE.FogExp2(0x161320, 0.012);
 
-  camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
+  camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
 
+  // Sinematik ACES Filmic Renderer
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setSize(container.clientWidth, container.clientHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.25;
+
   container.innerHTML = '';
   container.appendChild(renderer.domElement);
 
-  // Doğal Gün Işığı & Amfitiyatro Aydınlatması
-  const hemiLight = new THREE.HemisphereLight(0xffffff, 0xd47a88, 0.85);
+  // Post-Processing: UnrealBloomPass ile Lüks Parıltı Efekti
+  const renderPass = new THREE.RenderPass(scene, camera);
+  bloomPass = new THREE.UnrealBloomPass(
+    new THREE.Vector2(container.clientWidth, container.clientHeight),
+    0.42, 0.4, 0.86
+  );
+  composer = new THREE.EffectComposer(renderer);
+  composer.addPass(renderPass);
+  composer.addPass(bloomPass);
+
+  // Sıcak Sinematik Aydınlatma Katmanı
+  hemiLight = new THREE.HemisphereLight(0xfff0e6, 0x221a2e, 0.65);
   scene.add(hemiLight);
 
-  const sunLight = new THREE.DirectionalLight(0xfff7ea, 1.8);
-  sunLight.position.set(30, 60, 25);
+  sunLight = new THREE.DirectionalLight(0xffeed6, 1.9);
+  sunLight.position.set(25, 45, 20);
   sunLight.castShadow = true;
   sunLight.shadow.mapSize.width = 2048;
   sunLight.shadow.mapSize.height = 2048;
-  sunLight.shadow.bias = -0.0001;
+  sunLight.shadow.bias = -0.00015;
+  sunLight.shadow.camera.near = 1;
+  sunLight.shadow.camera.far = 120;
+  sunLight.shadow.camera.left = -30;
+  sunLight.shadow.camera.right = 30;
+  sunLight.shadow.camera.top = 30;
+  sunLight.shadow.camera.bottom = -30;
   scene.add(sunLight);
 
-  // Parametrik Kademeli Mekanın İnşası
+  // Mekanın İnşası
   buildParametricGoldenAuditorium();
 
   // Oyuncu Avatarının Yüklenmesi
@@ -92,6 +176,8 @@ function initMetaverse() {
   scene.add(player);
 
   setupJoystick();
+  setupKeyboardControls();
+  setupGTAOrbitControls(container);
   loadSavedWorldItems();
   populateYtItemDrawer();
   setupSocket();
@@ -102,34 +188,54 @@ function initMetaverse() {
 }
 
 function buildParametricGoldenAuditorium() {
-  const pinkMat = new THREE.MeshStandardMaterial({ color: 0xdf5d78, roughness: 0.35, metalness: 0.05 });
-  const whiteMat = new THREE.MeshStandardMaterial({ color: 0xfdfdfd, roughness: 0.25, metalness: 0.1 });
-  const goldSculptMat = new THREE.MeshStandardMaterial({ color: 0xe5a93c, metalness: 0.95, roughness: 0.15 });
+  const parquetTex = createProceduralParquet();
+  const marbleTex = createProceduralMarble();
 
-  // 1. Kademeli Amfitiyatro Terasları
+  const floorMat = new THREE.MeshStandardMaterial({
+    map: parquetTex,
+    roughness: 0.28,
+    metalness: 0.05
+  });
+  const marbleMat = new THREE.MeshStandardMaterial({
+    map: marbleTex,
+    roughness: 0.16,
+    metalness: 0.08
+  });
+  const pinkVelvetMat = new THREE.MeshStandardMaterial({
+    color: 0xd95272,
+    roughness: 0.45,
+    metalness: 0.05
+  });
+  const goldSculptMat = new THREE.MeshStandardMaterial({
+    color: 0xdfb76c,
+    metalness: 0.92,
+    roughness: 0.18
+  });
+
+  // 1. Zemin Tabanı
+  const centerFloor = new THREE.Mesh(new THREE.CylinderGeometry(18, 18, 0.6, 48), floorMat);
+  centerFloor.position.set(0, -2.6, 0);
+  centerFloor.receiveShadow = true;
+  scene.add(centerFloor);
+
+  // 2. Kademeli Amfitiyatro Terasları
   for (let i = 0; i < 7; i++) {
-    const radius = 32 - i * 3.8;
-    const height = 0.5;
+    const radius = 34 - i * 3.6;
+    const height = 0.55;
     const ringGeo = new THREE.CylinderGeometry(radius, radius + 1.2, height, 48);
-    const stepMesh = new THREE.Mesh(ringGeo, pinkMat);
+    const stepMesh = new THREE.Mesh(ringGeo, pinkVelvetMat);
     stepMesh.position.set(0, (6 - i) * height - 2.5, 0);
     stepMesh.receiveShadow = true;
     stepMesh.castShadow = true;
     scene.add(stepMesh);
   }
 
-  // Zemin Tabanı
-  const centerFloor = new THREE.Mesh(new THREE.CylinderGeometry(8, 8, 0.6, 32), pinkMat);
-  centerFloor.position.set(0, -2.6, 0);
-  centerFloor.receiveShadow = true;
-  scene.add(centerFloor);
-
-  // 2. Tavandaki Organik Parametrik Dalga Şeritleri
+  // 3. Tavandaki Organik Parametrik Dalga Şeritleri (Işık Yayan)
   for (let j = 0; j < 12; j++) {
     const ribbonGroup = new THREE.Group();
     const curveRadius = 14 + j * 2.2;
     const tubeGeo = new THREE.TorusGeometry(curveRadius, 0.45, 12, 64, Math.PI * 1.4);
-    const ribbonMat = j % 2 === 0 ? whiteMat : pinkMat;
+    const ribbonMat = j % 2 === 0 ? marbleMat : pinkVelvetMat;
     const ribbon = new THREE.Mesh(tubeGeo, ribbonMat);
     ribbon.rotation.x = Math.PI / 2 + (j * 0.06);
     ribbon.rotation.y = (j * 0.18);
@@ -139,16 +245,24 @@ function buildParametricGoldenAuditorium() {
     scene.add(ribbonGroup);
   }
 
-  // 3. Altın Sarmal Heykeller
+  // 4. Altın Halka Avize (Bloom ile Işıldar)
+  const chandelierGeo = new THREE.TorusGeometry(3.6, 0.06, 16, 64);
+  const chandelier = new THREE.Mesh(
+    chandelierGeo,
+    new THREE.MeshBasicMaterial({ color: 0xffe0a3 })
+  );
+  chandelier.rotation.x = Math.PI / 2;
+  chandelier.position.set(0, 8.5, 0);
+  scene.add(chandelier);
+
+  chandelierLight = new THREE.PointLight(0xffb359, 1.4, 25, 1.5);
+  chandelierLight.position.set(0, 8.2, 0);
+  chandelierLight.castShadow = true;
+  scene.add(chandelierLight);
+
+  // 5. Altın Sarmal Heykeller & Bar
   spawnGoldenSpiralSculpture(16, 1.2, -6, goldSculptMat);
-  spawnGoldenSpiralSculpture(19, 1.6, -10, goldSculptMat);
-
-  // 4. Arka Fütüristik Ekran Paneli & Bar Bankosu
-  const screenMat = new THREE.MeshBasicMaterial({ color: 0x111116 });
-  const mainScreen = new THREE.Mesh(new THREE.BoxGeometry(22, 6, 0.4), screenMat);
-  mainScreen.position.set(-10, 4, -20);
-  scene.add(mainScreen);
-
+  spawnGoldenSpiralSculpture(-16, 1.2, -6, goldSculptMat);
   buildModernCurvedBar();
 }
 
@@ -168,8 +282,8 @@ function spawnGoldenSpiralSculpture(x, y, z, mat) {
 }
 
 function buildModernCurvedBar() {
-  const barMat = new THREE.MeshStandardMaterial({ color: 0x1e1e24, roughness: 0.2 });
-  const goldTrim = new THREE.MeshStandardMaterial({ color: 0xe5a93c, metalness: 0.95, roughness: 0.1 });
+  const barMat = new THREE.MeshStandardMaterial({ color: 0x181720, roughness: 0.22 });
+  const goldTrim = new THREE.MeshStandardMaterial({ color: 0xdfb76c, metalness: 0.92, roughness: 0.15 });
 
   const barMesh = new THREE.Mesh(new THREE.CylinderGeometry(9, 9, 2.4, 32, 1, false, 0, Math.PI), barMat);
   barMesh.rotation.y = -Math.PI / 2;
@@ -185,21 +299,21 @@ function buildModernCurvedBar() {
 }
 
 // ==========================================================================
-// 2. STİLİZE İNSANSI AVATAR MİMARİSİ (CYBER-GLAM / GEN-Z)
+// 3. STİLİZE İNSANSI AVATAR MİMARİSİ (CYBER-GLAM / GEN-Z)
 // ==========================================================================
 function buildStylizedAvatarMesh(cfg) {
   const root = new THREE.Group();
   const isFemale = cfg.gender === 'female';
 
-  const skinMat = new THREE.MeshStandardMaterial({ color: cfg.skinColor || '#f7d2b7', roughness: 0.55 });
+  const skinMat = new THREE.MeshStandardMaterial({ color: cfg.skinColor || '#f7d2b7', roughness: 0.65 });
   const eyeMat = new THREE.MeshStandardMaterial({ color: cfg.eyeColor || '#9b59b6', roughness: 0.1 });
   const hairMat = new THREE.MeshStandardMaterial({ color: cfg.hairColor || '#00d2d3', roughness: 0.35, metalness: 0.1 });
-  const topMat = new THREE.MeshStandardMaterial({ color: cfg.outfitTopColor || '#ffffff', roughness: 0.4 });
-  const bottomMat = new THREE.MeshStandardMaterial({ color: cfg.outfitBottomColor || '#1a1a24', roughness: 0.4 });
-  const goldMat = new THREE.MeshStandardMaterial({ color: 0xe5a93c, metalness: 0.95, roughness: 0.15 });
-  const bootsMat = new THREE.MeshStandardMaterial({ color: cfg.shoesColor || '#ffffff', roughness: 0.3 });
+  const topMat = new THREE.MeshStandardMaterial({ color: cfg.outfitTopColor || '#ffffff', roughness: 0.45 });
+  const bottomMat = new THREE.MeshStandardMaterial({ color: cfg.outfitBottomColor || '#1a1a24', roughness: 0.45 });
+  const goldMat = new THREE.MeshStandardMaterial({ color: 0xdfb76c, metalness: 0.92, roughness: 0.18 });
+  const bootsMat = new THREE.MeshStandardMaterial({ color: cfg.shoesColor || '#ffffff', roughness: 0.35 });
 
-  // 1. Pelvis (Kök)
+  // 1. Pelvis (Kök Eklem)
   const pelvis = new THREE.Group();
   pelvis.position.y = 1.85;
   root.add(pelvis);
@@ -207,7 +321,10 @@ function buildStylizedAvatarMesh(cfg) {
   // 2. Gövde & Korse Katmanı
   const torsoWidth = isFemale ? 0.68 : 0.92;
   const chestWidth = isFemale ? 0.82 : 1.08;
-  const torso = new THREE.Mesh(new THREE.CylinderGeometry(chestWidth * 0.45, torsoWidth * 0.4, 1.3, 20), cfg.outfitTop !== 'none' ? topMat : skinMat);
+  const torso = new THREE.Mesh(
+    new THREE.CylinderGeometry(chestWidth * 0.45, torsoWidth * 0.4, 1.3, 20),
+    cfg.outfitTop !== 'none' ? topMat : skinMat
+  );
   torso.position.y = 0.65;
   torso.castShadow = true;
   pelvis.add(torso);
@@ -221,7 +338,7 @@ function buildStylizedAvatarMesh(cfg) {
     }
   }
 
-  // 3. Boyun, Baş ve Yüz Detayları
+  // 3. Boyun, Baş ve Yüz
   const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.35, 16), skinMat);
   neck.position.y = 1.45;
   pelvis.add(neck);
@@ -236,7 +353,7 @@ function buildStylizedAvatarMesh(cfg) {
   head.castShadow = true;
   headGroup.add(head);
 
-  // Çekik Gözler
+  // Gözler
   const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.065, 12, 12), eyeMat);
   eyeL.position.set(-0.13, 0.06, 0.34);
   headGroup.add(eyeL);
@@ -245,7 +362,7 @@ function buildStylizedAvatarMesh(cfg) {
   eyeR.position.set(0.13, 0.06, 0.34);
   headGroup.add(eyeR);
 
-  // Yüz Dövmesi / Makyaj Şeridi
+  // Makyaj Şeridi
   const faceDecal = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.015, 8, 16, Math.PI), new THREE.MeshBasicMaterial({ color: 0x9b59b6 }));
   faceDecal.position.set(0.16, 0.12, 0.33);
   faceDecal.rotation.z = -Math.PI / 4;
@@ -254,7 +371,7 @@ function buildStylizedAvatarMesh(cfg) {
   // Saç Modelleri
   attachStylizedHair(headGroup, cfg.hairStyle, hairMat);
 
-  // Şapka / Taç Katmanı
+  // Taç
   if (cfg.hat === 'gold_wreath') {
     const wreath = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.045, 12, 24), goldMat);
     wreath.rotation.x = Math.PI / 2.2;
@@ -262,7 +379,7 @@ function buildStylizedAvatarMesh(cfg) {
     headGroup.add(wreath);
   }
 
-  // Gözlükler
+  // Gözlük
   if (cfg.glasses === 'cyber_sunglasses') {
     const glasses = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.14, 0.16), new THREE.MeshStandardMaterial({ color: 0x111116, roughness: 0.1 }));
     glasses.position.set(0, 0.06, 0.37);
@@ -285,9 +402,11 @@ function buildStylizedAvatarMesh(cfg) {
   pelvis.add(leftArm);
   const leftBicep = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.1, 0.65, 14), skinMat);
   leftBicep.position.y = -0.32;
+  leftBicep.castShadow = true;
   leftArm.add(leftBicep);
   const leftForearm = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.65, 14), topMat);
   leftForearm.position.y = -0.85;
+  leftForearm.castShadow = true;
   leftArm.add(leftForearm);
 
   const rightArm = new THREE.Group();
@@ -295,12 +414,14 @@ function buildStylizedAvatarMesh(cfg) {
   pelvis.add(rightArm);
   const rightBicep = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.1, 0.65, 14), skinMat);
   rightBicep.position.y = -0.32;
+  rightBicep.castShadow = true;
   rightArm.add(rightBicep);
   const rightForearm = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.65, 14), topMat);
   rightForearm.position.y = -0.85;
+  rightForearm.castShadow = true;
   rightArm.add(rightForearm);
 
-  // 5. Bacaklar & Yüksek Platform Çizmeler
+  // 5. Bacaklar & Platform Çizmeler
   const legOffset = isFemale ? 0.21 : 0.27;
 
   const leftLeg = new THREE.Group();
@@ -310,7 +431,7 @@ function buildStylizedAvatarMesh(cfg) {
   leftThigh.position.y = -0.42;
   leftThigh.castShadow = true;
   leftLeg.add(leftThigh);
-  
+
   const leftBoot = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.14, 1.15, 14), bootsMat);
   leftBoot.position.y = -1.15;
   leftBoot.castShadow = true;
@@ -318,6 +439,7 @@ function buildStylizedAvatarMesh(cfg) {
 
   const leftFoot = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.18, 0.44), bootsMat);
   leftFoot.position.set(0, -1.68, 0.1);
+  leftFoot.castShadow = true;
   leftLeg.add(leftFoot);
 
   const rightLeg = new THREE.Group();
@@ -335,6 +457,7 @@ function buildStylizedAvatarMesh(cfg) {
 
   const rightFoot = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.18, 0.44), bootsMat);
   rightFoot.position.set(0, -1.68, 0.1);
+  rightFoot.castShadow = true;
   rightLeg.add(rightFoot);
 
   root.userData.joints = {
@@ -389,31 +512,96 @@ function attachStylizedHair(headGroup, style, hairMat) {
 }
 
 // ==========================================================================
-// 3. ANİMASYON DÖNGÜSÜ & İNSANSI EYLEMLER
+// 4. GTA / MINECRAFT TARZI 3. ŞAHIS KAMERA ETKİLEŞİMİ (MOUSE & TOUCH)
+// ==========================================================================
+function setupGTAOrbitControls(container) {
+  // Masaüstü Fare ile Kamera Yönlendirme
+  container.addEventListener('mousedown', (e) => {
+    if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
+      isPointerOrbiting = true;
+      lastPointerX = e.clientX;
+      lastPointerY = e.clientY;
+    }
+  });
+
+  window.addEventListener('mouseup', () => { isPointerOrbiting = false; });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isPointerOrbiting) return;
+    const dx = e.clientX - lastPointerX;
+    const dy = e.clientY - lastPointerY;
+    lastPointerX = e.clientX;
+    lastPointerY = e.clientY;
+
+    camYaw -= dx * 0.0055;
+    camPitch += dy * 0.0055;
+    camPitch = Math.max(-0.12, Math.min(Math.PI / 2.8, camPitch));
+  });
+
+  // Mobil Dokunmatik Ekran ile Kamera Yönlendirme (Sol joystick hariç alan)
+  container.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    if (t.clientX > window.innerWidth * 0.35) {
+      isPointerOrbiting = true;
+      lastPointerX = t.clientX;
+      lastPointerY = t.clientY;
+    }
+  }, { passive: true });
+
+  container.addEventListener('touchmove', (e) => {
+    if (!isPointerOrbiting) return;
+    const t = e.touches[0];
+    const dx = t.clientX - lastPointerX;
+    const dy = t.clientY - lastPointerY;
+    lastPointerX = t.clientX;
+    lastPointerY = t.clientY;
+
+    camYaw -= dx * 0.0075;
+    camPitch += dy * 0.0075;
+    camPitch = Math.max(-0.12, Math.min(Math.PI / 2.8, camPitch));
+  }, { passive: true });
+
+  container.addEventListener('touchend', () => { isPointerOrbiting = false; });
+}
+
+// ==========================================================================
+// 5. ANİMASYON DÖNGÜSÜ & GTA TARZI İNSANSI FİZİK
 // ==========================================================================
 let lastSendTime = 0;
+const animClock = new THREE.Clock();
 
 function animate() {
   requestAnimationFrame(animate);
-
+  const delta = animClock.getDelta();
   const joints = player?.userData?.joints;
 
-  if (player && (moveVector.x !== 0 || moveVector.y !== 0)) {
+  if (player && (Math.abs(moveVector.x) > 0.05 || Math.abs(moveVector.y) > 0.05)) {
     currentActionState = 'walk';
-    const speed = 0.14;
-    player.position.x += moveVector.x * speed;
-    player.position.z -= moveVector.y * speed;
+    const currentSpeed = isSprinting ? 6.2 : 3.4;
 
-    const angle = Math.atan2(moveVector.x, moveVector.y);
-    player.rotation.y = angle;
+    // GTA Mantığı: Karakter kameranın baktığı açıya (camYaw) göre ilerler
+    const inputAngle = Math.atan2(moveVector.x, moveVector.y);
+    const targetHeading = camYaw + inputAngle;
 
-    walkCycle += 0.22;
+    // Karakteri yumuşakça hedefe döndür (Slerp/Lerp benzeri clamp)
+    player.rotation.y += THREE.MathUtils.clamp(
+      THREE.MathUtils.euclideanModulo(targetHeading - player.rotation.y + Math.PI, Math.PI * 2) - Math.PI,
+      -delta * 14,
+      delta * 14
+    );
+
+    // Dünya pozisyonunu ilerlet
+    player.position.x += Math.sin(targetHeading) * currentSpeed * delta;
+    player.position.z += Math.cos(targetHeading) * currentSpeed * delta;
+
+    // Gerçekçi İnsansı Yürüyüş/Koşma Animasyonu
+    walkCycle += delta * (isSprinting ? 14 : 9);
     if (joints) {
-      joints.leftLeg.rotation.x = Math.sin(walkCycle) * 0.65;
-      joints.rightLeg.rotation.x = -Math.sin(walkCycle) * 0.65;
-      joints.leftArm.rotation.x = -Math.sin(walkCycle) * 0.48;
-      joints.rightArm.rotation.x = Math.sin(walkCycle) * 0.48;
-      joints.pelvis.position.y = 1.85 + Math.abs(Math.sin(walkCycle * 2)) * 0.06;
+      joints.leftLeg.rotation.x = Math.sin(walkCycle) * (isSprinting ? 0.75 : 0.55);
+      joints.rightLeg.rotation.x = -Math.sin(walkCycle) * (isSprinting ? 0.75 : 0.55);
+      joints.leftArm.rotation.x = -Math.sin(walkCycle) * (isSprinting ? 0.6 : 0.45);
+      joints.rightArm.rotation.x = Math.sin(walkCycle) * (isSprinting ? 0.6 : 0.45);
+      joints.pelvis.position.y = 1.85 + Math.abs(Math.sin(walkCycle * 2)) * 0.07;
     }
 
     const now = Date.now();
@@ -446,7 +634,7 @@ function animate() {
       }
     } else {
       currentActionState = 'idle';
-      walkCycle += 0.035;
+      walkCycle += delta * 2;
       if (joints) {
         joints.leftLeg.rotation.x = 0;
         joints.rightLeg.rotation.x = 0;
@@ -457,17 +645,33 @@ function animate() {
     }
   }
 
-  if (player) {
-    camera.position.x = player.position.x;
-    camera.position.y = player.position.y + 4.2;
-    camera.position.z = player.position.z + 8.2;
-    camera.lookAt(player.position.x, player.position.y + 1.6, player.position.z);
+  // GTA 3. Şahıs Akıcı Kamera Takibi (Damped Spring Arm)
+  if (player && camera) {
+    const desiredX = player.position.x + Math.sin(camYaw) * Math.cos(camPitch) * camDistance;
+    const desiredY = player.position.y + 1.8 + Math.sin(camPitch) * camDistance;
+    const desiredZ = player.position.z + Math.cos(camYaw) * Math.cos(camPitch) * camDistance;
+
+    camera.position.lerp(new THREE.Vector3(desiredX, desiredY, desiredZ), 0.16);
+    camTarget.set(player.position.x, player.position.y + 1.5, player.position.z);
+    camera.lookAt(camTarget);
   }
 
-  if (renderer && scene && camera) {
+  // Post-Processing Render (Bloom + Tone Mapping)
+  if (composer) {
+    composer.render();
+  } else if (renderer && scene && camera) {
     renderer.render(scene, camera);
   }
 }
+
+// ==========================================================================
+// 6. GTA EYLEMLERİ, AMBİYANS MODU & KLAVYE KONTROLÜ
+// ==========================================================================
+window.toggleSprint = function() {
+  isSprinting = !isSprinting;
+  const btn = document.getElementById('action-sprint-btn');
+  if (btn) btn.style.borderColor = isSprinting ? '#d4af37' : 'rgba(212,175,55,0.5)';
+};
 
 function togglePlayerSit() {
   const btn = document.getElementById('action-sit-btn');
@@ -495,6 +699,69 @@ function togglePlayerCrouch() {
   syncActionStateWithSocket();
 }
 
+window.setMetaverseAmbiance = function(mode, el) {
+  document.querySelectorAll('.amb-btn').forEach(b => b.classList.remove('active'));
+  if (el) el.classList.add('active');
+
+  if (mode === 'sunset') {
+    scene.background.set(0x18101a);
+    scene.fog.color.set(0x18101a);
+    sunLight.color.set(0xff753a);
+    sunLight.intensity = 2.2;
+    hemiLight.intensity = 0.45;
+    chandelierLight.intensity = 1.4;
+    renderer.toneMappingExposure = 1.12;
+  } else if (mode === 'day') {
+    scene.background.set(0xd2deea);
+    scene.fog.color.set(0xd2deea);
+    sunLight.color.set(0xffffff);
+    sunLight.intensity = 2.0;
+    hemiLight.intensity = 0.75;
+    chandelierLight.intensity = 0.5;
+    renderer.toneMappingExposure = 1.2;
+  } else if (mode === 'night') {
+    scene.background.set(0x07080d);
+    scene.fog.color.set(0x07080d);
+    sunLight.color.set(0x354b66);
+    sunLight.intensity = 0.35;
+    hemiLight.intensity = 0.2;
+    chandelierLight.intensity = 2.4;
+    renderer.toneMappingExposure = 1.3;
+  }
+};
+
+function setupKeyboardControls() {
+  const keys = { KeyW: false, KeyS: false, KeyA: false, KeyD: false, ShiftLeft: false };
+
+  window.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (keys[e.code] !== undefined) keys[e.code] = true;
+    updateKeyMove();
+  });
+
+  window.addEventListener('keyup', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (keys[e.code] !== undefined) keys[e.code] = false;
+    updateKeyMove();
+  });
+
+  function updateKeyMove() {
+    let x = 0, y = 0;
+    if (keys.KeyW) y += 1;
+    if (keys.KeyS) y -= 1;
+    if (keys.KeyD) x += 1;
+    if (keys.KeyA) x -= 1;
+
+    // Joystick basılı değilse klavye yönlendirsin
+    if (!joystick || (moveVector.x === 0 && moveVector.y === 0)) {
+      moveVector.x = x;
+      moveVector.y = y;
+      isMoving = (x !== 0 || y !== 0);
+    }
+    isSprinting = !!keys.ShiftLeft;
+  }
+}
+
 function syncActionStateWithSocket() {
   if (socket && player) {
     socket.emit('player_move', {
@@ -516,7 +783,7 @@ function exitMetaverseToExplore() {
 }
 
 // ==========================================================================
-// 4. CANLI AVATAR STÜDYOSU (GİYDİR/ÇIKAR ÖNİZLEME MOTORU)
+// 7. CANLI AVATAR STÜDYOSU (GİYDİR/ÇIKAR ÖNİZLEME)
 // ==========================================================================
 let previewRenderer, previewScene, previewCamera, previewMesh;
 
@@ -600,7 +867,7 @@ function saveAvatarSettings() {
 }
 
 // ==========================================================================
-// 5. YT MASASI: PARAMETRİK EŞYALAR & KATALOG
+// 8. YT MASASI: PARAMETRİK EŞYALAR & KATALOG
 // ==========================================================================
 const YT_CATALOG_ITEMS = [
   { type: 'golden_spiral', name: 'Altın Spiral Anıt', icon: '🎗️' },
@@ -673,7 +940,7 @@ function spawnItem(itemType) {
 
 function renderItemMesh(itemType, pos) {
   let group = new THREE.Group();
-  const goldMat = new THREE.MeshStandardMaterial({ color: 0xe5a93c, metalness: 0.95, roughness: 0.15 });
+  const goldMat = new THREE.MeshStandardMaterial({ color: 0xdfb76c, metalness: 0.92, roughness: 0.18 });
   const pinkMat = new THREE.MeshStandardMaterial({ color: 0xdf5d78, roughness: 0.35 });
 
   if (itemType === 'golden_spiral') {
@@ -708,7 +975,7 @@ function loadSavedWorldItems() {
 }
 
 // ==========================================================================
-// 6. SOKET & DİĞER OYUNCULARI CANLI İZLEME
+// 9. SOKET & DİĞER OYUNCULARI CANLI İZLEME
 // ==========================================================================
 function setupSocket() {
   if (socket) return;
@@ -849,7 +1116,7 @@ function createNameSprite(name) {
 }
 
 // ==========================================================================
-// 7. ETKİLEŞİM & ŞİKAYET BİLDİRİMİ
+// 10. ETKİLEŞİM & ŞİKAYET BİLDİRİMİ
 // ==========================================================================
 function onSceneClick(event) {
   const container = document.getElementById('canvas-container');
@@ -955,7 +1222,7 @@ function sendMetaverseReportPrompt() {
 
 function setupJoystick() {
   const zone = document.getElementById('joystick-zone');
-  if (!zone) return;
+  if (!zone || typeof nipplejs === 'undefined') return;
   zone.innerHTML = '';
 
   joystick = nipplejs.create({
@@ -967,9 +1234,11 @@ function setupJoystick() {
   });
 
   joystick.on('move', (evt, data) => {
-    moveVector.x = data.vector.x;
-    moveVector.y = data.vector.y;
-    isMoving = true;
+    if (data && data.vector) {
+      moveVector.x = data.vector.x;
+      moveVector.y = data.vector.y;
+      isMoving = true;
+    }
   });
 
   joystick.on('end', () => {
@@ -985,4 +1254,5 @@ function onWindowResize() {
   camera.aspect = container.clientWidth / container.clientHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(container.clientWidth, container.clientHeight);
+  if (composer) composer.setSize(container.clientWidth, container.clientHeight);
 }
