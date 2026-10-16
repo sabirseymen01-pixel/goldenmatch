@@ -11,10 +11,17 @@ let currentTargetUser = null;
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
-// GTA / Minecraft Tarzı 3. Şahıs Dinamik Kamera Değişkenleri
-let camYaw = 0;          // Yatay dönüş açısı
-let camPitch = 0.22;     // Dikey bakış açısı
-let camDistance = 5.2;   // Karakter ile kamera mesafesi
+// Kullanıcı Tarafından Canlı Yönetilen Meta Ayarlar Portu Parametreleri
+let cameraSettings = {
+  distance: 9.0,      // GTA ferah takip mesafesi
+  fov: 65,            // Doğal derinlik açısı
+  heightOffset: 1.8,  // Omuz hizası
+  exposure: 1.15      // Sinematik pozlama
+};
+
+// GTA / Minecraft Tarzı 3. Şahıs Dinamik Kamera Açıları
+let camYaw = 0;         // Yatay dönüş açısı
+let camPitch = 0.28;     // Dikey bakış açısı
 const camTarget = new THREE.Vector3();
 let isPointerOrbiting = false;
 let lastPointerX = 0, lastPointerY = 0;
@@ -27,8 +34,6 @@ let isSprinting = false;
 
 // Işıklar & Ambiyans
 let hemiLight, sunLight, chandelierLight;
-
-// Yönetici & Hayalet Modu
 let isGhostMode = false;
 let isAdminEditor = false;
 let currentVenueTheme = 'golden_parametric';
@@ -55,6 +60,8 @@ let myAvatarConfig = {
 try {
   const saved = localStorage.getItem('gm_avatar_config');
   if (saved) myAvatarConfig = Object.assign(myAvatarConfig, JSON.parse(saved));
+  const savedCam = localStorage.getItem('gm_camera_settings');
+  if (savedCam) cameraSettings = Object.assign(cameraSettings, JSON.parse(savedCam));
 } catch (e) {}
 
 // ==========================================================================
@@ -125,22 +132,20 @@ function initMetaverse() {
   scene.background = new THREE.Color(0x161320);
   scene.fog = new THREE.FogExp2(0x161320, 0.012);
 
-  camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+  camera = new THREE.PerspectiveCamera(cameraSettings.fov, container.clientWidth / container.clientHeight, 0.1, 1000);
 
-  // Sinematik ACES Filmic Renderer
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setSize(container.clientWidth, container.clientHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.outputEncoding = THREE.sRGBEncoding;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.15;
+  renderer.toneMappingExposure = cameraSettings.exposure;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   container.innerHTML = '';
   container.appendChild(renderer.domElement);
 
-  // Post-Processing: UnrealBloomPass ile Lüks Parıltı Efekti
   const renderPass = new THREE.RenderPass(scene, camera);
   bloomPass = new THREE.UnrealBloomPass(
     new THREE.Vector2(container.clientWidth, container.clientHeight),
@@ -150,7 +155,6 @@ function initMetaverse() {
   composer.addPass(renderPass);
   composer.addPass(bloomPass);
 
-  // Sıcak Sinematik Aydınlatma Katmanı
   hemiLight = new THREE.HemisphereLight(0xfff0e6, 0x221a2e, 0.65);
   scene.add(hemiLight);
 
@@ -168,10 +172,8 @@ function initMetaverse() {
   sunLight.shadow.camera.bottom = -30;
   scene.add(sunLight);
 
-  // Mekanın İnşası
   buildParametricGoldenAuditorium();
 
-  // Oyuncu Avatarının Yüklenmesi
   player = buildStylizedAvatarMesh(myAvatarConfig);
   scene.add(player);
 
@@ -184,6 +186,7 @@ function initMetaverse() {
 
   renderer.domElement.addEventListener('pointerdown', onSceneClick);
   window.addEventListener('resize', onWindowResize);
+  syncSettingsPortUI();
   animate();
 }
 
@@ -212,13 +215,11 @@ function buildParametricGoldenAuditorium() {
     roughness: 0.18
   });
 
-  // 1. Zemin Tabanı
   const centerFloor = new THREE.Mesh(new THREE.CylinderGeometry(18, 18, 0.6, 48), floorMat);
   centerFloor.position.set(0, -2.6, 0);
   centerFloor.receiveShadow = true;
   scene.add(centerFloor);
 
-  // 2. Kademeli Amfitiyatro Terasları
   for (let i = 0; i < 7; i++) {
     const radius = 34 - i * 3.6;
     const height = 0.55;
@@ -230,7 +231,6 @@ function buildParametricGoldenAuditorium() {
     scene.add(stepMesh);
   }
 
-  // 3. Tavandaki Organik Parametrik Dalga Şeritleri (Işık Yayan)
   for (let j = 0; j < 12; j++) {
     const ribbonGroup = new THREE.Group();
     const curveRadius = 14 + j * 2.2;
@@ -245,7 +245,6 @@ function buildParametricGoldenAuditorium() {
     scene.add(ribbonGroup);
   }
 
-  // 4. Altın Halka Avize (Bloom ile Işıldar)
   const chandelierGeo = new THREE.TorusGeometry(3.6, 0.06, 16, 64);
   const chandelier = new THREE.Mesh(
     chandelierGeo,
@@ -260,7 +259,6 @@ function buildParametricGoldenAuditorium() {
   chandelierLight.castShadow = true;
   scene.add(chandelierLight);
 
-  // 5. Altın Sarmal Heykeller & Bar
   spawnGoldenSpiralSculpture(16, 1.2, -6, goldSculptMat);
   spawnGoldenSpiralSculpture(-16, 1.2, -6, goldSculptMat);
   buildModernCurvedBar();
@@ -313,12 +311,10 @@ function buildStylizedAvatarMesh(cfg) {
   const goldMat = new THREE.MeshStandardMaterial({ color: 0xdfb76c, metalness: 0.92, roughness: 0.18 });
   const bootsMat = new THREE.MeshStandardMaterial({ color: cfg.shoesColor || '#ffffff', roughness: 0.35 });
 
-  // 1. Pelvis (Kök Eklem)
   const pelvis = new THREE.Group();
   pelvis.position.y = 1.85;
   root.add(pelvis);
 
-  // 2. Gövde & Korse Katmanı
   const torsoWidth = isFemale ? 0.68 : 0.92;
   const chestWidth = isFemale ? 0.82 : 1.08;
   const torso = new THREE.Mesh(
@@ -338,7 +334,6 @@ function buildStylizedAvatarMesh(cfg) {
     }
   }
 
-  // 3. Boyun, Baş ve Yüz
   const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.35, 16), skinMat);
   neck.position.y = 1.45;
   pelvis.add(neck);
@@ -353,7 +348,6 @@ function buildStylizedAvatarMesh(cfg) {
   head.castShadow = true;
   headGroup.add(head);
 
-  // Gözler
   const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.065, 12, 12), eyeMat);
   eyeL.position.set(-0.13, 0.06, 0.34);
   headGroup.add(eyeL);
@@ -362,16 +356,13 @@ function buildStylizedAvatarMesh(cfg) {
   eyeR.position.set(0.13, 0.06, 0.34);
   headGroup.add(eyeR);
 
-  // Makyaj Şeridi
   const faceDecal = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.015, 8, 16, Math.PI), new THREE.MeshBasicMaterial({ color: 0x9b59b6 }));
   faceDecal.position.set(0.16, 0.12, 0.33);
   faceDecal.rotation.z = -Math.PI / 4;
   headGroup.add(faceDecal);
 
-  // Saç Modelleri
   attachStylizedHair(headGroup, cfg.hairStyle, hairMat);
 
-  // Taç
   if (cfg.hat === 'gold_wreath') {
     const wreath = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.045, 12, 24), goldMat);
     wreath.rotation.x = Math.PI / 2.2;
@@ -379,14 +370,12 @@ function buildStylizedAvatarMesh(cfg) {
     headGroup.add(wreath);
   }
 
-  // Gözlük
   if (cfg.glasses === 'cyber_sunglasses') {
     const glasses = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.14, 0.16), new THREE.MeshStandardMaterial({ color: 0x111116, roughness: 0.1 }));
     glasses.position.set(0, 0.06, 0.37);
     headGroup.add(glasses);
   }
 
-  // Kolye
   if (cfg.necklace === 'heavy_chain') {
     const chain = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.04, 12, 28), goldMat);
     chain.rotation.x = Math.PI / 2.3;
@@ -394,7 +383,6 @@ function buildStylizedAvatarMesh(cfg) {
     pelvis.add(chain);
   }
 
-  // 4. Kollar
   const armOffset = isFemale ? 0.45 : 0.60;
 
   const leftArm = new THREE.Group();
@@ -421,7 +409,6 @@ function buildStylizedAvatarMesh(cfg) {
   rightForearm.castShadow = true;
   rightArm.add(rightForearm);
 
-  // 5. Bacaklar & Platform Çizmeler
   const legOffset = isFemale ? 0.21 : 0.27;
 
   const leftLeg = new THREE.Group();
@@ -512,10 +499,87 @@ function attachStylizedHair(headGroup, style, hairMat) {
 }
 
 // ==========================================================================
-// 4. GTA / MINECRAFT TARZI 3. ŞAHIS KAMERA ETKİLEŞİMİ (MOUSE & TOUCH)
+// 4. CANLI META AYARLAR PORTU YÖNETİMİ
+// ==========================================================================
+window.toggleMetaSettingsPort = function() {
+  const modal = document.getElementById('metaSettingsPort');
+  modal?.classList.toggle('hidden');
+};
+
+window.onMetaSettingChange = function(type, value) {
+  const val = parseFloat(value);
+  if (type === 'distance') {
+    cameraSettings.distance = val;
+    document.getElementById('label-cam-dist').innerText = val.toFixed(1) + 'm';
+  } else if (type === 'fov') {
+    cameraSettings.fov = val;
+    document.getElementById('label-cam-fov').innerText = val + '°';
+    if (camera) {
+      camera.fov = val;
+      camera.updateProjectionMatrix();
+    }
+  } else if (type === 'height') {
+    cameraSettings.heightOffset = val;
+    document.getElementById('label-cam-height').innerText = val.toFixed(1) + 'm';
+  } else if (type === 'exposure') {
+    cameraSettings.exposure = val;
+    document.getElementById('label-cam-exp').innerText = val.toFixed(2);
+    if (renderer) renderer.toneMappingExposure = val;
+  }
+  localStorage.setItem('gm_camera_settings', JSON.stringify(cameraSettings));
+};
+
+window.applyPerspectivePreset = function(preset, btnElem) {
+  document.querySelectorAll('.view-preset-btns .view-btn').forEach(b => b.classList.remove('active'));
+  if (btnElem) btnElem.classList.add('active');
+
+  if (preset === 'wide') {
+    cameraSettings.distance = 9.5;
+    cameraSettings.fov = 68;
+    cameraSettings.heightOffset = 1.8;
+  } else if (preset === 'close') {
+    cameraSettings.distance = 5.5;
+    cameraSettings.fov = 55;
+    cameraSettings.heightOffset = 1.6;
+  } else if (preset === 'top') {
+    cameraSettings.distance = 14.0;
+    cameraSettings.fov = 48;
+    cameraSettings.heightOffset = 4.2;
+  } else if (preset === 'fps') {
+    cameraSettings.distance = 0.4;
+    cameraSettings.fov = 85;
+    cameraSettings.heightOffset = 1.7;
+  }
+
+  syncSettingsPortUI();
+  if (camera) {
+    camera.fov = cameraSettings.fov;
+    camera.updateProjectionMatrix();
+  }
+  localStorage.setItem('gm_camera_settings', JSON.stringify(cameraSettings));
+};
+
+function syncSettingsPortUI() {
+  const sDist = document.getElementById('slider-cam-dist');
+  const sFov = document.getElementById('slider-cam-fov');
+  const sHeight = document.getElementById('slider-cam-height');
+  const sExp = document.getElementById('slider-cam-exp');
+
+  if (sDist) sDist.value = cameraSettings.distance;
+  if (sFov) sFov.value = cameraSettings.fov;
+  if (sHeight) sHeight.value = cameraSettings.heightOffset;
+  if (sExp) sExp.value = cameraSettings.exposure;
+
+  document.getElementById('label-cam-dist')?.innerText = cameraSettings.distance.toFixed(1) + 'm';
+  document.getElementById('label-cam-fov')?.innerText = cameraSettings.fov + '°';
+  document.getElementById('label-cam-height')?.innerText = cameraSettings.heightOffset.toFixed(1) + 'm';
+  document.getElementById('label-cam-exp')?.innerText = cameraSettings.exposure.toFixed(2);
+}
+
+// ==========================================================================
+// 5. GTA TARZI KAMERA VE İNSANSI ANİMASYON DÖNGÜSÜ
 // ==========================================================================
 function setupGTAOrbitControls(container) {
-  // Masaüstü Fare ile Kamera Yönlendirme
   container.addEventListener('mousedown', (e) => {
     if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
       isPointerOrbiting = true;
@@ -535,10 +599,9 @@ function setupGTAOrbitControls(container) {
 
     camYaw -= dx * 0.0055;
     camPitch += dy * 0.0055;
-    camPitch = Math.max(-0.12, Math.min(Math.PI / 2.8, camPitch));
+    camPitch = Math.max(-0.15, Math.min(Math.PI / 2.6, camPitch));
   });
 
-  // Mobil Dokunmatik Ekran ile Kamera Yönlendirme (Sol joystick hariç alan)
   container.addEventListener('touchstart', (e) => {
     const t = e.touches[0];
     if (t.clientX > window.innerWidth * 0.35) {
@@ -558,15 +621,12 @@ function setupGTAOrbitControls(container) {
 
     camYaw -= dx * 0.0075;
     camPitch += dy * 0.0075;
-    camPitch = Math.max(-0.12, Math.min(Math.PI / 2.8, camPitch));
+    camPitch = Math.max(-0.15, Math.min(Math.PI / 2.6, camPitch));
   }, { passive: true });
 
   container.addEventListener('touchend', () => { isPointerOrbiting = false; });
 }
 
-// ==========================================================================
-// 5. ANİMASYON DÖNGÜSÜ & GTA TARZI İNSANSI FİZİK
-// ==========================================================================
 let lastSendTime = 0;
 const animClock = new THREE.Clock();
 
@@ -579,22 +639,18 @@ function animate() {
     currentActionState = 'walk';
     const currentSpeed = isSprinting ? 6.2 : 3.4;
 
-    // GTA Mantığı: Karakter kameranın baktığı açıya (camYaw) göre ilerler
     const inputAngle = Math.atan2(moveVector.x, moveVector.y);
     const targetHeading = camYaw + inputAngle;
 
-    // Karakteri yumuşakça hedefe döndür (Slerp/Lerp benzeri clamp)
     player.rotation.y += THREE.MathUtils.clamp(
       THREE.MathUtils.euclideanModulo(targetHeading - player.rotation.y + Math.PI, Math.PI * 2) - Math.PI,
       -delta * 14,
       delta * 14
     );
 
-    // Dünya pozisyonunu ilerlet
     player.position.x += Math.sin(targetHeading) * currentSpeed * delta;
     player.position.z += Math.cos(targetHeading) * currentSpeed * delta;
 
-    // Gerçekçi İnsansı Yürüyüş/Koşma Animasyonu
     walkCycle += delta * (isSprinting ? 14 : 9);
     if (joints) {
       joints.leftLeg.rotation.x = Math.sin(walkCycle) * (isSprinting ? 0.75 : 0.55);
@@ -645,18 +701,16 @@ function animate() {
     }
   }
 
-  // GTA 3. Şahıs Akıcı Kamera Takibi (Damped Spring Arm)
   if (player && camera) {
-    const desiredX = player.position.x + Math.sin(camYaw) * Math.cos(camPitch) * camDistance;
-    const desiredY = player.position.y + 1.8 + Math.sin(camPitch) * camDistance;
-    const desiredZ = player.position.z + Math.cos(camYaw) * Math.cos(camPitch) * camDistance;
+    const desiredX = player.position.x + Math.sin(camYaw) * Math.cos(camPitch) * cameraSettings.distance;
+    const desiredY = player.position.y + cameraSettings.heightOffset + Math.sin(camPitch) * cameraSettings.distance;
+    const desiredZ = player.position.z + Math.cos(camYaw) * Math.cos(camPitch) * cameraSettings.distance;
 
     camera.position.lerp(new THREE.Vector3(desiredX, desiredY, desiredZ), 0.16);
-    camTarget.set(player.position.x, player.position.y + 1.5, player.position.z);
+    camTarget.set(player.position.x, player.position.y + (cameraSettings.heightOffset * 0.8), player.position.z);
     camera.lookAt(camTarget);
   }
 
-  // Post-Processing Render (Bloom + Tone Mapping)
   if (composer) {
     composer.render();
   } else if (renderer && scene && camera) {
@@ -665,7 +719,7 @@ function animate() {
 }
 
 // ==========================================================================
-// 6. GTA EYLEMLERİ, AMBİYANS MODU & KLAVYE KONTROLÜ
+// 6. JOYSTICK, EYLEM VE SOKET KONTROLLERİ
 // ==========================================================================
 window.toggleSprint = function() {
   isSprinting = !isSprinting;
@@ -752,7 +806,6 @@ function setupKeyboardControls() {
     if (keys.KeyD) x += 1;
     if (keys.KeyA) x -= 1;
 
-    // Joystick basılı değilse klavye yönlendirsin
     if (!joystick || (moveVector.x === 0 && moveVector.y === 0)) {
       moveVector.x = x;
       moveVector.y = y;
