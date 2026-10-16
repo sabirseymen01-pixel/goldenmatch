@@ -1309,3 +1309,81 @@ function onWindowResize() {
   renderer.setSize(container.clientWidth, container.clientHeight);
   if (composer) composer.setSize(container.clientWidth, container.clientHeight);
 }
+/* ==========================================================================
+   METAVERSE ARAYÜZ & HUD ÇAKIŞMA DÜZELTMELERİ (FIX)
+   ========================================================================== */
+
+/* Metaverse Ekranının Tam Ekran Kaplamasını Garantile */
+#metaverseView {
+  position: relative !important;
+  width: 100% !important;
+  height: calc(100vh - 65px) !important;
+  overflow: hidden !important;
+  background: #0c0a14 !important;
+}
+
+/* Üst Navigasyon Barı Kesinlikle En Üstte Kalmalı */
+.app-nav {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1000 !important;
+}
+
+/* Sağ Üst Ayarlar Butonu Konumu */
+.meta-settings-port-btn {
+  position: absolute !important;
+  top: 18px !important;
+  right: 18px !important;
+  z-index: 500 !important;
+}
+
+/* Sağ Üst Ayarlar Modalı (Açılır Menü) */
+.meta-settings-modal {
+  position: absolute !important;
+  top: 72px !important;
+  right: 18px !important;
+  z-index: 500 !important;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+}
+
+/* Sol Alt Joystick Bölgesi */
+#joystick-zone {
+  position: absolute !important;
+  bottom: 25px !important;
+  left: 20px !important;
+  z-index: 400 !important;
+  pointer-events: auto !important;
+}
+
+/* Sağ Alt GTA Eylem Butonları (Otur, Çömel, Koş) */
+.gta-action-pad {
+  position: absolute !important;
+  bottom: 25px !important;
+  right: 20px !important;
+  z-index: 400 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+/* Dünya Sohbet Çubuğu (Input ve Gönder Butonu) */
+#metaverseView .world-chat-bar, 
+#metaverseView div[style*="position: absolute; bottom: 25px; left: 155px;"] {
+  position: absolute !important;
+  bottom: 25px !important;
+  left: 135px !important;
+  right: 82px !important;
+  z-index: 400 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+/* Mobil Cihazlarda Taşmaları Engelle */
+@media (max-width: 440px) {
+  #metaverseView div[style*="position: absolute; bottom: 25px; left: 155px;"] {
+    left: 125px !important;
+    right: 76px !important;
+  }
+}
