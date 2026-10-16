@@ -275,11 +275,11 @@
       </form>
     </main>
 
-    <!-- 5. EKRAN: 3D METAVERSE LOUNGE -->
+    <!-- 5. EKRAN: 3D METAVERSE LOUNGE (SADECE BURADA AKTİF) -->
     <main id="metaverseView" class="view-screen hidden" style="padding: 0; position: relative; overflow: hidden; background: #0c0a14; height: calc(100vh - 65px);">
       <div id="canvas-container" style="width: 100%; height: 100%;"></div>
 
-      <button class="metaverse-exit-btn" onclick="exitMetaverseToExplore()" title="Mekandan Ayrıl">
+      <button class="metaverse-exit-btn" onclick="exitMetaverseToExplore()" style="position: absolute; top: 16px; left: 16px; z-index: 50; background: rgba(14, 13, 23, 0.85); border: 1px solid #d4af37; color: #fff; padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer;">
         ← Ayrıl
       </button>
 
@@ -287,59 +287,44 @@
         🛠️ Mekan Tasarla
       </button>
 
-      <!-- CANLI META AYARLAR PORTU (SAĞ ÜST) -->
-      <button class="meta-settings-port-btn" onclick="toggleMetaSettingsPort()" title="Kamera & Perspektif Ayarları" style="position: absolute; top: 16px; right: 16px; width: 42px; height: 42px; border-radius: 50%; background: rgba(18, 16, 26, 0.85); border: 1px solid #d4af37; color: #d4af37; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 60;">
+      <!-- Sağ Üst Ayar Portu -->
+      <button onclick="toggleMetaSettingsPort()" style="position: absolute; top: 16px; right: 16px; width: 42px; height: 42px; border-radius: 50%; background: rgba(14, 13, 23, 0.85); border: 1px solid #d4af37; color: #d4af37; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 50;">
         ⚙️
       </button>
 
-      <div id="metaSettingsPort" class="meta-settings-modal hidden" style="position: absolute; top: 68px; right: 16px; width: 270px; background: rgba(14, 13, 22, 0.94); backdrop-filter: blur(18px); border: 1px solid rgba(212,175,55,0.4); border-radius: 16px; padding: 14px; z-index: 60; color:#fff; display:flex; flex-direction:column; gap:10px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(212,175,55,0.25); padding-bottom:6px;">
-          <span style="font-family:'Cinzel',serif; font-size:12px; font-weight:800; color:#d4af37;">⚙️ KAMERA & PERSPEKTİF</span>
+      <div id="metaSettingsPort" class="hidden" style="position: absolute; top: 68px; right: 16px; width: 260px; background: rgba(14, 13, 22, 0.95); border: 1px solid rgba(212,175,55,0.4); border-radius: 16px; padding: 14px; z-index: 60; color:#fff; display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(212,175,55,0.3); padding-bottom:6px;">
+          <span style="font-family:'Cinzel',serif; font-size:11px; font-weight:800; color:#d4af37;">⚙️ KAMERA AYARLARI</span>
           <button onclick="toggleMetaSettingsPort()" style="background:none; border:none; color:#aaa; cursor:pointer;">✕</button>
         </div>
         <div style="display:flex; flex-direction:column; gap:4px;">
-          <div style="display:flex; justify-content:space-between; font-size:10px; color:#d4af37; font-weight:bold;"><span>MESAFE</span><span id="label-cam-dist">9.0m</span></div>
+          <div style="display:flex; justify-content:space-between; font-size:10px; color:#d4af37;"><span>MESAFE</span><span id="label-cam-dist">9.0m</span></div>
           <input type="range" id="slider-cam-dist" min="3.5" max="18.0" step="0.5" value="9.0" oninput="onMetaSettingChange('distance', this.value)" style="width:100%;">
         </div>
         <div style="display:flex; flex-direction:column; gap:4px;">
-          <div style="display:flex; justify-content:space-between; font-size:10px; color:#d4af37; font-weight:bold;"><span>FOV (GENİŞLİK)</span><span id="label-cam-fov">65°</span></div>
+          <div style="display:flex; justify-content:space-between; font-size:10px; color:#d4af37;"><span>FOV</span><span id="label-cam-fov">65°</span></div>
           <input type="range" id="slider-cam-fov" min="40" max="95" step="1" value="65" oninput="onMetaSettingChange('fov', this.value)" style="width:100%;">
         </div>
-        <div style="display:flex; flex-direction:column; gap:4px;">
-          <div style="display:flex; justify-content:space-between; font-size:10px; color:#d4af37; font-weight:bold;"><span>YÜKSEKLİK</span><span id="label-cam-height">1.8m</span></div>
-          <input type="range" id="slider-cam-height" min="0.5" max="4.5" step="0.1" value="1.8" oninput="onMetaSettingChange('height', this.value)" style="width:100%;">
-        </div>
-        <div style="display:flex; flex-direction:column; gap:4px;">
-          <div style="display:flex; justify-content:space-between; font-size:10px; color:#d4af37; font-weight:bold;"><span>HIZLI MOD</span></div>
-          <div class="view-preset-btns" style="display:grid; grid-template-columns:1fr 1fr; gap:4px;">
-            <button class="view-btn active" onclick="applyPerspectivePreset('wide', this)" style="background:rgba(255,255,255,0.08); border:none; color:#fff; font-size:10px; padding:5px; border-radius:6px; cursor:pointer;">GTA Geniş</button>
-            <button class="view-btn" onclick="applyPerspectivePreset('close', this)" style="background:rgba(255,255,255,0.08); border:none; color:#fff; font-size:10px; padding:5px; border-radius:6px; cursor:pointer;">Sims Yakın</button>
-          </div>
-        </div>
-        <div style="display:flex; flex-direction:column; gap:4px;">
-          <div style="display:flex; justify-content:space-between; font-size:10px; color:#d4af37; font-weight:bold;"><span>POZLAMA</span><span id="label-cam-exp">1.15</span></div>
-          <input type="range" id="slider-cam-exp" min="0.6" max="2.0" step="0.05" value="1.15" oninput="onMetaSettingChange('exposure', this.value)" style="width:100%;">
-        </div>
       </div>
 
-      <!-- Dokunmatik Joystick (Sol Alt) -->
+      <!-- Sol Alt Joystick -->
       <div id="joystick-zone" style="position: absolute; bottom: 25px; left: 20px; width: 110px; height: 110px; z-index: 50; pointer-events: auto;"></div>
 
-      <!-- GTA Eylem Butonları (Sağ Alt) -->
+      <!-- Sağ Alt GTA Eylem Butonları -->
       <div class="gta-action-pad" style="position: absolute; bottom: 25px; right: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 50;">
-        <button id="action-sprint-btn" class="action-btn-gta" title="Koş / Yürü" onclick="toggleSprint()" style="width:44px; height:44px; border-radius:50%; background:rgba(14,15,26,0.85); border:1.5px solid #d4af37; color:#fff; font-size:16px; cursor:pointer;">⚡</button>
-        <button id="action-sit-btn" class="action-btn-gta" title="Otur / Kalk" onclick="togglePlayerSit()" style="width:44px; height:44px; border-radius:50%; background:rgba(14,15,26,0.85); border:1.5px solid #d4af37; color:#fff; font-size:16px; cursor:pointer;">🪑</button>
-        <button id="action-crouch-btn" class="action-btn-gta" title="Çömel" onclick="togglePlayerCrouch()" style="width:44px; height:44px; border-radius:50%; background:rgba(14,15,26,0.85); border:1.5px solid #d4af37; color:#fff; font-size:16px; cursor:pointer;">🧘</button>
+        <button id="action-sprint-btn" class="action-btn-gta" onclick="toggleSprint()" style="width:44px; height:44px; border-radius:50%; background:rgba(14,15,26,0.85); border:1.5px solid #d4af37; color:#fff; cursor:pointer;">⚡</button>
+        <button id="action-sit-btn" class="action-btn-gta" onclick="togglePlayerSit()" style="width:44px; height:44px; border-radius:50%; background:rgba(14,15,26,0.85); border:1.5px solid #d4af37; color:#fff; cursor:pointer;">🪑</button>
+        <button id="action-crouch-btn" class="action-btn-gta" onclick="togglePlayerCrouch()" style="width:44px; height:44px; border-radius:50%; background:rgba(14,15,26,0.85); border:1.5px solid #d4af37; color:#fff; cursor:pointer;">🧘</button>
       </div>
 
-      <!-- Canlı Dünya Sohbet Çubuğu -->
+      <!-- Dünya Sohbet Çubuğu -->
       <div style="position: absolute; bottom: 25px; left: 140px; right: 80px; display: flex; align-items: center; gap: 6px; z-index: 50;">
         <input type="text" id="world-chat-input" placeholder="Mekana fısılda..." style="flex:1; background:rgba(14,13,23,0.85); border:1px solid rgba(212,175,55,0.5); color:#fff; padding:9px 12px; border-radius:20px; outline:none; font-size:12px;">
         <button onclick="sendWorldChat()" class="meta-round-btn" title="Gönder">💬</button>
         <button onclick="sendMetaverseReportPrompt()" class="meta-round-btn danger" title="Şikayet">🚨</button>
       </div>
 
-      <!-- YT Eşya Çekmecesi -->
+      <!-- YT Çekmecesi -->
       <div id="ytItemDrawer" class="yt-item-drawer hidden">
         <div class="drawer-header">
           <span style="font-family:'Cinzel',serif; font-size:13px; font-weight:800; color:#d4af37;">🛠️ Mekan Tasarım Kataloğu</span>
@@ -371,4 +356,130 @@
       <div class="search-bar" style="margin-bottom:10px;">
         <input type="text" id="userSearchInput" onkeyup="filterAdminUserList()" placeholder="🔍 Rumuz, şehir, TG ID ara...">
       </div>
-      <div id="adminUserCards" class="admin-scroll-list" style="max-height:300px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;">
+      <div id="adminUserCards" class="admin-scroll-list" style="max-height:300px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
+    </main>
+
+    <!-- AVATAR STÜDYOSU (MODAL) -->
+    <div id="avatarCustomizerModal" class="modal-backdrop hidden">
+      <div class="modal-sheet avatar-studio-sheet">
+        <div class="sheet-header">
+          <h3 style="color: #d4af37; margin: 0; font-family: 'Cinzel', serif;">⚡ Golden Karakter Stüdyosu</h3>
+          <button class="icon-close" onclick="closeAvatarCustomizer()">✕</button>
+        </div>
+        <div class="avatar-preview-box">
+          <div id="avatar-preview-canvas" style="width: 100%; height: 100%;"></div>
+          <div class="preview-hint">360° Canlı Önizleme</div>
+        </div>
+        <div class="avatar-options-scroller">
+          <div class="customizer-section">
+            <span class="section-label">Cinsiyet / Vücut Yapısı</span>
+            <div class="chip-grid">
+              <button type="button" class="choice-chip selected" onclick="setAvatarParam('gender', 'female', this)">Kadın (Feminen)</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('gender', 'male', this)">Erkek (Maskülen)</button>
+            </div>
+          </div>
+          <div class="customizer-section">
+            <span class="section-label">Cilt Tonu</span>
+            <div class="swatch-row">
+              <div class="skin-tone-swatch active" style="background:#f7d2b7;" onclick="setAvatarParam('skinColor', '#f7d2b7', this)"></div>
+              <div class="skin-tone-swatch" style="background:#e0ac69;" onclick="setAvatarParam('skinColor', '#e0ac69', this)"></div>
+              <div class="skin-tone-swatch" style="background:#8d5524;" onclick="setAvatarParam('skinColor', '#8d5524', this)"></div>
+              <div class="skin-tone-swatch" style="background:#ffdbac;" onclick="setAvatarParam('skinColor', '#ffdbac', this)"></div>
+            </div>
+          </div>
+          <div class="customizer-section">
+            <span class="section-label">Saç Modeli & Rengi</span>
+            <div class="chip-grid">
+              <button type="button" class="choice-chip selected" onclick="setAvatarParam('hairStyle', 'twin_pigtails', this)">At Kuyruğu</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('hairStyle', 'dreadlocks', this)">Dreadlocks</button>
+              <button type="button" class="choice-chip" onclick="setAvatarParam('hairStyle', 'short', this)">Kısa Modern</button>
+            </div>
+            <div class="swatch-row" style="margin-top:6px;">
+              <div class="skin-tone-swatch active" style="background:#00d2d3;" onclick="setAvatarParam('hairColor', '#00d2d3', this)" title="Cyan"></div>
+              <div class="skin-tone-swatch" style="background:#ff4757;" onclick="setAvatarParam('hairColor', '#ff4757', this)" title="Kırmızı"></div>
+              <div class="skin-tone-swatch" style="background:#e5a93c;" onclick="setAvatarParam('hairColor', '#e5a93c', this)" title="Altın Sarısı"></div>
+              <div class="skin-tone-swatch" style="background:#9b59b6;" onclick="setAvatarParam('hairColor', '#9b59b6', this)" title="Mor"></div>
+            </div>
+          </div>
+        </div>
+        <div class="sheet-actions" style="margin-top: 14px;">
+          <button class="primary-btn full" onclick="saveAvatarSettings()">
+            <span>✨ Karakteri Mühürle & Kaydet</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- METAVERSE KULLANICI PROFİL KARTI -->
+    <div id="metaverseProfileModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeMetaverseProfileModal()">
+      <div class="modal-sheet" style="text-align: center;">
+        <div style="width: 76px; height: 76px; margin: 0 auto 10px; border-radius: 50%; overflow: hidden; border: 2.5px solid #d4af37;">
+          <img id="metaProfileImg" src="" style="width: 100%; height: 100%; object-fit: cover;" alt="Profil">
+        </div>
+        <h3 id="metaProfileName" style="color: #fff; margin: 0 0 4px 0; font-size: 18px;">Rumuz</h3>
+        <div id="metaProfileMeta" style="color: #d4af37; font-size: 13px; margin-bottom: 6px;">Top • İstanbul</div>
+        <div id="metaProfileDistance" style="color: #aaa; font-size: 12px; margin-bottom: 16px;">📍 Merkez</div>
+        <div style="display: flex; gap: 10px; justify-content: center;">
+          <button class="ghost-btn full" onclick="closeMetaverseProfileModal()">Kapat</button>
+          <button id="metaSendHeartBtn" class="primary-btn full" style="background: linear-gradient(45deg, #ff4757, #ff6b81);" onclick="sendHeartToCurrentTarget()">
+            ❤️ Kalp At (Mesaj Başlat)
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- FİLTRE MODALI -->
+    <div id="filterModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeFilterModal()">
+      <div class="modal-sheet" style="max-height: 85vh; overflow-y: auto;">
+        <div class="sheet-header">
+          <h3>Arama Filtreleri</h3>
+          <button class="icon-close" onclick="closeFilterModal()">✕</button>
+        </div>
+        <div class="form-group" style="margin-top:12px;">
+          <label>Şehir Filtresi</label>
+          <div class="chip-grid" id="filterCityChips"></div>
+        </div>
+        <div class="sheet-actions" style="margin-top:16px;">
+          <button class="ghost-btn full" onclick="closeFilterModal()">Vazgeç</button>
+          <button class="primary-btn full" onclick="applyFilters()">Uygula</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- HOŞ GELDİN MODALI -->
+    <div id="welcomeModal" class="modal-backdrop hidden">
+      <div class="modal-sheet" style="text-align: center;">
+        <div class="welcome-seal">✨</div>
+        <h2 class="welcome-title gold-text">Kutsal Profil Mühürlendi</h2>
+        <p class="welcome-desc">Olimpos meclisinde yerini aldın. Şimdi keşfe başlayabilir veya 3D parametrik lounge'a adım atabilirsin.</p>
+        <button class="primary-btn full" onclick="closeWelcomeAndExplore()">
+          <span>Keşfe Başla ➔</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ŞİKAYET MODALI -->
+    <div id="reportModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeReportModal()">
+      <div class="modal-sheet">
+        <div class="sheet-header">
+          <h3>Topluluk Kural İhlali Bildir</h3>
+          <button class="icon-close" onclick="closeReportModal()">✕</button>
+        </div>
+        <div class="form-group" style="margin-top: 12px;">
+          <label>Şikayet Nedeni</label>
+          <textarea id="reportReason" rows="3" placeholder="Lütfen ihlal nedenini açıklayın..."></textarea>
+          <small id="reportedMessagesPreview" style="color: #aaa; font-size: 11px; margin-top: 4px; display:block;"></small>
+        </div>
+        <div class="sheet-actions" style="margin-top: 14px;">
+          <button class="ghost-btn full" onclick="closeReportModal()">Vazgeç</button>
+          <button class="primary-btn full" style="background: #ff4757; color:#fff;" onclick="submitReport()">İlet</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+  <script src="metaverse.js"></script>
+</body>
+</html>
