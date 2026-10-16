@@ -1,1167 +1,792 @@
-/* ==========================================================================
-   GOLDENMATCH - iOS SPRING FLUID ENGINE & PARAMETRIC LUXURY DESIGN
-   ========================================================================== */
+// ==========================================================================
+// GOLDENMATCH - ULTRA-HD 4D PARAMETRİK LOUNGE & GTA-TPS MOTORU
+// ==========================================================================
 
-:root {
-  --bg: #07080f;
-  --surface: rgba(18, 19, 29, 0.84);
-  --surface-solid: #12131d;
-  --surface-card: #151624;
-  --surface-soft: #1c1d2d;
-  --surface-elevated: rgba(28, 29, 44, 0.75);
-  
-  /* Parametrik Amfitiyatro & Altın Heykel Renk Paleti */
-  --gold-primary: #e5a93c;
-  --gold-light: #fbe29d;
-  --gold-deep: #b0781a;
-  --gold-glow: rgba(229, 169, 60, 0.45);
-  --gold-gradient: linear-gradient(135deg, #fbe29d 0%, #e5a93c 50%, #9e6912 100%);
-  --gold-glass: rgba(229, 169, 60, 0.12);
-  --gold-border: rgba(229, 169, 60, 0.32);
+let scene, camera, renderer, player, joystick;
+let composer, bloomPass;
+let moveVector = { x: 0, y: 0 };
+let socket = null;
+let otherPlayers = {};
+let currentTargetUser = null;
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
 
-  --pink-terrace: #df5d78;
-  --pink-glow: rgba(223, 93, 120, 0.4);
-  --cyber-purple: #9b59b6;
-  --cyber-cyan: #00d2d3;
+// Kullanıcı Tarafından Canlı Yönetilen Meta Ayarlar Portu Parametreleri
+let cameraSettings = {
+  distance: 9.0,      // GTA ferah takip mesafesi
+  fov: 65,            // Doğal derinlik açısı
+  heightOffset: 1.8,  // Omuz hizası
+  exposure: 1.15      // Sinematik pozlama
+};
 
-  --text-main: #ffffff;
-  --text-secondary: #9ea0b4;
-  --text-tertiary: #65677d;
+// GTA / Minecraft Tarzı 3. Şahıs Dinamik Kamera Açıları
+let camYaw = 0;
+let camPitch = 0.28;
+const camTarget = new THREE.Vector3();
+let isPointerOrbiting = false;
+let lastPointerX = 0, lastPointerY = 0;
 
-  --like-color: #2ed573;
-  --pass-color: #ff4757;
+// Animasyon & Eylem Durumları
+let currentActionState = 'idle';
+let walkCycle = 0;
+let isMoving = false;
+let isSprinting = false;
 
-  --font-body: 'Plus Jakarta Sans', -apple-system, sans-serif;
-  --font-display: 'Cinzel', serif;
+// Işıklar & Ambiyans
+let hemiLight, sunLight, chandelierLight;
+let isGhostMode = false;
+let isAdminEditor = false;
 
-  --spring-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --spring-smooth: cubic-bezier(0.16, 1, 0.3, 1);
-}
+// Avatar Konfigürasyonu
+let myAvatarConfig = {
+  gender: 'female',
+  skinColor: '#f7d2b7',
+  eyeColor: '#9b59b6',
+  eyeShape: 'almond',
+  hairStyle: 'twin_pigtails',
+  hairColor: '#00d2d3',
+  hat: 'none',
+  glasses: 'cyber_sunglasses',
+  necklace: 'heavy_chain',
+  outfitTop: 'bandage_corset',
+  outfitTopColor: '#f0f0f5',
+  outfitBottom: 'strapped_shorts',
+  outfitBottomColor: '#f0f0f5',
+  shoes: 'laced_boots',
+  shoesColor: '#ffffff'
+};
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  -webkit-tap-highlight-color: transparent;
-  font-family: var(--font-body);
-}
+try {
+  const saved = localStorage.getItem('gm_avatar_config');
+  if (saved) myAvatarConfig = Object.assign(myAvatarConfig, JSON.parse(saved));
+  const savedCam = localStorage.getItem('gm_camera_settings');
+  if (savedCam) cameraSettings = Object.assign(cameraSettings, JSON.parse(savedCam));
+} catch (e) {}
 
-html, body {
-  background-color: var(--bg);
-  color: var(--text-main);
-  min-height: 100vh;
-  overflow-x: hidden;
-  user-select: none;
-  background-image: 
-    radial-gradient(circle at 50% 0%, rgba(229, 169, 60, 0.15) 0%, transparent 60%),
-    radial-gradient(circle at 10% 80%, rgba(223, 93, 120, 0.08) 0%, transparent 50%);
-}
+// ==========================================================================
+// 1. PROCEDURAL PBR DOKU ÜRETECİLERİ (ROBLOX PLASTİKLİĞİNİ BİTİREN KISIM)
+// ==========================================================================
+function createProceduralParquet() {
+  const c = document.createElement('canvas');
+  c.width = 1024; c.height = 1024;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#26160e';
+  ctx.fillRect(0, 0, 1024, 1024);
 
-.app-wrapper {
-  max-width: 440px;
-  margin: 0 auto;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  padding: 0 16px 24px 16px;
-  position: relative;
-}
-
-.hidden {
-  display: none !important;
-}
-
-/* ==========================================================================
-   EKRAN GEÇİŞ ANİMASYONLARI
-   ========================================================================== */
-.view-screen {
-  animation: iosSpringEnter 0.44s var(--spring-ease) forwards;
-  will-change: transform, opacity;
-}
-
-@keyframes iosSpringEnter {
-  0% {
-    opacity: 0;
-    transform: scale(0.93) translateY(12px);
+  const rows = 16, cols = 8;
+  const w = 1024 / cols, h = 1024 / rows;
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      const shift = (i % 2) * (w / 2);
+      const x = (j * w + shift) % 1024;
+      const y = i * h;
+      const tone = 25 + Math.floor(Math.sin(i * 3 + j * 5) * 8);
+      ctx.fillStyle = `rgb(${tone + 38}, ${tone + 18}, ${tone + 6})`;
+      ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+    }
   }
-  100% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(4, 4);
+  return tex;
+}
+
+function createProceduralMarble() {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 512;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#f8f6f0';
+  ctx.fillRect(0, 0, 512, 512);
+
+  ctx.strokeStyle = 'rgba(212, 175, 55, 0.32)';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(0, 80);
+  ctx.bezierCurveTo(140, 220, 320, 120, 512, 440);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(90, 85, 80, 0.16)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(110, 0);
+  ctx.bezierCurveTo(230, 270, 360, 380, 512, 190);
+  ctx.stroke();
+
+  return new THREE.CanvasTexture(c);
+}
+
+// ==========================================================================
+// 2. SAHNE, SİNEMATİK POST-PROCESSING VE PARAMETRİK MEKAN
+// ==========================================================================
+function initMetaverse() {
+  const container = document.getElementById('canvas-container');
+  if (!container) return;
+
+  if (renderer && scene) {
+    onWindowResize();
+    return;
+  }
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x13111c);
+  scene.fog = new THREE.FogExp2(0x13111c, 0.012);
+
+  camera = new THREE.PerspectiveCamera(cameraSettings.fov, container.clientWidth / container.clientHeight, 0.1, 1000);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = cameraSettings.exposure;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  container.innerHTML = '';
+  container.appendChild(renderer.domElement);
+
+  const renderPass = new THREE.RenderPass(scene, camera);
+  bloomPass = new THREE.UnrealBloomPass(
+    new THREE.Vector2(container.clientWidth, container.clientHeight),
+    0.42, 0.4, 0.86
+  );
+  composer = new THREE.EffectComposer(renderer);
+  composer.addPass(renderPass);
+  composer.addPass(bloomPass);
+
+  hemiLight = new THREE.HemisphereLight(0xfff2e6, 0x1f1929, 0.7);
+  scene.add(hemiLight);
+
+  sunLight = new THREE.DirectionalLight(0xffeed6, 1.9);
+  sunLight.position.set(25, 45, 20);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.width = 2048;
+  sunLight.shadow.mapSize.height = 2048;
+  sunLight.shadow.bias = -0.00015;
+  scene.add(sunLight);
+
+  buildParametricGoldenAuditorium();
+
+  player = buildStylizedAvatarMesh(myAvatarConfig);
+  scene.add(player);
+
+  setupJoystick();
+  setupKeyboardControls();
+  setupGTAOrbitControls(container);
+  loadSavedWorldItems();
+  populateYtItemDrawer();
+  setupSocket();
+
+  renderer.domElement.addEventListener('pointerdown', onSceneClick);
+  window.addEventListener('resize', onWindowResize);
+  syncSettingsPortUI();
+  animate();
+}
+
+function buildParametricGoldenAuditorium() {
+  const floorMat = new THREE.MeshStandardMaterial({
+    map: createProceduralParquet(),
+    roughness: 0.28,
+    metalness: 0.05
+  });
+  const marbleMat = new THREE.MeshStandardMaterial({
+    map: createProceduralMarble(),
+    roughness: 0.16,
+    metalness: 0.08
+  });
+  const pinkVelvetMat = new THREE.MeshStandardMaterial({
+    color: 0xd95272,
+    roughness: 0.45,
+    metalness: 0.05
+  });
+  const goldSculptMat = new THREE.MeshStandardMaterial({
+    color: 0xdfb76c,
+    metalness: 0.92,
+    roughness: 0.18
+  });
+
+  const centerFloor = new THREE.Mesh(new THREE.CylinderGeometry(20, 20, 0.6, 48), floorMat);
+  centerFloor.position.set(0, -2.6, 0);
+  centerFloor.receiveShadow = true;
+  scene.add(centerFloor);
+
+  for (let i = 0; i < 7; i++) {
+    const radius = 34 - i * 3.6;
+    const height = 0.55;
+    const ringGeo = new THREE.CylinderGeometry(radius, radius + 1.2, height, 48);
+    const stepMesh = new THREE.Mesh(ringGeo, pinkVelvetMat);
+    stepMesh.position.set(0, (6 - i) * height - 2.5, 0);
+    stepMesh.receiveShadow = true;
+    stepMesh.castShadow = true;
+    scene.add(stepMesh);
+  }
+
+  for (let j = 0; j < 12; j++) {
+    const ribbonGroup = new THREE.Group();
+    const curveRadius = 14 + j * 2.2;
+    const tubeGeo = new THREE.TorusGeometry(curveRadius, 0.45, 12, 64, Math.PI * 1.4);
+    const ribbon = new THREE.Mesh(tubeGeo, j % 2 === 0 ? marbleMat : pinkVelvetMat);
+    ribbon.rotation.x = Math.PI / 2 + (j * 0.06);
+    ribbon.rotation.y = (j * 0.18);
+    ribbon.position.set(Math.sin(j) * 3, 14 + (j * 0.9), Math.cos(j) * 2);
+    ribbon.castShadow = true;
+    ribbonGroup.add(ribbon);
+    scene.add(ribbonGroup);
+  }
+
+  const chandelier = new THREE.Mesh(
+    new THREE.TorusGeometry(3.6, 0.06, 16, 64),
+    new THREE.MeshBasicMaterial({ color: 0xffe0a3 })
+  );
+  chandelier.rotation.x = Math.PI / 2;
+  chandelier.position.set(0, 8.5, 0);
+  scene.add(chandelier);
+
+  chandelierLight = new THREE.PointLight(0xffb359, 1.4, 25, 1.5);
+  chandelierLight.position.set(0, 8.2, 0);
+  chandelierLight.castShadow = true;
+  scene.add(chandelierLight);
+
+  spawnGoldenSpiralSculpture(16, 1.2, -6, goldSculptMat);
+  spawnGoldenSpiralSculpture(-16, 1.2, -6, goldSculptMat);
+  buildModernCurvedBar();
+}
+
+function spawnGoldenSpiralSculpture(x, y, z, mat) {
+  const group = new THREE.Group();
+  for (let i = 0; i < 18; i++) {
+    const geom = new THREE.TorusGeometry(1.6 - (i * 0.04), 0.14, 12, 32, Math.PI * 1.2);
+    const ring = new THREE.Mesh(geom, mat);
+    ring.rotation.x = Math.PI / 3;
+    ring.rotation.z = i * 0.38;
+    ring.position.y = i * 0.55;
+    ring.castShadow = true;
+    group.add(ring);
+  }
+  group.position.set(x, y, z);
+  scene.add(group);
+}
+
+function buildModernCurvedBar() {
+  const barMat = new THREE.MeshStandardMaterial({ color: 0x181720, roughness: 0.22 });
+  const goldTrim = new THREE.MeshStandardMaterial({ color: 0xdfb76c, metalness: 0.92, roughness: 0.15 });
+
+  const barMesh = new THREE.Mesh(new THREE.CylinderGeometry(9, 9, 2.4, 32, 1, false, 0, Math.PI), barMat);
+  barMesh.rotation.y = -Math.PI / 2;
+  barMesh.position.set(0, 1.2, -12);
+  barMesh.castShadow = true;
+  barMesh.receiveShadow = true;
+  scene.add(barMesh);
+
+  const trim = new THREE.Mesh(new THREE.CylinderGeometry(9.2, 9.2, 0.2, 32, 1, false, 0, Math.PI), goldTrim);
+  trim.rotation.y = -Math.PI / 2;
+  trim.position.set(0, 2.4, -12);
+  scene.add(trim);
+}
+
+// ==========================================================================
+// 3. STİLİZE İNSANSI AVATAR MİMARİSİ
+// ==========================================================================
+function buildStylizedAvatarMesh(cfg) {
+  const root = new THREE.Group();
+  const isFemale = cfg.gender === 'female';
+
+  const skinMat = new THREE.MeshStandardMaterial({ color: cfg.skinColor || '#f7d2b7', roughness: 0.65 });
+  const eyeMat = new THREE.MeshStandardMaterial({ color: cfg.eyeColor || '#9b59b6', roughness: 0.1 });
+  const hairMat = new THREE.MeshStandardMaterial({ color: cfg.hairColor || '#00d2d3', roughness: 0.35, metalness: 0.1 });
+  const topMat = new THREE.MeshStandardMaterial({ color: cfg.outfitTopColor || '#ffffff', roughness: 0.45 });
+  const bottomMat = new THREE.MeshStandardMaterial({ color: cfg.outfitBottomColor || '#1a1a24', roughness: 0.45 });
+  const goldMat = new THREE.MeshStandardMaterial({ color: 0xdfb76c, metalness: 0.92, roughness: 0.18 });
+  const bootsMat = new THREE.MeshStandardMaterial({ color: cfg.shoesColor || '#ffffff', roughness: 0.35 });
+
+  const pelvis = new THREE.Group();
+  pelvis.position.y = 1.85;
+  root.add(pelvis);
+
+  const torsoWidth = isFemale ? 0.68 : 0.92;
+  const chestWidth = isFemale ? 0.82 : 1.08;
+  const torso = new THREE.Mesh(
+    new THREE.CylinderGeometry(chestWidth * 0.45, torsoWidth * 0.4, 1.3, 20),
+    cfg.outfitTop !== 'none' ? topMat : skinMat
+  );
+  torso.position.y = 0.65;
+  torso.castShadow = true;
+  pelvis.add(torso);
+
+  const headGroup = new THREE.Group();
+  headGroup.position.y = 1.85;
+  pelvis.add(headGroup);
+
+  const headGeo = new THREE.SphereGeometry(0.38, 24, 24);
+  headGeo.scale(1, 1.2, 1.08);
+  const head = new THREE.Mesh(headGeo, skinMat);
+  head.castShadow = true;
+  headGroup.add(head);
+
+  const hairGeo = new THREE.SphereGeometry(0.41, 16, 16);
+  const cap = new THREE.Mesh(hairGeo, hairMat);
+  cap.position.set(0, 0.12, -0.04);
+  headGroup.add(cap);
+
+  if (cfg.glasses === 'cyber_sunglasses') {
+    const glasses = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.14, 0.16), new THREE.MeshStandardMaterial({ color: 0x111116, roughness: 0.1 }));
+    glasses.position.set(0, 0.06, 0.37);
+    headGroup.add(glasses);
+  }
+
+  const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.7, 12), skinMat);
+  armL.position.set(-0.45, 1.1, 0);
+  armL.castShadow = true;
+  pelvis.add(armL);
+
+  const armR = armL.clone();
+  armR.position.x = 0.45;
+  pelvis.add(armR);
+
+  const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.1, 1.1, 14), bootsMat);
+  legL.position.set(-0.2, -0.55, 0);
+  legL.castShadow = true;
+  pelvis.add(legL);
+
+  const legR = legL.clone();
+  legR.position.x = 0.2;
+  pelvis.add(legR);
+
+  root.userData.joints = { pelvis, headGroup, armL, armR, legL, legR };
+  root.userData.config = cfg;
+  return root;
+}
+
+// ==========================================================================
+// 4. CANLI META AYARLAR PORTU YÖNETİMİ
+// ==========================================================================
+window.toggleMetaSettingsPort = function() {
+  const modal = document.getElementById('metaSettingsPort');
+  modal?.classList.toggle('hidden');
+};
+
+window.onMetaSettingChange = function(type, value) {
+  const val = parseFloat(value);
+  if (type === 'distance') {
+    cameraSettings.distance = val;
+    document.getElementById('label-cam-dist').innerText = val.toFixed(1) + 'm';
+  } else if (type === 'fov') {
+    cameraSettings.fov = val;
+    document.getElementById('label-cam-fov').innerText = val + '°';
+    if (camera) {
+      camera.fov = val;
+      camera.updateProjectionMatrix();
+    }
+  } else if (type === 'height') {
+    cameraSettings.heightOffset = val;
+    document.getElementById('label-cam-height').innerText = val.toFixed(1) + 'm';
+  } else if (type === 'exposure') {
+    cameraSettings.exposure = val;
+    document.getElementById('label-cam-exp').innerText = val.toFixed(2);
+    if (renderer) renderer.toneMappingExposure = val;
+  }
+  localStorage.setItem('gm_camera_settings', JSON.stringify(cameraSettings));
+};
+
+window.applyPerspectivePreset = function(preset, btnElem) {
+  document.querySelectorAll('.view-preset-btns .view-btn').forEach(b => b.classList.remove('active'));
+  if (btnElem) btnElem.classList.add('active');
+
+  if (preset === 'wide') {
+    cameraSettings.distance = 9.5;
+    cameraSettings.fov = 68;
+    cameraSettings.heightOffset = 1.8;
+  } else if (preset === 'close') {
+    cameraSettings.distance = 5.5;
+    cameraSettings.fov = 55;
+    cameraSettings.heightOffset = 1.6;
+  } else if (preset === 'top') {
+    cameraSettings.distance = 14.0;
+    cameraSettings.fov = 48;
+    cameraSettings.heightOffset = 4.2;
+  } else if (preset === 'fps') {
+    cameraSettings.distance = 0.4;
+    cameraSettings.fov = 85;
+    cameraSettings.heightOffset = 1.7;
+  }
+
+  syncSettingsPortUI();
+  if (camera) {
+    camera.fov = cameraSettings.fov;
+    camera.updateProjectionMatrix();
+  }
+  localStorage.setItem('gm_camera_settings', JSON.stringify(cameraSettings));
+};
+
+function syncSettingsPortUI() {
+  const sDist = document.getElementById('slider-cam-dist');
+  const sFov = document.getElementById('slider-cam-fov');
+  const sHeight = document.getElementById('slider-cam-height');
+  const sExp = document.getElementById('slider-cam-exp');
+
+  if (sDist) sDist.value = cameraSettings.distance;
+  if (sFov) sFov.value = cameraSettings.fov;
+  if (sHeight) sHeight.value = cameraSettings.heightOffset;
+  if (sExp) sExp.value = cameraSettings.exposure;
+
+  document.getElementById('label-cam-dist')?.innerText = cameraSettings.distance.toFixed(1) + 'm';
+  document.getElementById('label-cam-fov')?.innerText = cameraSettings.fov + '°';
+  document.getElementById('label-cam-height')?.innerText = cameraSettings.heightOffset.toFixed(1) + 'm';
+  document.getElementById('label-cam-exp')?.innerText = cameraSettings.exposure.toFixed(2);
+}
+
+// ==========================================================================
+// 5. GTA TARZI KAMERA VE İNSANSI ANİMASYON DÖNGÜSÜ
+// ==========================================================================
+function setupGTAOrbitControls(container) {
+  container.addEventListener('mousedown', (e) => {
+    if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
+      isPointerOrbiting = true;
+      lastPointerX = e.clientX;
+      lastPointerY = e.clientY;
+    }
+  });
+
+  window.addEventListener('mouseup', () => { isPointerOrbiting = false; });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isPointerOrbiting) return;
+    const dx = e.clientX - lastPointerX;
+    const dy = e.clientY - lastPointerY;
+    lastPointerX = e.clientX;
+    lastPointerY = e.clientY;
+
+    camYaw -= dx * 0.0055;
+    camPitch += dy * 0.0055;
+    camPitch = Math.max(-0.15, Math.min(Math.PI / 2.6, camPitch));
+  });
+
+  container.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    if (t.clientX > window.innerWidth * 0.35) {
+      isPointerOrbiting = true;
+      lastPointerX = t.clientX;
+      lastPointerY = t.clientY;
+    }
+  }, { passive: true });
+
+  container.addEventListener('touchmove', (e) => {
+    if (!isPointerOrbiting) return;
+    const t = e.touches[0];
+    const dx = t.clientX - lastPointerX;
+    const dy = t.clientY - lastPointerY;
+    lastPointerX = t.clientX;
+    lastPointerY = t.clientY;
+
+    camYaw -= dx * 0.0075;
+    camPitch += dy * 0.0075;
+    camPitch = Math.max(-0.15, Math.min(Math.PI / 2.6, camPitch));
+  }, { passive: true });
+
+  container.addEventListener('touchend', () => { isPointerOrbiting = false; });
+}
+
+let lastSendTime = 0;
+const animClock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const delta = animClock.getDelta();
+  const joints = player?.userData?.joints;
+
+  if (player && (Math.abs(moveVector.x) > 0.05 || Math.abs(moveVector.y) > 0.05)) {
+    currentActionState = 'walk';
+    const currentSpeed = isSprinting ? 6.5 : 3.4;
+
+    const inputAngle = Math.atan2(moveVector.x, moveVector.y);
+    const targetHeading = camYaw + inputAngle;
+
+    player.rotation.y += THREE.MathUtils.clamp(
+      THREE.MathUtils.euclideanModulo(targetHeading - player.rotation.y + Math.PI, Math.PI * 2) - Math.PI,
+      -delta * 14,
+      delta * 14
+    );
+
+    player.position.x += Math.sin(targetHeading) * currentSpeed * delta;
+    player.position.z += Math.cos(targetHeading) * currentSpeed * delta;
+
+    walkCycle += delta * (isSprinting ? 14 : 9);
+    if (joints) {
+      joints.legL.rotation.x = Math.sin(walkCycle) * 0.6;
+      joints.legR.rotation.x = -Math.sin(walkCycle) * 0.6;
+      joints.armL.rotation.x = -Math.sin(walkCycle) * 0.5;
+      joints.armR.rotation.x = Math.sin(walkCycle) * 0.5;
+      joints.pelvis.position.y = 1.85 + Math.abs(Math.sin(walkCycle * 2)) * 0.06;
+    }
+
+    const now = Date.now();
+    if (socket && now - lastSendTime > 50) {
+      lastSendTime = now;
+      socket.emit('player_move', {
+        x: player.position.x,
+        y: player.position.y,
+        z: player.position.z,
+        rotY: player.rotation.y,
+        actionState: 'walk'
+      });
+    }
+  } else if (player) {
+    if (currentActionState === 'sit') {
+      if (joints) {
+        joints.pelvis.position.y = 1.0;
+        joints.legL.rotation.x = -Math.PI / 2.2;
+        joints.legR.rotation.x = -Math.PI / 2.2;
+      }
+    } else if (currentActionState === 'crouch') {
+      if (joints) {
+        joints.pelvis.position.y = 1.25;
+        joints.legL.rotation.x = -Math.PI / 3.5;
+        joints.legR.rotation.x = -Math.PI / 3.5;
+      }
+    } else {
+      currentActionState = 'idle';
+      walkCycle += delta * 2;
+      if (joints) {
+        joints.legL.rotation.x = 0;
+        joints.legR.rotation.x = 0;
+        joints.armL.rotation.x = 0;
+        joints.armR.rotation.x = 0;
+        joints.pelvis.position.y = 1.85 + Math.sin(walkCycle) * 0.02;
+      }
+    }
+  }
+
+  if (player && camera) {
+    const desiredX = player.position.x + Math.sin(camYaw) * Math.cos(camPitch) * cameraSettings.distance;
+    const desiredY = player.position.y + cameraSettings.heightOffset + Math.sin(camPitch) * cameraSettings.distance;
+    const desiredZ = player.position.z + Math.cos(camYaw) * Math.cos(camPitch) * cameraSettings.distance;
+
+    camera.position.lerp(new THREE.Vector3(desiredX, desiredY, desiredZ), 0.16);
+    camTarget.set(player.position.x, player.position.y + (cameraSettings.heightOffset * 0.8), player.position.z);
+    camera.lookAt(camTarget);
+  }
+
+  if (composer) {
+    composer.render();
+  } else if (renderer && scene && camera) {
+    renderer.render(scene, camera);
   }
 }
 
-/* ==========================================================================
-   ÜST NAVİGASYON (TINDER HEADER)
-   ========================================================================== */
-.app-nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 4px 12px 4px;
-  position: sticky;
-  top: 0;
-  background: rgba(7, 8, 15, 0.88);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  z-index: 100;
-  margin-bottom: 8px;
-}
-
-.brand-logo {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 900;
-  cursor: pointer;
-  letter-spacing: 1.5px;
-}
-
-.gold-text {
-  font-family: var(--font-display);
-  background: var(--gold-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-shadow: 0 0 25px var(--gold-glow);
-}
-
-.nav-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.nav-btn {
-  background: var(--surface-elevated);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: var(--text-main);
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  position: relative;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
-  transition: transform 0.2s var(--spring-ease), background 0.2s;
-}
-
-.nav-btn:active {
-  transform: scale(0.88);
-}
-
-.nav-btn.metaverse-entry-btn {
-  border-color: var(--gold-primary);
-  background: var(--gold-glass);
-  box-shadow: 0 0 16px var(--gold-glow);
-}
-
-.nav-btn.yt-badge {
-  width: auto;
-  border-radius: 22px;
-  padding: 0 14px;
-  font-size: 12px;
-  font-weight: 800;
-  border: 1px solid var(--gold-primary);
-  color: var(--gold-primary);
-  background: var(--gold-glass);
-}
-
-.badge-dot {
-  position: absolute;
-  top: 3px;
-  right: 3px;
-  width: 10px;
-  height: 10px;
-  background-color: var(--pass-color);
-  border-radius: 50%;
-  border: 2px solid var(--bg);
-}
-
-/* ==========================================================================
-   FOTOĞRAF IZGARASI
-   ========================================================================== */
-.screen-header {
-  text-align: center;
-  margin: 18px 0 20px 0;
-}
-
-.screen-header h1 {
-  font-size: 26px;
-  font-weight: 900;
-}
-
-.subtitle {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin-top: 6px;
-}
-
-.photo-grid {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  grid-template-rows: repeat(3, 88px);
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
-.photo-slot {
-  position: relative;
-  background: var(--surface-card);
-  border: 1.5px dashed var(--gold-border);
-  border-radius: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  cursor: pointer;
-  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
-  transition: transform 0.22s var(--spring-ease);
-}
-
-.photo-slot:active {
-  transform: scale(0.96);
-}
-
-.photo-slot.main {
-  grid-row: span 3;
-}
-
-.slot-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.plus-icon {
-  font-size: 26px;
-  color: var(--gold-primary);
-}
-
-.slot-label {
-  font-family: var(--font-display);
-  font-size: 11px;
-  font-weight: 800;
-  color: var(--gold-light);
-}
-
-.slot-preview {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: none;
-}
-
-.photo-slot.has-image .slot-preview {
-  display: block;
-}
-
-.photo-slot.has-image .slot-placeholder,
-.photo-slot.has-image .plus-icon {
-  display: none;
-}
-
-/* ==========================================================================
-   AVATAR STÜDYOSU TETİKLEYİCİ BUTONU (PROFİL SAYFASI)
-   ========================================================================== */
-.avatar-studio-trigger-btn {
-  width: 100%;
-  background: linear-gradient(135deg, rgba(229, 169, 60, 0.18) 0%, rgba(223, 93, 120, 0.12) 60%, rgba(18, 19, 29, 0.98) 100%);
-  border: 1.5px solid var(--gold-primary);
-  border-radius: 18px;
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), 0 0 18px rgba(229, 169, 60, 0.18);
-  transition: transform 0.2s var(--spring-ease);
-}
-
-.avatar-studio-trigger-btn:active {
-  transform: scale(0.97);
-}
-
-/* ==========================================================================
-   CANLI 3D LOUNGE HIZLI GİRİŞ BANNERI (KEŞFET SAYFASI)
-   ========================================================================== */
-.lounge-quick-card {
-  background: linear-gradient(135deg, rgba(223, 93, 120, 0.3) 0%, rgba(229, 169, 60, 0.25) 50%, rgba(14, 13, 23, 0.98) 100%);
-  border: 1.5px solid var(--pink-terrace);
-  border-radius: 18px;
-  padding: 14px 18px;
-  margin-bottom: 12px;
-  cursor: pointer;
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.7), 0 0 22px var(--pink-glow);
-  transition: transform 0.2s var(--spring-ease);
-}
-
-.lounge-quick-card:active {
-  transform: scale(0.98);
-}
-
-/* ==========================================================================
-   FORM KATMANLARI
-   ========================================================================== */
-.gold-form {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.form-row-3 {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
-}
-
-label {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.9px;
-  color: var(--gold-primary);
-}
-
-input, select, textarea {
-  width: 100%;
-  padding: 13px 15px;
-  background: var(--surface);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  color: var(--text-main);
-  font-size: 14px;
-  font-weight: 500;
-  outline: none;
-  backdrop-filter: blur(14px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
-  transition: all 0.22s ease;
-}
-
-input:focus, select:focus, textarea:focus {
-  border-color: var(--gold-primary);
-  box-shadow: 0 0 18px var(--gold-glow);
-  background: var(--surface-soft);
-}
-
-.primary-btn {
-  background: var(--gold-gradient);
-  border: none;
-  border-radius: 16px;
-  padding: 16px;
-  color: #060608;
-  font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 1.2px;
-  cursor: pointer;
-  box-shadow: 0 8px 28px var(--gold-glow);
-  transition: transform 0.16s var(--spring-ease);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.primary-btn:active {
-  transform: scale(0.96);
-}
-
-.primary-btn.sm-btn {
-  padding: 8px 14px;
-  font-size: 12px;
-}
-
-.danger-outline-btn {
-  background: rgba(255, 71, 87, 0.06);
-  border: 1px dashed rgba(255, 71, 87, 0.5);
-  color: var(--pass-color);
-  padding: 13px;
-  border-radius: 14px;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  margin-top: 6px;
-}
-
-.ghost-btn {
-  background: var(--surface-elevated);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: var(--text-secondary);
-  border-radius: 12px;
-  padding: 9px 16px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.full {
-  width: 100%;
-}
-
-.bypass-area {
-  text-align: center;
-  margin-top: 18px;
-}
-
-.text-link-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 600;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-/* ==========================================================================
-   SEÇİM ÇİPLERİ (CHOICE CHIPS & CARDS)
-   ========================================================================== */
-.chip-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  max-height: 180px;
-  overflow-y: auto;
-  padding: 4px 2px;
-}
-
-.choice-chip {
-  background: var(--surface);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--text-secondary);
-  border-radius: 20px;
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.choice-chip:active {
-  transform: scale(0.92);
-}
-
-.choice-chip.selected {
-  background: linear-gradient(135deg, var(--gold-light), var(--gold-primary));
-  color: #060608 !important;
-  font-weight: 800;
-  border-color: var(--gold-primary);
-  box-shadow: 0 0 16px var(--gold-glow);
-  transform: scale(1.04);
-}
-
-.vertical-chips {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  max-height: 250px;
-  overflow-y: auto;
-}
-
-.choice-chip-card {
-  background: var(--surface);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  padding: 10px 12px;
-  text-align: left;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.choice-chip-card.selected {
-  background: linear-gradient(135deg, rgba(229, 169, 60, 0.22), rgba(20, 20, 28, 0.95));
-  border: 1.5px solid var(--gold-primary);
-  box-shadow: 0 0 16px var(--gold-glow);
-  transform: scale(1.02);
-}
-
-.choice-chip-card.selected .chip-card-title {
-  color: var(--gold-light);
-}
-
-/* ==========================================================================
-   TINDER HD KART SAHNESİ
-   ========================================================================== */
-.daily-pick-banner {
-  background: linear-gradient(135deg, rgba(229, 169, 60, 0.2) 0%, rgba(20, 20, 28, 0.95) 100%);
-  border: 1px solid var(--gold-primary);
-  border-radius: 16px;
-  padding: 12px 16px;
-  margin-bottom: 12px;
-}
-
-.daily-badge {
-  font-family: var(--font-display);
-  font-size: 10px;
-  font-weight: 900;
-  color: var(--gold-light);
-}
-
-.daily-content {
-  font-size: 13px;
-  margin-top: 4px;
-  color: #f0f0f5;
-}
-
-.card-stage {
-  position: relative;
-  width: 100%;
-  height: 500px;
-  margin-top: 4px;
-  perspective: 1200px;
-}
-
-.tinder-card {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border-radius: 26px;
-  overflow: hidden;
-  background: var(--surface-card);
-  border: 1.5px solid var(--gold-border);
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.85);
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-}
-
-.card-img {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  z-index: 1;
-}
-
-.card-overlay {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 70%;
-  background: linear-gradient(to top, rgba(6, 6, 8, 1) 0%, rgba(6, 6, 8, 0.82) 55%, transparent 100%);
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  padding: 22px 20px;
-}
-
-.card-title {
-  font-family: var(--font-display);
-  font-size: 24px;
-  font-weight: 800;
-  color: #fff;
-}
-
-.card-meta {
-  font-size: 13px;
-  color: var(--gold-light);
-  margin-top: 3px;
-}
-
-.card-badge-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.card-chip {
-  background: rgba(229, 169, 60, 0.15);
-  border: 1px solid var(--gold-border);
-  color: var(--gold-light);
-  font-size: 11px;
-  padding: 3px 8px;
-  border-radius: 8px;
-}
-
-.card-bio {
-  font-size: 12px;
-  color: var(--text-secondary);
-  line-height: 1.4;
-  margin-top: 6px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.card-loader {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  height: 100%;
-  color: var(--text-secondary);
-  font-size: 14px;
-}
-
-/* Aksiyon Butonları */
-.swipe-actions {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 28px;
-  margin-top: 18px;
-}
-
-.action-circle {
-  border-radius: 50%;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-  transition: transform 0.2s var(--spring-ease);
-}
-
-.action-circle:active {
-  transform: scale(0.84);
-}
-
-.pass-btn {
-  width: 68px;
-  height: 68px;
-  background: #181216;
-  border: 2px solid var(--pass-color);
-  color: var(--pass-color);
-}
-
-.like-btn {
-  width: 68px;
-  height: 68px;
-  background: #101c15;
-  border: 2px solid var(--like-color);
-  color: var(--like-color);
-}
-
-.report-btn-small {
-  width: 46px;
-  height: 46px;
-  background: var(--surface-card);
-  border: 1.5px solid rgba(255, 71, 87, 0.5);
-  font-size: 18px;
-}
-
-/* ==========================================================================
-   DM & SOHBET LİSTESİ
-   ========================================================================== */
-.sub-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin: 14px 0 16px 0;
-}
-
-.inbox-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.chat-item {
-  display: flex;
-  align-items: center;
-  background: var(--surface);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 18px;
-  padding: 12px 16px;
-  cursor: pointer;
-}
-
-.chat-avatar-wrap {
-  margin-right: 14px;
-}
-
-.chat-avatar {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1.5px solid var(--gold-primary);
-}
-
-.chat-info {
-  flex: 1;
-  overflow: hidden;
-}
-
-.chat-name {
-  font-size: 15px;
-  font-weight: 700;
-  color: #fff;
-}
-
-.chat-time {
-  font-size: 11px;
-  color: var(--text-tertiary);
-}
-
-.chat-snippet {
-  font-size: 13px;
-  color: var(--text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 4px;
-}
-
-/* ==========================================================================
-   BİREBİR CHAT ODASI
-   ========================================================================== */
-.chat-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 0 14px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.partner-meta {
-  text-align: center;
-}
-
-.partner-meta h3 {
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.status-indicator {
-  font-size: 11px;
-  color: var(--gold-primary);
-  font-weight: 600;
-}
-
-.paravan-pill {
-  background: var(--gold-glass);
-  border: 1px solid var(--gold-primary);
-  color: var(--gold-primary);
-  border-radius: 20px;
-  padding: 6px 14px;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.unmatch-pill, .report-chat-pill {
-  background: rgba(255, 71, 87, 0.15);
-  border: 1px solid var(--pass-color);
-  color: var(--pass-color);
-  border-radius: 50%;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.icebreakers-bar {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding: 6px 2px 10px 2px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.ice-btn {
-  background: var(--gold-glass);
-  border: 1px solid var(--gold-border);
-  color: var(--gold-light);
-  font-size: 11px;
-  font-weight: 700;
-  border-radius: 16px;
-  padding: 5px 12px;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.chat-stream {
-  height: 420px;
-  overflow-y: auto;
-  padding: 12px 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.chat-bubble {
-  max-width: 78%;
-  padding: 12px 16px;
-  border-radius: 20px;
-  font-size: 14px;
-  line-height: 1.4;
-  word-break: break-word;
-}
-
-.chat-bubble.me {
-  align-self: flex-end;
-  background: var(--gold-gradient);
-  color: #060608;
-  font-weight: 600;
-  border-bottom-right-radius: 4px;
-}
-
-.chat-bubble.them {
-  align-self: flex-start;
-  background: var(--surface-soft);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: var(--text-main);
-  border-bottom-left-radius: 4px;
-}
-
-.bubble-time {
-  font-size: 10px;
-  opacity: 0.65;
-  display: block;
-  text-align: right;
-  margin-top: 4px;
-}
-
-.chat-composer {
-  display: flex;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.composer-btn {
-  background: var(--gold-primary);
-  color: #060608;
-  border: none;
-  width: 48px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-/* ==========================================================================
-   3D METAVERSE & EYLEM BUTONLARI (OTURMA, ÇÖMELME, ÇIKIŞ)
-   ========================================================================== */
-.metaverse-exit-btn {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  background: rgba(14, 15, 26, 0.9);
-  border: 1.5px solid var(--gold-primary);
-  color: var(--gold-light);
-  font-weight: 800;
-  font-size: 12px;
-  padding: 8px 16px;
-  border-radius: 20px;
-  cursor: pointer;
-  z-index: 60;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
-  transition: transform 0.2s var(--spring-ease);
-}
-
-.metaverse-exit-btn:active {
-  transform: scale(0.92);
-}
-
-.avatar-action-bar {
-  position: absolute;
-  bottom: 35px;
-  left: 155px;
-  display: flex;
-  gap: 10px;
-  z-index: 50;
-}
-
-.meta-action-circle {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: rgba(14, 15, 26, 0.9);
-  border: 1.5px solid var(--gold-primary);
-  color: #fff;
-  font-size: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
-  transition: transform 0.2s var(--spring-ease), background 0.2s;
-}
-
-.meta-action-circle:active, .meta-action-circle.active {
-  transform: scale(0.9);
-  background: var(--gold-primary);
-  color: #000;
-}
-
-.meta-round-btn {
-  background: #e5a93c;
-  border: none;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  cursor: pointer;
-  font-size: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
-}
-
-.meta-round-btn.danger {
-  background: rgba(255, 71, 87, 0.88);
-  color: #fff;
-}
-
-/* ==========================================================================
-   YT MEKAN TASARIM ÇEKMECESİ (DRAWER)
-   ========================================================================== */
-.yt-floating-edit-btn {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  background: linear-gradient(135deg, #df5d78, #e5a93c);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  font-weight: 800;
-  font-size: 12px;
-  padding: 8px 16px;
-  border-radius: 20px;
-  cursor: pointer;
-  z-index: 60;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
-}
-
-.yt-item-drawer {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  max-height: 280px;
-  background: rgba(14, 15, 26, 0.98);
-  border-top: 2px solid var(--gold-primary);
-  border-radius: 24px 24px 0 0;
-  z-index: 80;
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  backdrop-filter: blur(16px);
-  animation: iosSheetSlideUp 0.35s var(--spring-ease) forwards;
-}
-
-.drawer-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.drawer-scroll-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
-  gap: 10px;
-  overflow-y: auto;
-  max-height: 200px;
-  padding-bottom: 10px;
-}
-
-.drawer-item-card {
-  background: #1c1d2d;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 8px 4px;
-  text-align: center;
-  cursor: pointer;
-  transition: transform 0.18s var(--spring-ease);
-}
-
-.drawer-item-card:active {
-  transform: scale(0.92);
-  border-color: var(--gold-primary);
-}
-
-.drawer-item-icon {
-  font-size: 24px;
-  display: block;
-  margin-bottom: 4px;
-}
-
-.drawer-item-name {
-  font-size: 10px;
-  color: #fff;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* ==========================================================================
-   CYBER-GLAM / GEN-Z CANLI AVATAR STÜDYOSU (MODAL)
-   ========================================================================== */
-.avatar-studio-sheet {
-  max-height: 94vh;
-  border: 1.5px solid var(--gold-primary);
-  background: #0d0e17;
-  border-radius: 28px 28px 0 0;
-  padding: 20px 18px;
-  display: flex;
-  flex-direction: column;
-}
-
-.avatar-preview-box {
-  width: 100%;
-  height: 230px;
-  background: radial-gradient(circle, #252844 0%, #0d0e18 100%);
-  border-radius: 16px;
-  margin: 10px 0;
-  position: relative;
-  overflow: hidden;
-  border: 1.5px solid rgba(229, 169, 60, 0.35);
-}
-
-.preview-hint {
-  position: absolute;
-  bottom: 8px;
-  right: 10px;
-  font-size: 10px;
-  color: #9ea0b4;
-}
-
-.avatar-options-scroller {
-  flex: 1;
-  overflow-y: auto;
-  padding-right: 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.customizer-section {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.section-label {
-  font-size: 11px;
-  font-weight: 800;
-  color: var(--gold-primary);
-  letter-spacing: 0.8px;
-}
-
-.swatch-row {
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  padding: 4px 2px;
-}
-
-.skin-tone-swatch {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: transform 0.2s var(--spring-ease), border-color 0.2s;
-}
-
-.skin-tone-swatch.active {
-  transform: scale(1.15);
-  border-color: var(--gold-light);
-  box-shadow: 0 0 14px var(--gold-glow);
-}
-
-/* ==========================================================================
-   MODAL GENEL KATMANLARI
-   ========================================================================== */
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.82);
-  backdrop-filter: blur(12px);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  z-index: 999;
-}
-
-.modal-sheet {
-  background: var(--surface-solid);
-  border-top: 1.5px solid var(--gold-border);
-  border-radius: 28px 28px 0 0;
-  width: 100%;
-  max-width: 440px;
-  padding: 24px 22px 34px 22px;
-  animation: iosSheetSlideUp 0.44s var(--spring-ease) forwards;
-}
-
-@keyframes iosSheetSlideUp {
-  0% { transform: translateY(100%); }
-  100% { transform: translateY(0); }
-}
-
-.sheet-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.icon-close {
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 18px;
-  cursor: pointer;
-}
-
-.sheet-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.welcome-seal {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: var(--gold-glass);
-  border: 2px solid var(--gold-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 38px;
-  margin: 0 auto 16px auto;
-  box-shadow: 0 0 30px var(--gold-glow);
-}
-
-.welcome-title {
-  font-family: var(--font-display);
-  font-size: 22px;
-  font-weight: 900;
-  margin-bottom: 6px;
-}
-
-.welcome-desc {
-  font-size: 13px;
-  color: var(--text-secondary);
-  line-height: 1.5;
-  margin-bottom: 20px;
+// ==========================================================================
+// 6. JOYSTICK, EYLEM VE SOKET KONTROLLERİ
+// ==========================================================================
+window.toggleSprint = function() {
+  isSprinting = !isSprinting;
+  const btn = document.getElementById('action-sprint-btn');
+  if (btn) btn.style.borderColor = isSprinting ? '#d4af37' : 'rgba(212,175,55,0.5)';
+};
+
+function togglePlayerSit() {
+  const btn = document.getElementById('action-sit-btn');
+  if (currentActionState === 'sit') {
+    currentActionState = 'idle';
+    btn?.classList.remove('active');
+  } else {
+    currentActionState = 'sit';
+    document.getElementById('action-crouch-btn')?.classList.remove('active');
+    btn?.classList.add('active');
+  }
+  syncActionStateWithSocket();
+}
+
+function togglePlayerCrouch() {
+  const btn = document.getElementById('action-crouch-btn');
+  if (currentActionState === 'crouch') {
+    currentActionState = 'idle';
+    btn?.classList.remove('active');
+  } else {
+    currentActionState = 'crouch';
+    document.getElementById('action-sit-btn')?.classList.remove('active');
+    btn?.classList.add('active');
+  }
+  syncActionStateWithSocket();
+}
+
+function syncActionStateWithSocket() {
+  if (socket && player) {
+    socket.emit('player_move', {
+      x: player.position.x,
+      y: player.position.y,
+      z: player.position.z,
+      rotY: player.rotation.y,
+      actionState: currentActionState
+    });
+  }
+}
+
+function setupJoystick() {
+  const zone = document.getElementById('joystick-zone');
+  if (!zone || typeof nipplejs === 'undefined') return;
+  zone.innerHTML = '';
+
+  joystick = nipplejs.create({
+    zone: zone,
+    mode: 'static',
+    position: { left: '60px', top: '60px' },
+    color: '#e5a93c',
+    size: 90
+  });
+
+  joystick.on('move', (evt, data) => {
+    if (data && data.vector) {
+      moveVector.x = data.vector.x;
+      moveVector.y = data.vector.y;
+      isMoving = true;
+    }
+  });
+
+  joystick.on('end', () => {
+    moveVector.x = 0;
+    moveVector.y = 0;
+    isMoving = false;
+  });
+}
+
+function setupKeyboardControls() {
+  const keys = { KeyW: false, KeyS: false, KeyA: false, KeyD: false, ShiftLeft: false };
+
+  window.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (keys[e.code] !== undefined) keys[e.code] = true;
+    updateKeyMove();
+  });
+
+  window.addEventListener('keyup', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (keys[e.code] !== undefined) keys[e.code] = false;
+    updateKeyMove();
+  });
+
+  function updateKeyMove() {
+    let x = 0, y = 0;
+    if (keys.KeyW) y += 1;
+    if (keys.KeyS) y -= 1;
+    if (keys.KeyD) x += 1;
+    if (keys.KeyA) x -= 1;
+
+    if (!joystick || (moveVector.x === 0 && moveVector.y === 0)) {
+      moveVector.x = x;
+      moveVector.y = y;
+      isMoving = (x !== 0 || y !== 0);
+    }
+    isSprinting = !!keys.ShiftLeft;
+  }
+}
+
+function setupSocket() {
+  if (socket) return;
+  socket = typeof io !== 'undefined' ? io() : null;
+  if (!socket) return;
+
+  socket.emit('join_metaverse', {
+    telegramId: window.currentUserId,
+    nickname: document.getElementById('nickname')?.value || 'Misafir',
+    city: document.getElementById('city')?.value || '',
+    district: document.getElementById('district')?.value || '',
+    role: document.getElementById('role')?.value || '',
+    avatar: (typeof images !== 'undefined' && images[0]) ? images[0] : '',
+    avatarConfig: myAvatarConfig,
+    x: player.position.x,
+    y: player.position.y,
+    z: player.position.z,
+    isGhost: isGhostMode
+  });
+}
+
+function loadSavedWorldItems() {
+  fetch('/api/metaverse/items')
+    .then(r => r.json())
+    .then(data => {
+      if (data.success && data.items) {
+        data.items.forEach(item => {
+          const box = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0xdfb76c }));
+          box.position.set(item.position.x, 0.5, item.position.z);
+          scene.add(box);
+        });
+      }
+    });
+}
+
+function populateYtItemDrawer() {
+  const grid = document.getElementById('yt-items-catalog');
+  if (!grid) return;
+  grid.innerHTML = `
+    <div class="drawer-item-card" onclick="spawnItem('golden_spiral')">
+      <span class="drawer-item-icon">🎗️</span>
+      <div class="drawer-item-name">Altın Anıt</div>
+    </div>
+  `;
+}
+
+function spawnItem(itemType) {
+  if (!player) return;
+  const box = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0xdfb76c }));
+  box.position.set(player.position.x, 0.5, player.position.z - 2);
+  scene.add(box);
+}
+
+function enterMetaverseAsGhost() {
+  isGhostMode = true;
+  isAdminEditor = true;
+  switchTab('metaverse');
+  alert('👻 Hayalet Modu Aktif.');
+}
+
+function toggleYtItemDrawer() {
+  document.getElementById('ytItemDrawer')?.classList.toggle('hidden');
+}
+
+function onSceneClick(event) {
+  const container = document.getElementById('canvas-container');
+  if (!container || !camera) return;
+
+  const rect = container.getBoundingClientRect();
+  mouse.x = ((event.clientX - rect.left) / container.clientWidth) * 2 - 1;
+  mouse.y = -((event.clientY - rect.top) / container.clientHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+
+  const meshes = Object.values(otherPlayers).map(p => p.group);
+  const intersects = raycaster.intersectObjects(meshes, true);
+  if (intersects.length > 0) {
+    let clicked = intersects[0].object;
+    while (clicked.parent && !clicked.userData.telegramId) clicked = clicked.parent;
+    if (clicked.userData && clicked.userData.telegramId) {
+      currentTargetUser = clicked.userData;
+      document.getElementById('metaProfileName').innerText = currentTargetUser.nickname;
+      document.getElementById('metaProfileImg').src = currentTargetUser.avatar || '';
+      document.getElementById('metaverseProfileModal').classList.remove('hidden');
+    }
+  }
+}
+
+function sendWorldChat() {
+  const input = document.getElementById('world-chat-input');
+  if (!input || !player) return;
+  const text = input.value.trim();
+  if (!text) return;
+  if (socket) socket.emit('world_chat_message', { text });
+  input.value = '';
+}
+
+function exitMetaverseToExplore() {
+  if (socket) {
+    socket.disconnect();
+    socket = null;
+  }
+  switchTab('explore');
+}
+
+function onWindowResize() {
+  const container = document.getElementById('canvas-container');
+  if (!container || !camera || !renderer) return;
+  camera.aspect = container.clientWidth / container.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  if (composer) composer.setSize(container.clientWidth, container.clientHeight);
 }
