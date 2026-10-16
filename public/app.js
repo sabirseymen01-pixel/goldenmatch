@@ -1,5 +1,5 @@
 // ==========================================================================
-// GOLDENMATCH - İSTEMCİ UYGULAMA MOTORU (APP.JS)
+// GOLDENMATCH - İSTEMCİ UYGULAMA MOTORU (APP.JS - TAM SENKRONİZE SÜRÜM)
 // ==========================================================================
 
 const tg = window.Telegram?.WebApp;
@@ -18,10 +18,39 @@ let userPhotos = ['', '', '', ''];
 let activeMatchId = null;
 let activePartnerId = null;
 let chatPollingInterval = null;
+let adminUsersCache = [];
 
 let filterCity = 'Hepsi';
 let filterRole = 'Hepsi';
-let allLocations = {};
+
+// API Kesintilerine Karşı Gömülü Şehir & İlçe Yedek Veri Tabanı
+const DEFAULT_LOCATIONS = {
+  "İstanbul": ["Kadıköy", "Beşiktaş", "Şişli", "Beyoğlu", "Bakırköy", "Üsküdar", "Maltepe", "Ataşehir", "Sarıyer", "Fatih", "Bahçelievler", "Avcılar", "Kartal", "Pendik", "Beylikdüzü", "Başakşehir", "Zeytinburnu", "Kağıthane", "Eyüpsultan", "Tuzla"],
+  "Ankara": ["Çankaya", "Kızılay", "Tunalı", "Bahçelievler", "Yenimahalle", "Batıkent", "Keçiören", "Mamak", "Etimesgut", "Sincan", "Gölbaşı", "Ümitköy", "Çayyolu", "Altındağ"],
+  "İzmir": ["Alsancak", "Konak", "Karşıyaka", "Bornova", "Buca", "Bostanlı", "Göztepe", "Çiğli", "Gaziemir", "Balçova", "Narlıdere", "Çeşme", "Alaçatı", "Urla", "Foça", "Seferihisar"],
+  "Antalya": ["Muratpaşa", "Konyaaltı", "Lara", "Kepez", "Alanya", "Manavgat", "Kemer", "Kaş", "Serik", "Belek", "Side"],
+  "Bursa": ["Nilüfer", "Görükle", "Osmangazi", "Yıldırım", "Mudanya", "İnegöl", "Gemlik"],
+  "Adana": ["Çukurova", "Seyhan", "Yüreğir", "Sarıçam", "Ceyhan"],
+  "Mersin": ["Yenişehir", "Mezitli", "Toroslar", "Akdeniz", "Tarsus", "Erdemli"],
+  "Kocaeli": ["İzmit", "Gebze", "Darıca", "Gölcük", "Körfez", "Kartepe", "Başiskele"],
+  "Muğla": ["Bodrum", "Fethiye", "Marmaris", "Menteşe", "Datça", "Ortaca", "Milas"],
+  "Eskişehir": ["Tepebaşı", "Odunpazarı", "Bağlar"],
+  "Gaziantep": ["Şahinbey", "Şehitkamil"],
+  "Konya": ["Selçuklu", "Meram", "Karatay", "Bosna Hersek"],
+  "Kayseri": ["Melikgazi", "Kocasinan", "Talas"],
+  "Samsun": ["Atakum", "İlkadım", "Canik"],
+  "Trabzon": ["Ortahisar", "Akçaabat", "Yomra"],
+  "Diyarbakır": ["Kayapınar", "Bağlar", "Yenişehir", "Sur"],
+  "Aydın": ["Efeler", "Kuşadası", "Didim", "Nazilli", "Söke"],
+  "Balıkesir": ["Altıeylül", "Karesi", "Bandırma", "Edremit", "Ayvalık"],
+  "Çanakkale": ["Merkez", "Biga", "Gelibolu", "Bozcaada"],
+  "Denizli": ["Pamukkale", "Merkezefendi"],
+  "Hatay": ["Antakya", "İskenderun", "Defne", "Arsuz"],
+  "Sakarya": ["Adapazarı", "Serdivan", "Erenler", "Sapanca"],
+  "Tekirdağ": ["Süleymanpaşa", "Çorlu", "Çerkezköy"]
+};
+
+let allLocations = Object.assign({}, DEFAULT_LOCATIONS);
 
 // Sayfa Açılışı
 window.addEventListener('DOMContentLoaded', async () => {
@@ -29,19 +58,19 @@ window.addEventListener('DOMContentLoaded', async () => {
   await checkUserProfile();
 });
 
-// Şehir & İlçe Verilerini Çekme
+// Şehir & İlçe Verilerini Çekme (Yedekli)
 async function loadLocations() {
   try {
     const res = await fetch('/api/locations');
     const data = await res.json();
-    if (data.success) {
-      allLocations = data.locations;
-      populateCityChips();
-      populateFilterCityChips();
+    if (data.success && data.locations && Object.keys(data.locations).length > 0) {
+      allLocations = Object.assign({}, DEFAULT_LOCATIONS, data.locations);
     }
   } catch (err) {
-    console.error('Konum yükleme hatası:', err);
+    console.warn('Sunucu konum verisi alınamadı, gömülü il/ilçe veri tabanı kullanılıyor.');
   }
+  populateCityChips();
+  populateFilterCityChips();
 }
 
 function populateCityChips(filterText = '') {
@@ -49,14 +78,16 @@ function populateCityChips(filterText = '') {
   if (!container) return;
   container.innerHTML = '';
 
-  const cities = Object.keys(allLocations).filter(c => 
+  const currentSelectedCity = document.getElementById('city')?.value || '';
+
+  const cities = Object.keys(allLocations).filter(c =>
     c.toLocaleLowerCase('tr-TR').includes(filterText.toLocaleLowerCase('tr-TR'))
   );
 
-  cities.slice(0, 30).forEach(city => {
+  cities.slice(0, 35).forEach(city => {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'choice-chip';
+    btn.className = 'choice-chip' + (city === currentSelectedCity ? ' selected' : '');
     btn.innerText = city;
     btn.onclick = () => selectCity(city, btn);
     container.appendChild(btn);
@@ -68,24 +99,37 @@ function filterCityChips() {
   populateCityChips(q);
 }
 
-function selectCity(city, btnElem) {
-  document.getElementById('city').value = city;
-  document.querySelectorAll('#cityChipGrid .choice-chip').forEach(b => b.classList.remove('selected'));
+function selectCity(city, btnElem, preselectedDistrict = null) {
+  const cityInput = document.getElementById('city');
+  if (cityInput) cityInput.value = city;
+
+  document.querySelectorAll('#cityChipGrid .choice-chip').forEach(b => {
+    if (b.innerText.trim() === city) b.classList.add('selected');
+    else b.classList.remove('selected');
+  });
   if (btnElem) btnElem.classList.add('selected');
 
   const distContainer = document.getElementById('districtChipGrid');
   if (!distContainer) return;
   distContainer.innerHTML = '';
-  document.getElementById('district').value = '';
 
-  const districts = allLocations[city] || [];
+  const distInput = document.getElementById('district');
+  if (distInput && !preselectedDistrict) distInput.value = '';
+
+  const districts = allLocations[city] || ['Merkez', '1. Bölge', '2. Bölge'];
   districts.forEach(d => {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'choice-chip';
     b.innerText = d;
+
+    if (preselectedDistrict && d === preselectedDistrict) {
+      b.classList.add('selected');
+      if (distInput) distInput.value = d;
+    }
+
     b.onclick = () => {
-      document.getElementById('district').value = d;
+      if (distInput) distInput.value = d;
       distContainer.querySelectorAll('.choice-chip').forEach(x => x.classList.remove('selected'));
       b.classList.add('selected');
     };
@@ -101,9 +145,14 @@ function selectChip(fieldId, value, elem) {
     parent.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
     elem.classList.add('selected');
   }
+
+  // Eğer selectChip üzerinden city tetiklenirse ilçeleri de aç
+  if (fieldId === 'city') {
+    selectCity(value, elem);
+  }
 }
 
-// Profil Kontrolü & Yeni Stilize Avatar Senkronizasyonu
+// Profil Kontrolü & Stilize Avatar Senkronizasyonu
 async function checkUserProfile() {
   try {
     const res = await fetch(`/api/profile/${window.currentUserId}?username=${window.currentUsername}`);
@@ -116,7 +165,6 @@ async function checkUserProfile() {
     if (data.exists && data.profile) {
       currentProfile = data.profile;
 
-      // Kayıtlı Stilize Avatar Verisini Eşitle
       if (currentProfile.avatarConfig) {
         localStorage.setItem('gm_avatar_config', JSON.stringify(currentProfile.avatarConfig));
         if (typeof myAvatarConfig !== 'undefined') {
@@ -126,7 +174,7 @@ async function checkUserProfile() {
       }
 
       fillProfileForm(currentProfile);
-      document.getElementById('appNav').classList.remove('hidden');
+      document.getElementById('appNav')?.classList.remove('hidden');
       switchTab('explore');
       loadExploreCards();
       loadDailyPick();
@@ -153,8 +201,9 @@ function fillProfileForm(p) {
   document.getElementById('weight').value = p.weight || '';
   document.getElementById('bio').value = p.bio || '';
 
-  if (p.city) selectCity(p.city, null);
-  if (p.district) document.getElementById('district').value = p.district;
+  if (p.city) {
+    selectCity(p.city, null, p.district || null);
+  }
   if (p.role) selectChip('role', p.role, findButtonByText('role', p.role));
   if (p.interestedRole) selectChip('interestedRole', p.interestedRole, findButtonByText('interestedRole', p.interestedRole));
   if (p.archetype) selectChip('archetype', p.archetype, findButtonByCard('archetype', p.archetype));
@@ -167,7 +216,7 @@ function fillProfileForm(p) {
         const slot = document.getElementById(`slot-${i}`);
         if (slot) {
           const img = slot.querySelector('.slot-preview');
-          img.src = url;
+          if (img) img.src = url;
           slot.classList.add('has-image');
         }
       }
@@ -185,7 +234,7 @@ function findButtonByText(targetName, text) {
 
 function findButtonByCard(targetName, text) {
   const container = document.querySelector(`[data-target="${targetName}"]`);
-  if (!container) return null;
+  if (!container || !text) return null;
   return Array.from(container.querySelectorAll('button')).find(b => b.innerText.includes(text.split(' ')[0]));
 }
 
@@ -193,7 +242,7 @@ function findButtonByCard(targetName, text) {
 let activeSlotIndex = 0;
 function pickImage(slotIdx) {
   activeSlotIndex = slotIdx;
-  document.getElementById('fileSelector').click();
+  document.getElementById('fileSelector')?.click();
 }
 
 function onFileSelected(event) {
@@ -244,6 +293,13 @@ async function handleFormSubmit(event) {
     avatarConfig: currentAvatarConfig || (typeof myAvatarConfig !== 'undefined' ? myAvatarConfig : {})
   };
 
+  if (!payload.city || !payload.district) {
+    alert('Lütfen Şehir ve İlçe seçimini tamamlayın.');
+    saveBtn.disabled = false;
+    saveBtn.innerText = 'Profili Mühürle & Başla';
+    return;
+  }
+
   try {
     const res = await fetch('/api/profile', {
       method: 'POST',
@@ -255,8 +311,8 @@ async function handleFormSubmit(event) {
     if (data.success) {
       currentProfile = data.profile;
       updateMiniAvatarBadge(currentProfile.avatarConfig);
-      document.getElementById('appNav').classList.remove('hidden');
-      document.getElementById('welcomeModal').classList.remove('hidden');
+      document.getElementById('appNav')?.classList.remove('hidden');
+      document.getElementById('welcomeModal')?.classList.remove('hidden');
     } else {
       alert(`Uyarı: ${data.message || 'Kayıt tamamlanamadı.'}`);
     }
@@ -269,13 +325,13 @@ async function handleFormSubmit(event) {
 }
 
 function closeWelcomeAndExplore() {
-  document.getElementById('welcomeModal').classList.add('hidden');
+  document.getElementById('welcomeModal')?.classList.add('hidden');
   switchTab('explore');
   loadExploreCards();
   loadDailyPick();
 }
 
-// Sekme Yöneticisi
+// Sekme Yöneticisi (Üst Navigasyon ve DM Portu Garantili)
 function switchTab(tabId) {
   if (chatPollingInterval) {
     clearInterval(chatPollingInterval);
@@ -284,21 +340,30 @@ function switchTab(tabId) {
 
   document.querySelectorAll('.view-screen').forEach(s => s.classList.add('hidden'));
 
+  // Kayıt ekranı dışındaki tüm ana ekranlarda üst DM/Navigasyon barını açık tut
+  const navBar = document.getElementById('appNav');
+  if (tabId !== 'register' || currentProfile) {
+    navBar?.classList.remove('hidden');
+  }
+
   if (tabId === 'register') {
-    document.getElementById('registerView').classList.remove('hidden');
+    document.getElementById('registerView')?.classList.remove('hidden');
   } else if (tabId === 'explore') {
-    document.getElementById('exploreView').classList.remove('hidden');
+    document.getElementById('exploreView')?.classList.remove('hidden');
     loadExploreCards();
   } else if (tabId === 'inbox') {
-    document.getElementById('inboxView').classList.remove('hidden');
+    document.getElementById('inboxView')?.classList.remove('hidden');
+    document.getElementById('unreadBadge')?.classList.add('hidden');
     loadInboxChats();
   } else if (tabId === 'chatRoom') {
-    document.getElementById('chatRoomView').classList.remove('hidden');
+    document.getElementById('chatRoomView')?.classList.remove('hidden');
   } else if (tabId === 'metaverse') {
-    document.getElementById('metaverseView').classList.remove('hidden');
-    if (typeof initMetaverse === 'function') initMetaverse();
+    document.getElementById('metaverseView')?.classList.remove('hidden');
+    if (typeof initMetaverse === 'function') {
+      setTimeout(() => initMetaverse(), 60);
+    }
   } else if (tabId === 'adminPanel') {
-    document.getElementById('adminPanelView').classList.remove('hidden');
+    document.getElementById('adminPanelView')?.classList.remove('hidden');
     loadAdminDashboard();
   }
 }
@@ -310,6 +375,7 @@ function openProfileEdit() {
 // Keşfet / Kartlar
 async function loadExploreCards() {
   const stage = document.getElementById('activeCard');
+  if (!stage) return;
   stage.innerHTML = '<div class="card-loader">Altın kader ağları taranıyor...</div>';
 
   try {
@@ -327,12 +393,14 @@ async function loadExploreCards() {
 
 function renderCurrentCard() {
   const cardElem = document.getElementById('activeCard');
+  if (!cardElem) return;
+
   if (!cardsList.length || currentCardIndex >= cardsList.length) {
     cardElem.innerHTML = `
       <div class="card-loader">
         <h3 style="color:#e5a93c;">Şimdilik Kimse Kalmadı ✨</h3>
         <p style="font-size:12px; color:#888;">Parametrik 3D Lounge'a geçebilir veya filtreleri değiştirebilirsin.</p>
-        <div style="display:flex; gap:8px; margin-top:12px;">
+        <div style="display:flex; gap:8px; margin-top:12px; justify-content:center;">
           <button class="ghost-btn" onclick="openFilterModal()">Filtreler</button>
           <button class="primary-btn sm-btn" onclick="switchTab('metaverse')">🏛️ 3D Mekana Gir</button>
         </div>
@@ -342,7 +410,7 @@ function renderCurrentCard() {
 
   const user = cardsList[currentCardIndex];
   const photo = user.photos?.[0] || 'https://via.placeholder.com/400x600/181726/e5a93c?text=Foto%C4%9Fraf+Yok';
-  const distText = user.distanceKm !== null ? `📍 ${user.distanceKm} km uzakta` : `📍 ${user.city}`;
+  const distText = user.distanceKm !== null && user.distanceKm !== undefined ? `📍 ${user.distanceKm} km uzakta` : `📍 ${user.city} / ${user.district || ''}`;
 
   cardElem.innerHTML = `
     <img src="${photo}" class="card-img" alt="${user.nickname}">
@@ -374,6 +442,7 @@ async function triggerCardSwipe(action) {
     });
     const data = await res.json();
     if (data.isMatch) {
+      document.getElementById('unreadBadge')?.classList.remove('hidden');
       alert(`🎉 EŞLEŞTİNİZ!\n\n${targetUser.nickname} ile kaderiniz birleşti! DM kutusundan yazışabilirsiniz.`);
     }
   } catch (err) {}
@@ -390,16 +459,18 @@ async function loadDailyPick() {
       const banner = document.getElementById('dailyPickBanner');
       const content = document.getElementById('dailyPickContent');
       const p = data.dailyPick;
-      banner.classList.remove('hidden');
-      content.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <strong>${p.nickname}, ${p.age}</strong> (${p.role})
-            <div style="font-size:11px; color:#aaa;">📍 ${p.city} • ${p.archetype?.split(' ')[0] || ''}</div>
+      banner?.classList.remove('hidden');
+      if (content) {
+        content.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <strong>${p.nickname}, ${p.age}</strong> (${p.role})
+              <div style="font-size:11px; color:#aaa;">📍 ${p.city} • ${p.archetype?.split(' ')[0] || ''}</div>
+            </div>
+            <button class="primary-btn sm-btn" onclick="likeDailyPick('${p.telegramId}')">⚡ Beğen</button>
           </div>
-          <button class="primary-btn sm-btn" onclick="likeDailyPick('${p.telegramId}')">⚡ Beğen</button>
-        </div>
-      `;
+        `;
+      }
     }
   } catch (e) {}
 }
@@ -414,9 +485,10 @@ async function likeDailyPick(targetId) {
   alert('Günün seçimi beğenildi!');
 }
 
-// DM Sohbetleri (3D Metaverse Kalp Eşleşmeleri Dahil)
+// DM Sohbetleri & Paravan Sistemi
 async function loadInboxChats() {
   const list = document.getElementById('chatList');
+  if (!list) return;
   list.innerHTML = '<div class="card-loader">Sohbetler yükleniyor...</div>';
 
   try {
@@ -480,13 +552,14 @@ async function fetchMessages() {
       const paravanStatus = document.getElementById('chatParavanStatus');
       const paravanBtn = document.getElementById('paravanBtn');
       if (data.bothRevealed) {
-        paravanStatus.innerText = `🔓 Açık Kimlik (${data.partner.username || 'TG ID Var'})`;
+        paravanStatus.innerText = `🔓 Açık Kimlik (@${data.partner.username || 'Kullanıcı'})`;
         paravanBtn.style.display = 'none';
       } else if (data.myParavanRequested) {
         paravanStatus.innerText = '⏳ Karşı Tarafın Onayı Bekleniyor';
         paravanBtn.innerText = 'İstek Gönderildi';
+        paravanBtn.style.display = 'block';
       } else {
-        paravanStatus.innerText = '🎭 Anonim Sohbet';
+        paravanStatus.innerText = '🎭 Anonim Paravan Sohbeti';
         paravanBtn.innerText = '🎭 Paravanı Aç';
         paravanBtn.style.display = 'block';
       }
@@ -496,6 +569,7 @@ async function fetchMessages() {
 
 function renderMessages(messages) {
   const stream = document.getElementById('messageStream');
+  if (!stream) return;
   stream.innerHTML = '';
   messages.forEach(msg => {
     const isMe = msg.senderId === window.currentUserId;
@@ -528,7 +602,8 @@ async function sendChatMessage(e) {
 }
 
 function sendIcebreaker(text) {
-  document.getElementById('chatInput').value = text;
+  const input = document.getElementById('chatInput');
+  if (input) input.value = text;
 }
 
 async function requestParavanReveal() {
@@ -541,9 +616,9 @@ async function requestParavanReveal() {
     });
     const data = await res.json();
     if (data.bothRevealed) {
-      alert(`🎉 İki taraf da onayladı! Kullanıcı adı: ${data.partnerUsername}`);
+      alert(`🎉 İki taraf da onayladı! Kullanıcı adı: @${data.partnerUsername}`);
     } else {
-      alert('Paravan isteğiniz iletildi. Karşı taraf da açarsa kimlikler görünecek.');
+      alert('🎭 Paravan açma isteğiniz iletildi. Karşı taraf da onaylarsa kimlikler açılacak.');
     }
     fetchMessages();
   } catch (e) {}
@@ -600,7 +675,8 @@ async function submitReport() {
 function populateFilterCityChips() {
   const container = document.getElementById('filterCityChips');
   if (!container) return;
-  Object.keys(allLocations).slice(0, 15).forEach(c => {
+  container.innerHTML = `<button type="button" class="choice-chip selected" onclick="selectFilterCity('Hepsi', this)">Hepsi (Tüm Şehirler)</button>`;
+  Object.keys(allLocations).slice(0, 20).forEach(c => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'choice-chip';
@@ -687,28 +763,42 @@ async function loadAdminDashboard() {
         }
       }
 
-      const uList = document.getElementById('adminUserCards');
-      if (uList) {
-        uList.innerHTML = '';
-        data.users.forEach(u => {
-          const card = document.createElement('div');
-          card.className = 'admin-user-row';
-          card.innerHTML = `
-            <div>
-              <strong>${u.nickname}</strong> (${u.role}) - ${u.city}<br>
-              <small style="color:#888;">TG ID: ${u.telegramId}</small>
-            </div>
-            <button class="sm-btn ${u.isBanned ? 'gold' : 'danger'}" onclick="toggleBanUser('${u.telegramId}')">
-              ${u.isBanned ? 'Yasağı Kaldır' : 'Yasakla'}
-            </button>
-          `;
-          uList.appendChild(card);
-        });
-      }
+      adminUsersCache = data.users || [];
+      renderAdminUserList(adminUsersCache);
     }
   } catch (e) {
     console.error('YT paneli yükleme hatası:', e);
   }
+}
+
+function renderAdminUserList(users) {
+  const uList = document.getElementById('adminUserCards');
+  if (!uList) return;
+  uList.innerHTML = '';
+  users.forEach(u => {
+    const card = document.createElement('div');
+    card.className = 'admin-user-row';
+    card.innerHTML = `
+      <div>
+        <strong>${u.nickname}</strong> (${u.role}) - ${u.city} / ${u.district || ''}<br>
+        <small style="color:#888;">TG ID: ${u.telegramId}</small>
+      </div>
+      <button class="sm-btn ${u.isBanned ? 'gold' : 'danger'}" onclick="toggleBanUser('${u.telegramId}')">
+        ${u.isBanned ? 'Yasağı Kaldır' : 'Yasakla'}
+      </button>
+    `;
+    uList.appendChild(card);
+  });
+}
+
+function filterAdminUserList() {
+  const q = (document.getElementById('userSearchInput')?.value || '').toLocaleLowerCase('tr-TR');
+  const filtered = adminUsersCache.filter(u =>
+    (u.nickname || '').toLocaleLowerCase('tr-TR').includes(q) ||
+    (u.city || '').toLocaleLowerCase('tr-TR').includes(q) ||
+    String(u.telegramId).includes(q)
+  );
+  renderAdminUserList(filtered);
 }
 
 async function toggleBanUser(targetId) {
