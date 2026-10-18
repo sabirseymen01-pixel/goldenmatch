@@ -1,35 +1,3 @@
-/* ==========================================================================
-   GOLDENMATCH - KESİN EKRAN VE GÖRÜNÜRLÜK DÜZELTME KODU
-   ========================================================================== */
-
-/* Gizli olan tüm ekranların ekrandan tamamen silinmesini garantile */
-.hidden {
-  display: none !important;
-}
-
-/* Tüm ana uygulama ekranlarının temel yapısı */
-.view-screen {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-}
-
-.view-screen.hidden {
-  display: none !important;
-}
-
-/* Metaverse ekranının diğer ekranlarla çakışmasını engelle */
-#metaverseView.hidden {
-  display: none !important;
-}
-
-#metaverseView:not(.hidden) {
-  display: block !important;
-  position: relative !important;
-  width: 100% !important;
-  height: calc(100vh - 65px) !important;
-  overflow: hidden !important;
-}
 // ==========================================================================
 // GOLDENMATCH - ULTRA-HD 4D PARAMETRİK LOUNGE & GTA-TPS MOTORU
 // ==========================================================================
