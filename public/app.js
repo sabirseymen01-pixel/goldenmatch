@@ -146,7 +146,6 @@ function selectChip(fieldId, value, elem) {
     elem.classList.add('selected');
   }
 
-  // Eğer selectChip üzerinden city tetiklenirse ilçeleri de aç
   if (fieldId === 'city') {
     selectCity(value, elem);
   }
@@ -331,7 +330,7 @@ function closeWelcomeAndExplore() {
   loadDailyPick();
 }
 
-// Sekme Yöneticisi (Üst Navigasyon ve DM Portu Garantili)
+// Sekme Yöneticisi
 function switchTab(tabId) {
   if (chatPollingInterval) {
     clearInterval(chatPollingInterval);
@@ -340,7 +339,6 @@ function switchTab(tabId) {
 
   document.querySelectorAll('.view-screen').forEach(s => s.classList.add('hidden'));
 
-  // Kayıt ekranı dışındaki tüm ana ekranlarda üst DM/Navigasyon barını açık tut
   const navBar = document.getElementById('appNav');
   if (tabId !== 'register' || currentProfile) {
     navBar?.classList.remove('hidden');
@@ -413,15 +411,10 @@ function renderCurrentCard() {
   const distText = user.distanceKm !== null && user.distanceKm !== undefined ? `📍 ${user.distanceKm} km uzakta` : `📍 ${user.city} / ${user.district || ''}`;
 
   cardElem.innerHTML = `
-    <img src="${photo}" class="card-img" alt="${user.nickname}">
-    <div class="card-overlay">
-      <div class="card-title">${user.nickname}, ${user.age}</div>
-      <div class="card-meta">${user.role} • ${distText}</div>
-      <div class="card-badge-row">
-        <span class="card-chip">⚡ ${user.archetype?.split(' ')[0] || 'Apollon'}</span>
-        <span class="card-chip">✨ ${user.expression || 'Doğal'}</span>
-      </div>
-      <div class="card-bio">${user.bio || 'Henüz bir biyografi yazılmamış.'}</div>
+    <img src="${photo}" class="card-img" alt="${user.nickname}" style="width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0;">
+    <div class="card-overlay" style="position:absolute; bottom:0; left:0; right:0; padding:20px; background:linear-gradient(to top, rgba(0,0,0,0.9), transparent);">
+      <h3 style="color:#fff; font-size:22px; margin:0 0 4px 0;">${user.nickname}, ${user.age}</h3>
+      <p style="color:#d4af37; font-size:13px; margin:0;">${user.role} • ${distText}</p>
     </div>
   `;
 }
