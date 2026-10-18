@@ -6,7 +6,6 @@
   <title>GoldenMatch ✨</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   
-  <!-- Three.js ve Socket.io -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
@@ -19,7 +18,6 @@
 <body>
   <div class="app-wrapper">
 
-    <!-- ÜST NAVİGASYON ÇUBUĞU (Metaverse & YT Butonları Dahil) -->
     <header id="appNav" class="app-nav hidden">
       <div class="brand-logo" onclick="switchTab('explore')">
         <span class="gold-text">GOLDEN</span>MATCH
@@ -42,7 +40,6 @@
       </div>
     </header>
 
-    <!-- 1. EKRAN: PROFİL & GİRİŞ -->
     <main id="registerView" class="view-screen">
       <div class="screen-header">
         <h1 class="gold-text">GOLDENMATCH</h1>
@@ -157,7 +154,6 @@
       </div>
     </main>
 
-    <!-- 2. EKRAN: KEŞFET / TINDER KARTLARI -->
     <main id="exploreView" class="view-screen hidden">
       <div class="lounge-quick-card" onclick="switchTab('metaverse')">
         <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -187,7 +183,6 @@
       </div>
     </main>
 
-    <!-- 3. EKRAN: MESAJLAR LİSTESİ -->
     <main id="inboxView" class="view-screen hidden">
       <div class="sub-header">
         <h2>Mesajlar 💬</h2>
@@ -196,7 +191,6 @@
       <div id="chatList" class="inbox-list"></div>
     </main>
 
-    <!-- 4. EKRAN: BİREBİR SOHBET (PARAVAN) -->
     <main id="chatRoomView" class="view-screen hidden">
       <div class="chat-header">
         <button class="ghost-btn sm-btn" onclick="switchTab('inbox')">← Geri</button>
@@ -224,14 +218,12 @@
       </form>
     </main>
 
-    <!-- 5. EKRAN: 3D METAVERSE (İzole Edilmiş Tuval) -->
     <main id="metaverseView" class="view-screen hidden">
       <div id="canvas-container"></div>
       <button class="metaverse-exit-btn" onclick="exitMetaverseToExplore()">← Ayrıl</button>
       <div id="joystick-zone"></div>
     </main>
 
-    <!-- 6. EKRAN: YT YÖNETİM PANELİ -->
     <main id="adminPanelView" class="view-screen hidden">
       <div class="sub-header">
         <h2 class="gold-text">👑 YT Yönetim Masası</h2>
@@ -248,7 +240,6 @@
       <div id="adminUserCards" class="admin-scroll-list" style="max-height:300px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
     </main>
 
-    <!-- MODALLER -->
     <div id="filterModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeFilterModal()">
       <div class="modal-sheet">
         <div class="sheet-header"><h3>Filtreler</h3><button class="icon-close" onclick="closeFilterModal()">✕</button></div>
