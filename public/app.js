@@ -1,808 +1,708 @@
-// ==========================================================================
-// GOLDENMATCH - İSTEMCİ UYGULAMA MOTORU (APP.JS - TAM SENKRONİZE SÜRÜM)
-// ==========================================================================
+/* ==========================================================================
+   GOLDENMATCH - RESMİ ÜSTÜN MAJESTİK STİL DOSYASI (STYLE.CSS)
+   ========================================================================== */
 
-const tg = window.Telegram?.WebApp;
-if (tg) {
-  tg.ready();
-  tg.expand();
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  -webkit-tap-highlight-color: transparent;
 }
 
-window.currentUserId = tg?.initDataUnsafe?.user?.id ? String(tg.initDataUnsafe.user.id) : '8245373459';
-window.currentUsername = tg?.initDataUnsafe?.user?.username || 'breskavica';
-
-let currentProfile = null;
-let cardsList = [];
-let currentCardIndex = 0;
-let userPhotos = ['', '', '', ''];
-let activeMatchId = null;
-let activePartnerId = null;
-let chatPollingInterval = null;
-let adminUsersCache = [];
-
-let filterCity = 'Hepsi';
-let filterRole = 'Hepsi';
-
-// API Kesintilerine Karşı Gömülü Şehir & İlçe Yedek Veri Tabanı
-const DEFAULT_LOCATIONS = {
-  "İstanbul": ["Kadıköy", "Beşiktaş", "Şişli", "Beyoğlu", "Bakırköy", "Üsküdar", "Maltepe", "Ataşehir", "Sarıyer", "Fatih", "Bahçelievler", "Avcılar", "Kartal", "Pendik", "Beylikdüzü", "Başakşehir", "Zeytinburnu", "Kağıthane", "Eyüpsultan", "Tuzla"],
-  "Ankara": ["Çankaya", "Kızılay", "Tunalı", "Bahçelievler", "Yenimahalle", "Batıkent", "Keçiören", "Mamak", "Etimesgut", "Sincan", "Gölbaşı", "Ümitköy", "Çayyolu", "Altındağ"],
-  "İzmir": ["Alsancak", "Konak", "Karşıyaka", "Bornova", "Buca", "Bostanlı", "Göztepe", "Çiğli", "Gaziemir", "Balçova", "Narlıdere", "Çeşme", "Alaçatı", "Urla", "Foça", "Seferihisar"],
-  "Antalya": ["Muratpaşa", "Konyaaltı", "Lara", "Kepez", "Alanya", "Manavgat", "Kemer", "Kaş", "Serik", "Belek", "Side"],
-  "Bursa": ["Nilüfer", "Görükle", "Osmangazi", "Yıldırım", "Mudanya", "İnegöl", "Gemlik"],
-  "Adana": ["Çukurova", "Seyhan", "Yüreğir", "Sarıçam", "Ceyhan"],
-  "Mersin": ["Yenişehir", "Mezitli", "Toroslar", "Akdeniz", "Tarsus", "Erdemli"],
-  "Kocaeli": ["İzmit", "Gebze", "Darıca", "Gölcük", "Körfez", "Kartepe", "Başiskele"],
-  "Muğla": ["Bodrum", "Fethiye", "Marmaris", "Menteşe", "Datça", "Ortaca", "Milas"],
-  "Eskişehir": ["Tepebaşı", "Odunpazarı", "Bağlar"],
-  "Gaziantep": ["Şahinbey", "Şehitkamil"],
-  "Konya": ["Selçuklu", "Meram", "Karatay", "Bosna Hersek"],
-  "Kayseri": ["Melikgazi", "Kocasinan", "Talas"],
-  "Samsun": ["Atakum", "İlkadım", "Canik"],
-  "Trabzon": ["Ortahisar", "Akçaabat", "Yomra"],
-  "Diyarbakır": ["Kayapınar", "Bağlar", "Yenişehir", "Sur"],
-  "Aydın": ["Efeler", "Kuşadası", "Didim", "Nazilli", "Söke"],
-  "Balıkesir": ["Altıeylül", "Karesi", "Bandırma", "Edremit", "Ayvalık"],
-  "Çanakkale": ["Merkez", "Biga", "Gelibolu", "Bozcaada"],
-  "Denizli": ["Pamukkale", "Merkezefendi"],
-  "Hatay": ["Antakya", "İskenderun", "Defne", "Arsuz"],
-  "Sakarya": ["Adapazarı", "Serdivan", "Erenler", "Sapanca"],
-  "Tekirdağ": ["Süleymanpaşa", "Çorlu", "Çerkezköy"]
-};
-
-let allLocations = Object.assign({}, DEFAULT_LOCATIONS);
-
-// Sayfa Açılışı
-window.addEventListener('DOMContentLoaded', async () => {
-  await loadLocations();
-  await checkUserProfile();
-});
-
-// Şehir & İlçe Verilerini Çekme (Yedekli)
-async function loadLocations() {
-  try {
-    const res = await fetch('/api/locations');
-    const data = await res.json();
-    if (data.success && data.locations && Object.keys(data.locations).length > 0) {
-      allLocations = Object.assign({}, DEFAULT_LOCATIONS, data.locations);
-    }
-  } catch (err) {
-    console.warn('Sunucu konum verisi alınamadı, gömülü il/ilçe veri tabanı kullanılıyor.');
-  }
-  populateCityChips();
-  populateFilterCityChips();
+body {
+  background-color: #0b0a10;
+  color: #f0f0f5;
+  overflow-x: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
 }
 
-function populateCityChips(filterText = '') {
-  const container = document.getElementById('cityChipGrid');
-  if (!container) return;
-  container.innerHTML = '';
-
-  const currentSelectedCity = document.getElementById('city')?.value || '';
-
-  const cities = Object.keys(allLocations).filter(c =>
-    c.toLocaleLowerCase('tr-TR').includes(filterText.toLocaleLowerCase('tr-TR'))
-  );
-
-  cities.slice(0, 35).forEach(city => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'choice-chip' + (city === currentSelectedCity ? ' selected' : '');
-    btn.innerText = city;
-    btn.onclick = () => selectCity(city, btn);
-    container.appendChild(btn);
-  });
+.app-wrapper {
+  width: 100%;
+  max-width: 440px;
+  height: 100vh;
+  max-height: 950px;
+  background: #13121d;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
+  border: 1px solid rgba(212, 175, 55, 0.25);
 }
 
-function filterCityChips() {
-  const q = document.getElementById('citySearchInput')?.value || '';
-  populateCityChips(q);
-}
-
-function selectCity(city, btnElem, preselectedDistrict = null) {
-  const cityInput = document.getElementById('city');
-  if (cityInput) cityInput.value = city;
-
-  document.querySelectorAll('#cityChipGrid .choice-chip').forEach(b => {
-    if (b.innerText.trim() === city) b.classList.add('selected');
-    else b.classList.remove('selected');
-  });
-  if (btnElem) btnElem.classList.add('selected');
-
-  const distContainer = document.getElementById('districtChipGrid');
-  if (!distContainer) return;
-  distContainer.innerHTML = '';
-
-  const distInput = document.getElementById('district');
-  if (distInput && !preselectedDistrict) distInput.value = '';
-
-  const districts = allLocations[city] || ['Merkez', '1. Bölge', '2. Bölge'];
-  districts.forEach(d => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'choice-chip';
-    b.innerText = d;
-
-    if (preselectedDistrict && d === preselectedDistrict) {
-      b.classList.add('selected');
-      if (distInput) distInput.value = d;
-    }
-
-    b.onclick = () => {
-      if (distInput) distInput.value = d;
-      distContainer.querySelectorAll('.choice-chip').forEach(x => x.classList.remove('selected'));
-      b.classList.add('selected');
-    };
-    distContainer.appendChild(b);
-  });
-}
-
-function selectChip(fieldId, value, elem) {
-  const input = document.getElementById(fieldId);
-  if (input) input.value = value;
-  const parent = elem ? elem.closest('.chip-grid') : null;
-  if (parent) {
-    parent.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
-    elem.classList.add('selected');
-  }
-
-  if (fieldId === 'city') {
-    selectCity(value, elem);
+@media(min-width: 441px) {
+  .app-wrapper {
+    border-radius: 32px;
   }
 }
 
-// Profil Kontrolü & Stilize Avatar Senkronizasyonu
-async function checkUserProfile() {
-  try {
-    const res = await fetch(`/api/profile/${window.currentUserId}?username=${window.currentUsername}`);
-    const data = await res.json();
-
-    if (data.isAdmin || data.isFounder) {
-      document.getElementById('ytNavBtn')?.classList.remove('hidden');
-    }
-
-    if (data.exists && data.profile) {
-      currentProfile = data.profile;
-
-      if (currentProfile.avatarConfig) {
-        localStorage.setItem('gm_avatar_config', JSON.stringify(currentProfile.avatarConfig));
-        if (typeof myAvatarConfig !== 'undefined') {
-          myAvatarConfig = Object.assign(myAvatarConfig, currentProfile.avatarConfig);
-        }
-        updateMiniAvatarBadge(currentProfile.avatarConfig);
-      }
-
-      fillProfileForm(currentProfile);
-      document.getElementById('appNav')?.classList.remove('hidden');
-      switchTab('explore');
-      loadExploreCards();
-      loadDailyPick();
-    } else {
-      switchTab('register');
-    }
-  } catch (err) {
-    console.error('Profil kontrol hatası:', err);
-    switchTab('register');
-  }
+.hidden {
+  display: none !important;
 }
 
-function updateMiniAvatarBadge(cfg) {
-  const badge = document.getElementById('mini-avatar-badge');
-  if (!badge || !cfg) return;
-  badge.innerText = cfg.gender === 'female' ? '💃' : '🕺';
-  badge.style.borderColor = cfg.hairColor || '#e5a93c';
+/* ÜST NAVİGASYON */
+.app-nav {
+  height: 65px;
+  background: rgba(19, 18, 29, 0.94);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.25);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 18px;
+  z-index: 100;
 }
 
-function fillProfileForm(p) {
-  document.getElementById('nickname').value = p.nickname || '';
-  document.getElementById('age').value = p.age || '';
-  document.getElementById('height').value = p.height || '';
-  document.getElementById('weight').value = p.weight || '';
-  document.getElementById('bio').value = p.bio || '';
-
-  if (p.city) {
-    selectCity(p.city, null, p.district || null);
-  }
-  if (p.role) selectChip('role', p.role, findButtonByText('role', p.role));
-  if (p.interestedRole) selectChip('interestedRole', p.interestedRole, findButtonByText('interestedRole', p.interestedRole));
-  if (p.archetype) selectChip('archetype', p.archetype, findButtonByCard('archetype', p.archetype));
-  if (p.expression) selectChip('expression', p.expression, findButtonByText('expression', p.expression));
-
-  if (p.photos && p.photos.length) {
-    p.photos.forEach((url, i) => {
-      if (url && i < 4) {
-        userPhotos[i] = url;
-        const slot = document.getElementById(`slot-${i}`);
-        if (slot) {
-          const img = slot.querySelector('.slot-preview');
-          if (img) img.src = url;
-          slot.classList.add('has-image');
-        }
-      }
-    });
-  }
-
-  document.getElementById('deleteAccountBtn')?.classList.remove('hidden');
+.brand-logo {
+  font-family: 'Cinzel', serif;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  cursor: pointer;
 }
 
-function findButtonByText(targetName, text) {
-  const container = document.querySelector(`[data-target="${targetName}"]`);
-  if (!container) return null;
-  return Array.from(container.querySelectorAll('button')).find(b => b.innerText.trim() === text);
+.gold-text {
+  background: linear-gradient(135deg, #ffffff 0%, #d4af37 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-function findButtonByCard(targetName, text) {
-  const container = document.querySelector(`[data-target="${targetName}"]`);
-  if (!container || !text) return null;
-  return Array.from(container.querySelectorAll('button')).find(b => b.innerText.includes(text.split(' ')[0]));
+.nav-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
-// Fotoğraf Seçimi
-let activeSlotIndex = 0;
-function pickImage(slotIdx) {
-  activeSlotIndex = slotIdx;
-  document.getElementById('fileSelector')?.click();
+.nav-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  color: #fff;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-function onFileSelected(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const base64 = e.target.result;
-    userPhotos[activeSlotIndex] = base64;
-    const slot = document.getElementById(`slot-${activeSlotIndex}`);
-    if (slot) {
-      slot.querySelector('.slot-preview').src = base64;
-      slot.classList.add('has-image');
-    }
-  };
-  reader.readAsDataURL(file);
+.nav-btn:hover {
+  background: rgba(212, 175, 55, 0.2);
 }
 
-// Profil Kaydetme
-async function handleFormSubmit(event) {
-  event.preventDefault();
-  const saveBtn = document.getElementById('saveBtn');
-  saveBtn.disabled = true;
-  saveBtn.innerText = '⚡ Mühürleniyor...';
-
-  let currentAvatarConfig = null;
-  try {
-    const raw = localStorage.getItem('gm_avatar_config');
-    if (raw) currentAvatarConfig = JSON.parse(raw);
-  } catch (e) {}
-
-  const payload = {
-    telegramId: window.currentUserId,
-    username: window.currentUsername,
-    nickname: document.getElementById('nickname').value.trim(),
-    age: Number(document.getElementById('age').value),
-    height: Number(document.getElementById('height').value) || null,
-    weight: Number(document.getElementById('weight').value) || null,
-    role: document.getElementById('role').value,
-    interestedRole: document.getElementById('interestedRole').value || 'Hepsi',
-    city: document.getElementById('city').value,
-    district: document.getElementById('district').value,
-    archetype: document.getElementById('archetype').value,
-    expression: document.getElementById('expression').value,
-    bio: document.getElementById('bio').value.trim(),
-    photos: userPhotos.filter(p => p !== ''),
-    avatarConfig: currentAvatarConfig || (typeof myAvatarConfig !== 'undefined' ? myAvatarConfig : {})
-  };
-
-  if (!payload.city || !payload.district) {
-    alert('Lütfen Şehir ve İlçe seçimini tamamlayın.');
-    saveBtn.disabled = false;
-    saveBtn.innerText = 'Profili Mühürle & Başla';
-    return;
-  }
-
-  try {
-    const res = await fetch('/api/profile', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-
-    if (data.success) {
-      currentProfile = data.profile;
-      updateMiniAvatarBadge(currentProfile.avatarConfig);
-      document.getElementById('appNav')?.classList.remove('hidden');
-      document.getElementById('welcomeModal')?.classList.remove('hidden');
-    } else {
-      alert(`Uyarı: ${data.message || 'Kayıt tamamlanamadı.'}`);
-    }
-  } catch (err) {
-    alert('Sunucu iletişim hatası oluştu.');
-  } finally {
-    saveBtn.disabled = false;
-    saveBtn.innerText = 'Profili Mühürle & Başla';
-  }
+.yt-badge {
+  background: linear-gradient(135deg, #6a11cb, #2575fc) !important;
+  font-size: 11px;
+  font-weight: 800;
+  border: none !important;
 }
 
-function closeWelcomeAndExplore() {
-  document.getElementById('welcomeModal')?.classList.add('hidden');
-  switchTab('explore');
-  loadExploreCards();
-  loadDailyPick();
+/* EKRAN AKIŞI */
+.view-screen {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
 }
 
-// Sekme Yöneticisi
-function switchTab(tabId) {
-  if (chatPollingInterval) {
-    clearInterval(chatPollingInterval);
-    chatPollingInterval = null;
-  }
-
-  document.querySelectorAll('.view-screen').forEach(s => s.classList.add('hidden'));
-
-  const navBar = document.getElementById('appNav');
-  if (tabId !== 'register' || currentProfile) {
-    navBar?.classList.remove('hidden');
-  }
-
-  if (tabId === 'register') {
-    document.getElementById('registerView')?.classList.remove('hidden');
-  } else if (tabId === 'explore') {
-    document.getElementById('exploreView')?.classList.remove('hidden');
-    loadExploreCards();
-  } else if (tabId === 'inbox') {
-    document.getElementById('inboxView')?.classList.remove('hidden');
-    document.getElementById('unreadBadge')?.classList.add('hidden');
-    loadInboxChats();
-  } else if (tabId === 'chatRoom') {
-    document.getElementById('chatRoomView')?.classList.remove('hidden');
-  } else if (tabId === 'metaverse') {
-    document.getElementById('metaverseView')?.classList.remove('hidden');
-    if (typeof initMetaverse === 'function') {
-      setTimeout(() => initMetaverse(), 60);
-    }
-  } else if (tabId === 'adminPanel') {
-    document.getElementById('adminPanelView')?.classList.remove('hidden');
-    loadAdminDashboard();
-  }
+.view-screen.hidden {
+  display: none !important;
 }
 
-function openProfileEdit() {
-  switchTab('register');
+.screen-header {
+  margin-bottom: 16px;
+  text-align: center;
 }
 
-// Keşfet / Kartlar
-async function loadExploreCards() {
-  const stage = document.getElementById('activeCard');
-  if (!stage) return;
-  stage.innerHTML = '<div class="card-loader">Altın kader ağları taranıyor...</div>';
-
-  try {
-    const res = await fetch(`/api/cards?userId=${window.currentUserId}&city=${encodeURIComponent(filterCity)}&role=${encodeURIComponent(filterRole)}`);
-    const data = await res.json();
-    if (data.success) {
-      cardsList = data.cards;
-      currentCardIndex = 0;
-      renderCurrentCard();
-    }
-  } catch (err) {
-    stage.innerHTML = '<div class="card-loader">Kullanıcılar getirilemedi.</div>';
-  }
+.screen-header h1 {
+  font-family: 'Cinzel', serif;
+  font-size: 24px;
+  letter-spacing: 1px;
 }
 
-function renderCurrentCard() {
-  const cardElem = document.getElementById('activeCard');
-  if (!cardElem) return;
-
-  if (!cardsList.length || currentCardIndex >= cardsList.length) {
-    cardElem.innerHTML = `
-      <div class="card-loader">
-        <h3 style="color:#e5a93c;">Şimdilik Kimse Kalmadı ✨</h3>
-        <p style="font-size:12px; color:#888;">Parametrik 3D Lounge'a geçebilir veya filtreleri değiştirebilirsin.</p>
-        <div style="display:flex; gap:8px; margin-top:12px; justify-content:center;">
-          <button class="ghost-btn" onclick="openFilterModal()">Filtreler</button>
-          <button class="primary-btn sm-btn" onclick="switchTab('metaverse')">🏛️ 3D Mekana Gir</button>
-        </div>
-      </div>`;
-    return;
-  }
-
-  const user = cardsList[currentCardIndex];
-  const photo = user.photos?.[0] || 'https://via.placeholder.com/400x600/181726/e5a93c?text=Foto%C4%9Fraf+Yok';
-  const distText = user.distanceKm !== null && user.distanceKm !== undefined ? `📍 ${user.distanceKm} km uzakta` : `📍 ${user.city} / ${user.district || ''}`;
-
-  cardElem.innerHTML = `
-    <img src="${photo}" class="card-img" alt="${user.nickname}" style="width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0;">
-    <div class="card-overlay" style="position:absolute; bottom:0; left:0; right:0; padding:20px; background:linear-gradient(to top, rgba(0,0,0,0.9), transparent);">
-      <h3 style="color:#fff; font-size:22px; margin:0 0 4px 0;">${user.nickname}, ${user.age}</h3>
-      <p style="color:#d4af37; font-size:13px; margin:0;">${user.role} • ${distText}</p>
-    </div>
-  `;
+.subtitle {
+  font-size: 12px;
+  color: #8e8e9a;
+  margin-top: 4px;
 }
 
-async function triggerCardSwipe(action) {
-  if (currentCardIndex >= cardsList.length) return;
-  const targetUser = cardsList[currentCardIndex];
-
-  try {
-    const res = await fetch('/api/like', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        fromUserId: window.currentUserId,
-        toUserId: targetUser.telegramId,
-        action: action
-      })
-    });
-    const data = await res.json();
-    if (data.isMatch) {
-      document.getElementById('unreadBadge')?.classList.remove('hidden');
-      alert(`🎉 EŞLEŞTİNİZ!\n\n${targetUser.nickname} ile kaderiniz birleşti! DM kutusundan yazışabilirsiniz.`);
-    }
-  } catch (err) {}
-
-  currentCardIndex++;
-  renderCurrentCard();
+/* FOTOĞRAF IZGARASI */
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
 }
 
-async function loadDailyPick() {
-  try {
-    const res = await fetch(`/api/daily-pick?userId=${window.currentUserId}`);
-    const data = await res.json();
-    if (data.success && data.dailyPick) {
-      const banner = document.getElementById('dailyPickBanner');
-      const content = document.getElementById('dailyPickContent');
-      const p = data.dailyPick;
-      banner?.classList.remove('hidden');
-      if (content) {
-        content.innerHTML = `
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div>
-              <strong>${p.nickname}, ${p.age}</strong> (${p.role})
-              <div style="font-size:11px; color:#aaa;">📍 ${p.city} • ${p.archetype?.split(' ')[0] || ''}</div>
-            </div>
-            <button class="primary-btn sm-btn" onclick="likeDailyPick('${p.telegramId}')">⚡ Beğen</button>
-          </div>
-        `;
-      }
-    }
-  } catch (e) {}
+.photo-slot {
+  aspect-ratio: 3/4;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed rgba(212, 175, 55, 0.4);
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-async function likeDailyPick(targetId) {
-  await fetch('/api/like', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fromUserId: window.currentUserId, toUserId: targetId, action: 'like' })
-  });
-  document.getElementById('dailyPickBanner')?.classList.add('hidden');
-  alert('Günün seçimi beğenildi!');
+.photo-slot.main {
+  grid-column: span 2;
+  grid-row: span 2;
+  border-style: solid;
+  border-color: #d4af37;
 }
 
-// DM Sohbetleri & Paravan Sistemi
-async function loadInboxChats() {
-  const list = document.getElementById('chatList');
-  if (!list) return;
-  list.innerHTML = '<div class="card-loader">Sohbetler yükleniyor...</div>';
-
-  try {
-    const res = await fetch(`/api/chats?userId=${window.currentUserId}`);
-    const data = await res.json();
-    if (data.success && data.chats) {
-      if (!data.chats.length) {
-        list.innerHTML = `
-          <div class="card-loader">
-            Henüz eşleşme yok.<br>
-            <span style="font-size:12px; color:#e5a93c; margin-top:8px; display:block; cursor:pointer;" onclick="switchTab('metaverse')">
-              🏛️ 3D Parametrik Lounge'a gidip insanlara kalp atabilirsin!
-            </span>
-          </div>`;
-        return;
-      }
-      list.innerHTML = '';
-      data.chats.forEach(chat => {
-        const item = document.createElement('div');
-        item.className = 'chat-item';
-        item.onclick = () => openChatRoom(chat.matchId, chat.partner);
-        
-        const badgeTag = chat.source === 'metaverse_heart' ? '<span style="font-size:10px; color:#df5d78; font-weight:bold;">❤️ 3D Lounge</span> ' : '';
-
-        item.innerHTML = `
-          <div class="chat-avatar-wrap">
-            <img src="${chat.partner.avatar || 'https://via.placeholder.com/60'}" class="chat-avatar" alt="Profil">
-          </div>
-          <div class="chat-info">
-            <div class="chat-name">${chat.partner.nickname}</div>
-            <div class="chat-snippet">${badgeTag}${chat.lastMessage}</div>
-          </div>
-          <div class="chat-time">${chat.lastMessageTime || ''}</div>
-        `;
-        list.appendChild(item);
-      });
-    }
-  } catch (e) {
-    list.innerHTML = '<div class="card-loader">Sohbetler alınamadı.</div>';
-  }
+.slot-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: none;
 }
 
-async function openChatRoom(matchId, partner) {
-  activeMatchId = matchId;
-  activePartnerId = partner.telegramId;
-  switchTab('chatRoom');
-
-  document.getElementById('chatPartnerName').innerText = partner.nickname;
-  await fetchMessages();
-
-  chatPollingInterval = setInterval(fetchMessages, 3000);
+.photo-slot.has-image .slot-preview {
+  display: block;
 }
 
-async function fetchMessages() {
-  if (!activeMatchId) return;
-  try {
-    const res = await fetch(`/api/chats/${activeMatchId}?userId=${window.currentUserId}`);
-    const data = await res.json();
-    if (data.success) {
-      renderMessages(data.messages);
-      const paravanStatus = document.getElementById('chatParavanStatus');
-      const paravanBtn = document.getElementById('paravanBtn');
-      if (data.bothRevealed) {
-        paravanStatus.innerText = `🔓 Açık Kimlik (@${data.partner.username || 'Kullanıcı'})`;
-        paravanBtn.style.display = 'none';
-      } else if (data.myParavanRequested) {
-        paravanStatus.innerText = '⏳ Karşı Tarafın Onayı Bekleniyor';
-        paravanBtn.innerText = 'İstek Gönderildi';
-        paravanBtn.style.display = 'block';
-      } else {
-        paravanStatus.innerText = '🎭 Anonim Paravan Sohbeti';
-        paravanBtn.innerText = '🎭 Paravanı Aç';
-        paravanBtn.style.display = 'block';
-      }
-    }
-  } catch (e) {}
+.photo-slot.has-image .slot-placeholder {
+  display: none;
 }
 
-function renderMessages(messages) {
-  const stream = document.getElementById('messageStream');
-  if (!stream) return;
-  stream.innerHTML = '';
-  messages.forEach(msg => {
-    const isMe = msg.senderId === window.currentUserId;
-    const bubble = document.createElement('div');
-    bubble.className = `chat-bubble ${isMe ? 'me' : 'them'}`;
-    bubble.innerHTML = `
-      <span>${msg.text}</span>
-      <span class="bubble-time">${msg.time}</span>
-    `;
-    stream.appendChild(bubble);
-  });
-  stream.scrollTop = stream.scrollHeight;
+.slot-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: #d4af37;
+  font-size: 11px;
 }
 
-async function sendChatMessage(e) {
-  e.preventDefault();
-  const input = document.getElementById('chatInput');
-  const text = input.value.trim();
-  if (!text || !activeMatchId) return;
-
-  input.value = '';
-  try {
-    await fetch(`/api/chats/${activeMatchId}/message`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ senderId: window.currentUserId, text })
-    });
-    fetchMessages();
-  } catch (err) {}
+/* FORMLAR */
+.gold-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
-function sendIcebreaker(text) {
-  const input = document.getElementById('chatInput');
-  if (input) input.value = text;
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-async function requestParavanReveal() {
-  if (!activeMatchId) return;
-  try {
-    const res = await fetch(`/api/chats/${activeMatchId}/reveal`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: window.currentUserId })
-    });
-    const data = await res.json();
-    if (data.bothRevealed) {
-      alert(`🎉 İki taraf da onayladı! Kullanıcı adı: @${data.partnerUsername}`);
-    } else {
-      alert('🎭 Paravan açma isteğiniz iletildi. Karşı taraf da onaylarsa kimlikler açılacak.');
-    }
-    fetchMessages();
-  } catch (e) {}
+.form-group label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #d4af37;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-async function cancelCurrentMatch() {
-  if (!activeMatchId || !confirm('Bu eşleşmeyi bitirmek istiyor musunuz?')) return;
-  await fetch(`/api/chats/${activeMatchId}/unmatch`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId: window.currentUserId })
-  });
-  switchTab('inbox');
+.form-group input, .form-group textarea {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 12px;
+  color: #fff;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
 }
 
-// Şikayet İşlemleri
-function openChatReportModal() {
-  document.getElementById('reportReason').value = '';
-  document.getElementById('reportedMessagesPreview').innerText = 'Mevcut sohbet kayıtları kanıt olarak YT Masasına iletilecektir.';
-  document.getElementById('reportModal').classList.remove('hidden');
+.form-group input:focus, .form-group textarea:focus {
+  border-color: #d4af37;
 }
 
-function openReportModalCurrentCard() {
-  if (currentCardIndex >= cardsList.length) return;
-  activePartnerId = cardsList[currentCardIndex].telegramId;
-  document.getElementById('reportReason').value = '';
-  document.getElementById('reportedMessagesPreview').innerText = 'Profil ve kullanıcı bilgileri incelenmek üzere YT Masasına iletilecek.';
-  document.getElementById('reportModal').classList.remove('hidden');
+.form-row-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
 }
 
-function closeReportModal() {
-  document.getElementById('reportModal').classList.add('hidden');
+.chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-async function submitReport() {
-  const reason = document.getElementById('reportReason').value.trim();
-  if (!reason) return alert('Lütfen bir şikayet nedeni yazın.');
-
-  await fetch('/api/report', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      reporterId: window.currentUserId,
-      targetId: activePartnerId,
-      reason,
-      selectedMessages: ['Otomatik sohbet veya profil raporu']
-    })
-  });
-  closeReportModal();
-  alert('Şikayetiniz topluluk yönetimine iletildi.');
+.choice-chip {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ccc;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-// Filtreler
-function populateFilterCityChips() {
-  const container = document.getElementById('filterCityChips');
-  if (!container) return;
-  container.innerHTML = `<button type="button" class="choice-chip selected" onclick="selectFilterCity('Hepsi', this)">Hepsi (Tüm Şehirler)</button>`;
-  Object.keys(allLocations).slice(0, 20).forEach(c => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'choice-chip';
-    btn.innerText = c;
-    btn.onclick = () => selectFilterCity(c, btn);
-    container.appendChild(btn);
-  });
+.choice-chip.selected {
+  background: #d4af37;
+  color: #0b0a10;
+  border-color: #d4af37;
+  font-weight: 700;
 }
 
-function selectFilterCity(city, btnElem) {
-  filterCity = city;
-  document.querySelectorAll('#filterCityChips .choice-chip').forEach(b => b.classList.remove('selected'));
-  if (btnElem) btnElem.classList.add('selected');
+.primary-btn {
+  background: linear-gradient(135deg, #d4af37, #aa8220);
+  color: #0b0a10;
+  border: none;
+  padding: 14px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(212, 175, 55, 0.3);
 }
 
-function selectFilterRole(role, btnElem) {
-  filterRole = role;
-  document.querySelectorAll('#filterRoleChips .choice-chip').forEach(b => b.classList.remove('selected'));
-  if (btnElem) btnElem.classList.add('selected');
+.ghost-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 12px;
+  font-size: 12px;
+  cursor: pointer;
 }
 
-function openFilterModal() {
-  document.getElementById('filterModal').classList.remove('hidden');
+.sm-btn {
+  padding: 6px 12px;
+  font-size: 11px;
+  border-radius: 10px;
 }
 
-function closeFilterModal() {
-  document.getElementById('filterModal').classList.add('hidden');
+/* TINDER KARTLARI */
+.lounge-quick-card {
+  background: linear-gradient(135deg, #1b1929, #252238);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 12px;
+  cursor: pointer;
 }
 
-function applyFilters() {
-  closeFilterModal();
-  loadExploreCards();
+.daily-pick-banner {
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 12px;
 }
 
-// Hesap Silme
-async function deleteMyAccount() {
-  if (!confirm('Hesabınızı silmek istediğinize emin misiniz?')) return;
-  await fetch(`/api/profile/${window.currentUserId}`, { method: 'DELETE' });
-  alert('Hesabınız kalıcı olarak silindi.');
-  location.reload();
+.daily-badge {
+  font-size: 10px;
+  font-weight: 800;
+  color: #d4af37;
+  margin-bottom: 4px;
 }
 
-// YT Paneli (Dashboard)
-async function loadAdminDashboard() {
-  try {
-    const res = await fetch(`/api/admin/dashboard-data?userId=${window.currentUserId}&username=${window.currentUsername}`);
-    const data = await res.json();
-    if (data.success) {
-      document.getElementById('ytStatTotal').innerText = data.stats.total;
-      document.getElementById('ytStatActive').innerText = data.stats.active;
-      document.getElementById('ytStatReports').innerText = data.stats.reportsCount;
-
-      const rList = document.getElementById('adminReportsList');
-      if (rList) {
-        rList.innerHTML = '';
-        if (!data.reports || !data.reports.length) {
-          rList.innerHTML = '<div style="font-size:12px;color:#777;">Henüz şikayet bulunmuyor.</div>';
-        } else {
-          data.reports.forEach(r => {
-            const item = document.createElement('div');
-            item.style = 'border-bottom: 1px solid #333; padding: 6px 0; font-size: 11px;';
-            item.innerHTML = `<strong>Hedef:</strong> ${r.targetNickname} (@${r.targetUsername})<br><strong>Sebep:</strong> ${r.reason}<br><small style="color:#aaa;">${r.date}</small>`;
-            rList.appendChild(item);
-          });
-        }
-      }
-
-      const mList = document.getElementById('metaverseReportsList');
-      if (mList && data.worldReports) {
-        mList.innerHTML = '';
-        if (!data.worldReports.length) {
-          mList.innerHTML = '<div style="font-size:12px;color:#777;">Henüz mekan şikayeti bulunmuyor.</div>';
-        } else {
-          data.worldReports.forEach(wr => {
-            const row = document.createElement('div');
-            row.style = 'border-bottom: 1px solid rgba(229,169,60,0.2); padding: 6px 0; font-size: 11px;';
-            row.innerHTML = `
-              <strong>Raporlayan:</strong> ${wr.reporterId}<br>
-              <strong>Sebep:</strong> <span style="color:#ff9f43;">${wr.reason}</span><br>
-              <small style="color:#aaa;">📍 X:${Math.round(wr.location.x)} Z:${Math.round(wr.location.z)} | ${new Date(wr.createdAt).toLocaleTimeString('tr-TR')}</small>
-            `;
-            mList.appendChild(row);
-          });
-        }
-      }
-
-      adminUsersCache = data.users || [];
-      renderAdminUserList(adminUsersCache);
-    }
-  } catch (e) {
-    console.error('YT paneli yükleme hatası:', e);
-  }
+.card-stage {
+  flex: 1;
+  position: relative;
+  background: #181624;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  min-height: 380px;
+  max-height: 480px;
 }
 
-function renderAdminUserList(users) {
-  const uList = document.getElementById('adminUserCards');
-  if (!uList) return;
-  uList.innerHTML = '';
-  users.forEach(u => {
-    const card = document.createElement('div');
-    card.className = 'admin-user-row';
-    card.innerHTML = `
-      <div>
-        <strong>${u.nickname}</strong> (${u.role}) - ${u.city} / ${u.district || ''}<br>
-        <small style="color:#888;">TG ID: ${u.telegramId}</small>
-      </div>
-      <button class="sm-btn ${u.isBanned ? 'gold' : 'danger'}" onclick="toggleBanUser('${u.telegramId}')">
-        ${u.isBanned ? 'Yasağı Kaldır' : 'Yasakla'}
-      </button>
-    `;
-    uList.appendChild(card);
-  });
+.tinder-card {
+  width: 100%;
+  height: 100%;
+  position: relative;
 }
 
-function filterAdminUserList() {
-  const q = (document.getElementById('userSearchInput')?.value || '').toLocaleLowerCase('tr-TR');
-  const filtered = adminUsersCache.filter(u =>
-    (u.nickname || '').toLocaleLowerCase('tr-TR').includes(q) ||
-    (u.city || '').toLocaleLowerCase('tr-TR').includes(q) ||
-    String(u.telegramId).includes(q)
-  );
-  renderAdminUserList(filtered);
+.card-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #777;
+  font-size: 13px;
+  text-align: center;
+  padding: 20px;
 }
 
-async function toggleBanUser(targetId) {
-  await fetch('/api/admin/toggle-ban', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-user-id': window.currentUserId, 'x-user-name': window.currentUsername },
-    body: JSON.stringify({ targetTelegramId: targetId })
-  });
-  loadAdminDashboard();
+.swipe-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 0;
 }
 
-function directYtLogin() {
-  switchTab('adminPanel');
+.action-circle {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 20px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+  transition: transform 0.1s;
+}
+
+.action-circle:active {
+  transform: scale(0.9);
+}
+
+.pass-btn {
+  background: #1e1c2b;
+  color: #ff4757;
+  border: 1px solid rgba(255, 71, 87, 0.3);
+}
+
+.like-btn {
+  background: linear-gradient(135deg, #ff4757, #ff6b81);
+  color: #fff;
+}
+
+.report-btn-small {
+  background: #1e1c2b;
+  color: #ffa502;
+  border: 1px solid rgba(255, 165, 2, 0.3);
+  width: 42px;
+  height: 42px;
+  font-size: 16px;
+}
+
+/* SOHBET / İNBOX LİSTESİ */
+.sub-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.inbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chat-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 10px;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.chat-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.chat-avatar-wrap {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1.5px solid #d4af37;
+  flex-shrink: 0;
+}
+
+.chat-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.chat-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: #fff;
+  margin-bottom: 2px;
+}
+
+.chat-snippet {
+  font-size: 12px;
+  color: #999;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-time {
+  font-size: 10px;
+  color: #666;
+}
+
+/* BİREBİR SOHBET ODASI */
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 10px;
+  gap: 8px;
+}
+
+.partner-meta h3 {
+  font-size: 14px;
+  color: #fff;
+}
+
+.status-indicator {
+  font-size: 10px;
+  color: #d4af37;
+}
+
+.paravan-pill, .report-chat-pill, .unmatch-pill {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  color: #d4af37;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.unmatch-pill {
+  color: #ff4757;
+  border-color: rgba(255, 71, 87, 0.3);
+}
+
+.icebreakers-bar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+
+.ice-btn {
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  color: #d4af37;
+  padding: 5px 10px;
+  border-radius: 14px;
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.chat-stream {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px;
+  max-height: calc(100vh - 280px);
+}
+
+.chat-bubble {
+  max-width: 75%;
+  padding: 10px 14px;
+  border-radius: 16px;
+  font-size: 13px;
+  position: relative;
+  word-break: break-word;
+}
+
+.chat-bubble.me {
+  background: linear-gradient(135deg, #d4af37, #b8972b);
+  color: #0b0a10;
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+  font-weight: 500;
+}
+
+.chat-bubble.them {
+  background: #201e30;
+  color: #fff;
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.bubble-time {
+  font-size: 9px;
+  display: block;
+  text-align: right;
+  margin-top: 4px;
+  opacity: 0.7;
+}
+
+.chat-composer {
+  display: flex;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 8px;
+}
+
+.chat-composer input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 10px 14px;
+  border-radius: 20px;
+  color: #fff;
+  outline: none;
+  font-size: 13px;
+}
+
+.composer-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #d4af37;
+  color: #0b0a10;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* METAVERSE EKRANI İZOLASYONU */
+#metaverseView {
+  padding: 0 !important;
+  position: relative !important;
+  overflow: hidden !important;
+  background: #0a0a0f !important;
+  height: calc(100vh - 65px) !important;
+}
+
+#canvas-container {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10;
+}
+
+.metaverse-exit-btn {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 50;
+  background: rgba(14, 13, 23, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid #d4af37;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#joystick-zone {
+  position: absolute;
+  bottom: 25px;
+  left: 20px;
+  width: 110px;
+  height: 110px;
+  z-index: 50;
+  pointer-events: auto;
+}
+
+/* YT YÖNETİM MASASI */
+.stats-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.stat-pill {
+  background: #171622;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  padding: 10px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.stat-pill span {
+  font-size: 10px;
+  color: #888;
+}
+
+.stat-pill strong {
+  font-size: 16px;
+  color: #d4af37;
+}
+
+.admin-action-box {
+  border: 1.5px solid rgba(212, 175, 55, 0.4);
+  background: rgba(22, 22, 34, 0.7);
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+.admin-user-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #171622;
+  padding: 10px;
+  border-radius: 12px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+}
+
+.modal-sheet {
+  width: 100%;
+  background: #171622;
+  border-top: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 24px 24px 0 0;
+  padding: 20px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.icon-close {
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 18px;
+  cursor: pointer;
 }
