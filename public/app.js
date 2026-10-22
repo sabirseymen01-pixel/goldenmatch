@@ -1,5 +1,5 @@
 // ==========================================================================
-// GOLDENMATCH - SAF İSTEMCİ UYGULAMA MOTORU (APP.JS)
+// GOLDENMATCH - İSTEMCİ UYGULAMA MOTORU (APP.JS)
 // ==========================================================================
 
 const tg = window.Telegram?.WebApp;
@@ -118,10 +118,6 @@ async function checkUserProfile() {
   try {
     const res = await fetch(`/api/profile/${window.currentUserId}?username=${window.currentUsername}`);
     const data = await res.json();
-
-    if (data.isAdmin || data.isFounder) {
-      document.getElementById('ytNavBtn')?.classList.remove('hidden');
-    }
 
     if (data.exists && data.profile) {
       currentProfile = data.profile;
@@ -250,13 +246,9 @@ function switchTab(tabId) {
     loadExploreCards();
   } else if (tabId === 'inbox') {
     document.getElementById('inboxView')?.classList.remove('hidden');
-    document.getElementById('unreadBadge')?.classList.add('hidden');
     loadInboxChats();
   } else if (tabId === 'chatRoom') {
     document.getElementById('chatRoomView')?.classList.remove('hidden');
-  } else if (tabId === 'adminPanel') {
-    document.getElementById('adminPanelView')?.classList.remove('hidden');
-    loadAdminDashboard();
   }
 }
 
@@ -424,23 +416,4 @@ async function cancelCurrentMatch() {
     body: JSON.stringify({ userId: window.currentUserId })
   });
   switchTab('inbox');
-}
-
-async function loadAdminDashboard() {
-  try {
-    const res = await fetch(`/api/admin/dashboard-data?userId=${window.currentUserId}&username=${window.currentUsername}`);
-    const data = await res.json();
-    if (data.success) {
-      const uList = document.getElementById('adminUserCards');
-      if (uList && data.users) {
-        uList.innerHTML = '';
-        data.users.forEach(u => {
-          const card = document.createElement('div');
-          card.className = 'admin-user-row';
-          card.innerHTML = `<div><strong>${u.nickname}</strong> (${u.role})</div>`;
-          uList.appendChild(card);
-        });
-      }
-    }
-  } catch (e) {}
 }
