@@ -19,10 +19,7 @@ try {
 const app = express();
 const server = http.createServer(app);
 
-// 1. Render Proxy arkasında gerçek IP'leri al (Rate-limit çökmesini engeller)
 app.set('trust proxy', 1);
-
-// 2. HEALTH CHECK - Render'ın servisi canlı görmesi için RateLimit'ten ÖNCE olmalı
 app.get('/health', (req, res) => res.status(200).send('GOLDENMATCH_OK'));
 
 let io = null;
@@ -32,7 +29,6 @@ if (Server) {
   });
 }
 
-// 3. Rate Limiter - xForwardedForHeader doğrulaması devre dışı bırakılarak çökme önlenir
 const limiter = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 400,
@@ -43,15 +39,22 @@ app.use(limiter);
 
 app.use(cors());
 app.use(express.json({ limit: '35mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
 
-// ==========================================================================
-// MONGODB ATLAS VERİTABANI BAĞLANTISI VE ŞEMALAR
-// ==========================================================================
+// Önbellek kilitlenmesini önleyen statik dosya sunumu
+app.use(express.static(path.join(__dirname, 'public'), {
+  etag: false,
+  maxAge: 0,
+  setHeaders: (res, path) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+}));
+
 const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://breskavica:05527330103Ss@cluster0.z1oe54g.mongodb.net/goldenmatch?retryWrites=true&w=majority&appName=Cluster0';
 
 mongoose.connect(MONGO_URI)
-  .then(() => console.log('✅ MongoDB Atlas Bağlantısı Başarılı! Veriler kalıcı saklanıyor.'))
+  .then(() => console.log('✅ MongoDB Atlas Bağlantısı Başarılı!'))
   .catch(err => console.error('❌ MongoDB Bağlantı Hatası:', err));
 
 const UserSchema = new mongoose.Schema({
@@ -69,25 +72,6 @@ const UserSchema = new mongoose.Schema({
   expression: String,
   bio: String,
   photos: [String],
-  
-  avatarConfig: {
-    gender: { type: String, default: 'female' },
-    skinColor: { type: String, default: '#f7d2b7' },
-    eyeColor: { type: String, default: '#9b59b6' },
-    eyeShape: { type: String, default: 'almond' },
-    hairStyle: { type: String, default: 'twin_pigtails' },
-    hairColor: { type: String, default: '#00d2d3' },
-    hat: { type: String, default: 'none' },
-    glasses: { type: String, default: 'cyber_sunglasses' },
-    necklace: { type: String, default: 'heavy_chain' },
-    outfitTop: { type: String, default: 'bandage_corset' },
-    outfitTopColor: { type: String, default: '#ffffff' },
-    outfitBottom: { type: String, default: 'strapped_shorts' },
-    outfitBottomColor: { type: String, default: '#ffffff' },
-    shoes: { type: String, default: 'laced_boots' },
-    shoesColor: { type: String, default: '#ffffff' }
-  },
-  
   isVerified: { type: Boolean, default: false },
   isBanned: { type: Boolean, default: false },
   registeredAt: { type: Date, default: Date.now }
@@ -116,86 +100,25 @@ const MatchSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 
-const ReportSchema = new mongoose.Schema({
-  id: String,
-  targetId: String,
-  targetNickname: String,
-  targetUsername: String,
-  reporterId: String,
-  reporterNickname: String,
-  reason: String,
-  evidenceMessages: [String],
-  date: String
-});
-
 const AdminSchema = new mongoose.Schema({
   target: { type: String, unique: true },
   type: String
 });
 
-const WorldReportSchema = new mongoose.Schema({
-  reporterId: { type: String, required: true },
-  reportedUserId: { type: String, default: null },
-  type: { 
-    type: String, 
-    enum: ['chat_abuse', 'inappropriate_avatar', 'griefing', 'system_alert'],
-    default: 'chat_abuse'
-  },
-  reason: { type: String, required: true },
-  location: {
-    x: { type: Number, default: 0 },
-    y: { type: Number, default: 0 },
-    z: { type: Number, default: 0 }
-  },
-  status: { type: String, enum: ['pending', 'resolved', 'dismissed'], default: 'pending' },
-  createdAt: { type: Date, default: Date.now }
-});
-
-const WorldItemSchema = new mongoose.Schema({
-  itemType: { type: String, required: true },
-  position: {
-    x: { type: Number, default: 0 },
-    y: { type: Number, default: 0 },
-    z: { type: Number, default: 0 }
-  },
-  rotation: {
-    x: { type: Number, default: 0 },
-    y: { type: Number, default: 0 },
-    z: { type: Number, default: 0 }
-  },
-  scale: {
-    x: { type: Number, default: 1 },
-    y: { type: Number, default: 1 },
-    z: { type: Number, default: 1 }
-  },
-  textureVariant: { type: String, default: 'default' },
-  updatedBy: { type: String, default: 'Admin' },
-  updatedAt: { type: Date, default: Date.now }
-});
-
 const UserModel = mongoose.model('User', UserSchema);
 const LikeModel = mongoose.model('Like', LikeSchema);
 const MatchModel = mongoose.model('Match', MatchSchema);
-const ReportModel = mongoose.model('Report', ReportSchema);
 const AdminModel = mongoose.model('Admin', AdminSchema);
-const WorldReportModel = mongoose.model('WorldReport', WorldReportSchema);
-const WorldItemModel = mongoose.model('WorldItem', WorldItemSchema);
 
-// KURUCU SÜPER YETKİLİ
 const FOUNDER_ID = String(process.env.FOUNDER_ID || '8245373459').trim().toLowerCase();
 const FOUNDER_USERNAME = String(process.env.FOUNDER_USERNAME || 'breskavica').trim().toLowerCase().replace('@', '');
 
 async function isUserAdmin(telegramId, username) {
   const tid = String(telegramId || '').trim().toLowerCase();
   const uname = String(username || '').trim().toLowerCase().replace('@', '');
-
-  if (tid && tid === FOUNDER_ID) return true;
-  if (uname && uname === FOUNDER_USERNAME) return true;
-
+  if (tid === FOUNDER_ID || uname === FOUNDER_USERNAME) return true;
   try {
-    const admin = await AdminModel.findOne({
-      $or: [{ target: tid }, { target: uname }]
-    });
+    const admin = await AdminModel.findOne({ $or: [{ target: tid }, { target: uname }] });
     return !!admin;
   } catch (e) {
     return false;
@@ -208,30 +131,21 @@ function isFounder(telegramId, username) {
   return tid === FOUNDER_ID || uname === FOUNDER_USERNAME;
 }
 
-const ADMIN_SECRET = process.env.ADMIN_SECRET || 'golden_admin_2026';
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const WEBAPP_URL = 'https://goldenmatch.onrender.com';
-
 const bot = BOT_TOKEN ? new Telegraf(BOT_TOKEN) : null;
 
 if (bot) {
   bot.start((ctx) => {
     ctx.reply(
-      `Merhaba ${ctx.from.first_name}! ✨\n\nGoldenMatch evrenine hoş geldin. Topluluk meclisine katılıp 3D Lounge ve eşleşmelere girmek için dokun:`,
+      `Merhaba ${ctx.from.first_name}! ✨\n\nGoldenMatch meclisine hoş geldin. Keşfetmeye başlamak için dokun:`,
       Markup.inlineKeyboard([Markup.button.webApp("🔥 GoldenMatch'i Aç", WEBAPP_URL)])
     );
   });
-
   bot.launch({ dropPendingUpdates: true }).catch(err => console.warn('Bot başlatma uyarısı:', err.message));
-
-  process.once('SIGINT', () => process.exit(0));
-  process.once('SIGTERM', () => process.exit(0));
 }
 
-// ==========================================================================
-// REST API ROTALARI
-// ==========================================================================
-
+// ================= API ROTALARI =================
 app.get('/api/locations', (req, res) => res.json({ success: true, locations: LOCATIONS_DATA }));
 
 app.get('/api/profile/:id', async (req, res) => {
@@ -240,19 +154,13 @@ app.get('/api/profile/:id', async (req, res) => {
   const profile = await UserModel.findOne({ telegramId: tid });
   const isAdmin = await isUserAdmin(tid, uname);
   const founder = isFounder(tid, uname);
-
   if (profile) return res.json({ exists: true, profile, isAdmin, isFounder: founder });
   return res.json({ exists: false, isAdmin, isFounder: founder });
 });
 
 app.post('/api/profile', async (req, res) => {
   try {
-    const { 
-      telegramId, username, nickname, age, height, weight, 
-      role, interestedRole, city, district, archetype, expression, 
-      bio, photos, avatarConfig 
-    } = req.body;
-
+    const { telegramId, username, nickname, age, height, weight, role, interestedRole, city, district, archetype, expression, bio, photos } = req.body;
     if (!telegramId || !city || !role) return res.status(400).json({ success: false, message: 'Eksik bilgi.' });
 
     if (photos && photos.length > 0) {
@@ -277,17 +185,11 @@ app.post('/api/profile', async (req, res) => {
       expression,
       bio,
       photos: photos || [],
-      avatarConfig: avatarConfig || {},
       isVerified: false,
       isBanned: false
     };
 
-    const saved = await UserModel.findOneAndUpdate(
-      { telegramId: String(telegramId) },
-      profileData,
-      { upsert: true, new: true }
-    );
-
+    const saved = await UserModel.findOneAndUpdate({ telegramId: String(telegramId) }, profileData, { upsert: true, new: true });
     return res.json({ success: true, message: 'Kaydedildi.', profile: saved });
   } catch (err) {
     return res.status(500).json({ success: false, message: 'Sunucu hatası.' });
@@ -299,7 +201,7 @@ app.delete('/api/profile/:id', async (req, res) => {
   await UserModel.deleteOne({ telegramId: tid });
   await LikeModel.deleteMany({ $or: [{ fromUserId: tid }, { toUserId: tid }] });
   await MatchModel.deleteMany({ $or: [{ user1: tid }, { user2: tid }] });
-  res.json({ success: true, message: 'Hesap kalıcı olarak silindi.' });
+  res.json({ success: true, message: 'Hesap silindi.' });
 });
 
 app.get('/api/cards', async (req, res) => {
@@ -311,11 +213,7 @@ app.get('/api/cards', async (req, res) => {
   const myLikes = await LikeModel.find({ fromUserId: currentUserId });
   const likedUserIds = new Set(myLikes.map(l => l.toUserId));
 
-  let query = {
-    telegramId: { $ne: currentUserId,$nin: Array.from(likedUserIds) },
-    isBanned: false
-  };
-
+  let query = { telegramId: { $ne: currentUserId, $nin: Array.from(likedUserIds) }, isBanned: false };
   if (filterCity && filterCity !== 'Hepsi') query.city = filterCity;
   if (filterRole && filterRole !== 'Hepsi') query.role = filterRole;
 
@@ -323,10 +221,7 @@ app.get('/api/cards', async (req, res) => {
   const cards = users.map(user => {
     let distanceKm = null;
     if (currentUser?.city && user.city) {
-      distanceKm = calculateExactDistance(
-        { city: currentUser.city, district: currentUser.district },
-        { city: user.city, district: user.district }
-      );
+      distanceKm = calculateExactDistance({ city: currentUser.city, district: currentUser.district }, { city: user.city, district: user.district });
     }
     return { ...user.toObject(), distanceKm };
   });
@@ -334,7 +229,27 @@ app.get('/api/cards', async (req, res) => {
   res.json({ success: true, cards });
 });
 
-// DM Sohbet Listesi
+app.post('/api/like', async (req, res) => {
+  const { fromUserId, toUserId, action } = req.body;
+  if (!fromUserId || !toUserId) return res.status(400).json({ success: false });
+
+  if (action === 'like') {
+    await LikeModel.create({ fromUserId: String(fromUserId), toUserId: String(toUserId) });
+    const reverseLike = await LikeModel.findOne({ fromUserId: String(toUserId), toUserId: String(fromUserId) });
+
+    if (reverseLike) {
+      const matchId = [String(fromUserId), String(toUserId)].sort().join('_');
+      await MatchModel.findOneAndUpdate(
+        { matchId },
+        { matchId, user1: String(fromUserId), user2: String(toUserId), updatedAt: new Date() },
+        { upsert: true }
+      );
+      return res.json({ success: true, isMatch: true });
+    }
+  }
+  res.json({ success: true, isMatch: false });
+});
+
 app.get('/api/chats', async (req, res) => {
   const userId = String(req.query.userId);
   const matches = await MatchModel.find({ $or: [{ user1: userId }, { user2: userId }] }).sort({ updatedAt: -1 });
@@ -343,37 +258,30 @@ app.get('/api/chats', async (req, res) => {
   for (const match of matches) {
     const partnerId = match.user1 === userId ? match.user2 : match.user1;
     const partner = await UserModel.findOne({ telegramId: partnerId });
-    const isMyParavanOpen = match.user1 === userId ? match.paravan1 : match.paravan2;
     const bothRevealed = match.paravan1 && match.paravan2;
     const lastMsg = match.messages[match.messages.length - 1];
 
     userChats.push({
       matchId: match.matchId,
-      source: match.source || 'explore',
       partner: {
         telegramId: partnerId,
         nickname: partner?.nickname || 'Kullanıcı',
         avatar: partner?.photos?.[0] || '',
-        avatarConfig: partner?.avatarConfig || null,
-        city: partner?.city || '',
-        role: partner?.role || '',
         username: bothRevealed ? (partner?.username ? `@${partner.username}` : `ID:${partnerId}`) : null
       },
       bothRevealed,
-      myParavanRequested: isMyParavanOpen,
-      lastMessage: lastMsg ? lastMsg.text : (match.source === 'metaverse_heart' ? '❤️ 3D Metaverse Lounge\'ta kalpleştiniz!' : 'Yeni eşleşme! Selam ver ✨'),
-      lastMessageTime: lastMsg ? lastMsg.time : match.updatedAt,
+      lastMessage: lastMsg ? lastMsg.text : 'Yeni eşleşme! Selam ver ✨',
+      lastMessageTime: lastMsg ? lastMsg.time : '',
       unread: lastMsg ? (lastMsg.senderId !== userId && !lastMsg.read) : true
     });
   }
-
-  res.json({ success: true, chats: userChats, totalUnread: userChats.filter(c => c.unread).length });
+  res.json({ success: true, chats: userChats });
 });
 
 app.get('/api/chats/:matchId', async (req, res) => {
   const match = await MatchModel.findOne({ matchId: req.params.matchId });
   const userId = String(req.query.userId);
-  if (!match) return res.status(404).json({ success: false, message: 'Sohbet bulunamadı.' });
+  if (!match) return res.status(404).json({ success: false });
 
   match.messages.forEach(m => { if (m.senderId !== userId) m.read = true; });
   await match.save();
@@ -385,16 +293,13 @@ app.get('/api/chats/:matchId', async (req, res) => {
   res.json({
     success: true,
     matchId: match.matchId,
-    source: match.source,
     partner: {
       telegramId: partnerId,
       nickname: partner?.nickname || 'Kullanıcı',
       avatar: partner?.photos?.[0] || '',
-      avatarConfig: partner?.avatarConfig || null,
-      username: bothRevealed ? (partner?.username ? `@${partner.username}` : `ID: ${partnerId}`) : null
+      username: bothRevealed ? (partner?.username ? `@${partner.username}` : `ID:${partnerId}`) : null
     },
     bothRevealed,
-    myParavanRequested: match.user1 === userId ? match.paravan1 : match.paravan2,
     messages: match.messages
   });
 });
@@ -428,300 +333,25 @@ app.post('/api/chats/:matchId/reveal', async (req, res) => {
   await match.save();
 
   const bothRevealed = match.paravan1 && match.paravan2;
-  const partnerId = match.user1 === String(userId) ? match.user2 : match.user1;
-  const partner = await UserModel.findOne({ telegramId: partnerId });
-
-  res.json({
-    success: true,
-    bothRevealed,
-    partnerUsername: bothRevealed ? (partner?.username ? `@${partner.username}` : `ID:${partnerId}`) : null
-  });
+  res.json({ success: true, bothRevealed });
 });
 
 app.post('/api/chats/:matchId/unmatch', async (req, res) => {
   const { userId } = req.body;
   const match = await MatchModel.findOne({ matchId: req.params.matchId });
   if (!match) return res.status(404).json({ success: false });
-
-  const partnerId = match.user1 === String(userId) ? match.user2 : match.user1;
   await MatchModel.deleteOne({ matchId: req.params.matchId });
-  await LikeModel.deleteMany({
-    $or: [
-      { fromUserId: String(userId), toUserId: partnerId },
-      { fromUserId: partnerId, toUserId: String(userId) }
-    ]
-  });
-
-  res.json({ success: true, message: 'Eşleşme iptal edildi.' });
+  res.json({ success: true });
 });
 
-app.post('/api/report', async (req, res) => {
-  const { reporterId, targetId, reason, selectedMessages } = req.body;
-  if (!targetId || !reason?.trim()) return res.status(400).json({ success: false });
-
-  const targetUser = await UserModel.findOne({ telegramId: String(targetId) });
-  const reporterUser = await UserModel.findOne({ telegramId: String(reporterId) });
-
-  await ReportModel.create({
-    id: Date.now().toString(),
-    targetId: String(targetId),
-    targetNickname: targetUser?.nickname || 'Bilinmiyor',
-    targetUsername: targetUser?.username || 'Gizli',
-    reporterId: String(reporterId),
-    reporterNickname: reporterUser?.nickname || 'Anonim',
-    reason: reason.trim(),
-    evidenceMessages: selectedMessages || [],
-    date: new Date().toLocaleString('tr-TR')
-  });
-
-  res.json({ success: true, message: 'Şikayet iletildi.' });
-});
-
-// ==========================================================================
-// METAVERSE ŞİKAYET VE EŞYA API'LERİ
-// ==========================================================================
-
-app.post('/api/metaverse/report', async (req, res) => {
-  try {
-    const { reporterId, reportedUserId, type, reason, location } = req.body;
-    if (!reporterId || !reason) {
-      return res.status(400).json({ success: false, message: 'Eksik bilgi.' });
-    }
-    const report = new WorldReportModel({ reporterId, reportedUserId, type, reason, location });
-    await report.save();
-    res.json({ success: true, message: 'Şikayet YT Masasına iletildi.' });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.get('/api/admin/metaverse-reports', async (req, res) => {
-  try {
-    const reports = await WorldReportModel.find().sort({ createdAt: -1 }).limit(50);
-    res.json({ success: true, reports });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.post('/api/admin/metaverse/item', async (req, res) => {
-  try {
-    const { itemType, position, rotation, scale, textureVariant, updatedBy } = req.body;
-    const newItem = new WorldItemModel({
-      itemType,
-      position,
-      rotation,
-      scale,
-      textureVariant: textureVariant || 'default',
-      updatedBy: updatedBy || 'YT_Admin'
-    });
-    await newItem.save();
-    res.json({ success: true, item: newItem });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.delete('/api/admin/metaverse/item/:id', async (req, res) => {
-  try {
-    await WorldItemModel.findByIdAndDelete(req.params.id);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ success: false });
-  }
-});
-
-app.get('/api/metaverse/items', async (req, res) => {
-  try {
-    const items = await WorldItemModel.find();
-    res.json({ success: true, items });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// ==========================================================================
-// YT DASHBOARD VE AUTH
-// ==========================================================================
-
-async function checkAdminAuth(req, res, next) {
-  const requesterId = req.headers['x-user-id'] || req.query.userId;
-  const requesterUsername = req.headers['x-user-name'] || req.query.username;
-  const secretKey = req.headers['x-admin-key'] || req.query.key;
-
-  const isAdmin = await isUserAdmin(requesterId, requesterUsername);
-  if (isAdmin || secretKey === ADMIN_SECRET) return next();
-  return res.status(403).json({ success: false, message: 'Yetki reddedildi.' });
-}
-
-app.get('/api/admin/dashboard-data', checkAdminAuth, async (req, res) => {
-  const userList = await UserModel.find();
-  const reportsList = await ReportModel.find().sort({ _id: -1 });
-  const allAdmins = await AdminModel.find();
-  const worldReports = await WorldReportModel.find().sort({ createdAt: -1 }).limit(25);
-
-  const requesterId = req.headers['x-user-id'] || req.query.userId;
-  const requesterUsername = req.headers['x-user-name'] || req.query.username;
-
-  const visibleAdmins = {
-    ids: allAdmins.filter(a => a.type === 'id' && a.target !== FOUNDER_ID).map(a => a.target),
-    usernames: allAdmins.filter(a => a.type === 'username' && a.target !== FOUNDER_USERNAME).map(a => a.target)
-  };
-
-  res.json({
-    success: true,
-    isFounder: isFounder(requesterId, requesterUsername),
-    stats: {
-      total: userList.length,
-      active: userList.filter(u => !u.isBanned).length,
-      banned: userList.filter(u => u.isBanned).length,
-      reportsCount: reportsList.length,
-      worldReportsCount: worldReports.length
-    },
-    users: userList,
-    reports: reportsList,
-    worldReports: worldReports,
-    admins: visibleAdmins
-  });
-});
-
-app.post('/api/admin/toggle-ban', checkAdminAuth, async (req, res) => {
-  const user = await UserModel.findOne({ telegramId: String(req.body.targetTelegramId) });
-  if (!user) return res.status(404).json({ success: false });
-  user.isBanned = !user.isBanned;
-  await user.save();
-  res.json({ success: true, isBanned: user.isBanned });
-});
-
-// ==========================================================================
-// SOCKET.IO - 3D METAVERSE GERÇEK ZAMANLI MOTOR
-// ==========================================================================
-const onlinePlayers = {};
-
+// Socket.io (Sadece gerçek zamanlı sohbet bildirimleri için)
 if (io) {
   io.on('connection', (socket) => {
-    
-    socket.on('join_metaverse', (userData) => {
-      onlinePlayers[socket.id] = {
-        socketId: socket.id,
-        telegramId: userData.telegramId,
-        nickname: userData.nickname || 'Misafir',
-        avatar: userData.avatar || '',
-        avatarConfig: userData.avatarConfig || {},
-        role: userData.role || '',
-        city: userData.city || '',
-        district: userData.district || '',
-        x: userData.x || 0,
-        y: userData.y || 0,
-        z: userData.z || 0,
-        rotY: 0,
-        actionState: 'idle',
-        isGhost: !!userData.isGhost
-      };
-
-      const visiblePlayers = Object.values(onlinePlayers).filter(p => !p.isGhost && p.socketId !== socket.id);
-      socket.emit('current_players', visiblePlayers);
-
-      if (!userData.isGhost) {
-        socket.broadcast.emit('player_joined', onlinePlayers[socket.id]);
-      }
-    });
-
-    socket.on('player_move', (data) => {
-      if (onlinePlayers[socket.id]) {
-        onlinePlayers[socket.id].x = data.x;
-        onlinePlayers[socket.id].y = data.y;
-        onlinePlayers[socket.id].z = data.z;
-        onlinePlayers[socket.id].rotY = data.rotY;
-        onlinePlayers[socket.id].actionState = data.actionState || 'idle';
-
-        if (!onlinePlayers[socket.id].isGhost) {
-          socket.broadcast.emit('player_moved', {
-            socketId: socket.id,
-            x: data.x,
-            y: data.y,
-            z: data.z,
-            rotY: data.rotY,
-            actionState: data.actionState || 'idle'
-          });
-        }
-      }
-    });
-
-    socket.on('update_avatar_look', (data) => {
-      if (onlinePlayers[socket.id]) {
-        onlinePlayers[socket.id].avatarConfig = data.avatarConfig;
-        socket.broadcast.emit('player_updated_avatar', {
-          socketId: socket.id,
-          avatarConfig: data.avatarConfig
-        });
-      }
-    });
-
-    socket.on('change_venue_theme', (data) => {
-      io.emit('venue_theme_changed', { themeName: data.themeName });
-    });
-
-    socket.on('world_chat_message', (data) => {
-      io.emit('player_said', {
-        socketId: socket.id,
-        text: data.text
-      });
-    });
-
-    socket.on('send_world_heart', async ({ fromUserId, toUserId }) => {
-      try {
-        const fromId = String(fromUserId);
-        const toId = String(toUserId);
-
-        await LikeModel.create({ fromUserId: fromId, toUserId: toId });
-        const targetLike = await LikeModel.findOne({ fromUserId: toId, toUserId: fromId });
-
-        if (targetLike) {
-          const matchId = [fromId, toId].sort().join('_');
-          await MatchModel.findOneAndUpdate(
-            { matchId },
-            { 
-              matchId, 
-              user1: fromId, 
-              user2: toId, 
-              source: 'metaverse_heart',
-              updatedAt: new Date() 
-            },
-            { upsert: true }
-          );
-
-          if (bot) {
-            const u1 = await UserModel.findOne({ telegramId: fromId });
-            const u2 = await UserModel.findOne({ telegramId: toId });
-            try {
-              await bot.telegram.sendMessage(fromId, `🎉 *3D Metaverse Lounge'ta Eşleştiniz!*\n\n*${u2?.nickname || 'Biri'}* ile karşılıklı kalpleştiniz! DM kutuna mesaj düştü, sohbete başlayabilirsin.`);
-              await bot.telegram.sendMessage(toId, `🎉 *3D Metaverse Lounge'ta Eşleştiniz!*\n\n*${u1?.nickname || 'Biri'}* ile karşılıklı kalpleştiniz! DM kutuna mesaj düştü, sohbete başlayabilirsin.`);
-            } catch (e) {}
-          }
-
-          io.emit('match_notification', {
-            user1: fromId,
-            user2: toId,
-            matchId
-          });
-        }
-      } catch (err) {
-        console.error('Metaverse kalp gönderme hatası:', err);
-      }
-    });
-
-    socket.on('disconnect', () => {
-      if (onlinePlayers[socket.id]) {
-        socket.broadcast.emit('player_left', socket.id);
-        delete onlinePlayers[socket.id];
-      }
-    });
+    socket.on('disconnect', () => {});
   });
 }
 
-// 4. PORT BINDING - '0.0.0.0' arayüzü ile Render proxy bağlantısını doğrudan karşıla
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`GoldenMatch Sunucusu ${PORT} portunda (0.0.0.0) aktif.`);
+  console.log(`GoldenMatch Sunucusu ${PORT} portunda aktif.`);
 });
