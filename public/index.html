@@ -6,7 +6,7 @@
   <title>GoldenMatch ✨</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="/socket.io/socket.io.js"></script>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=2026">
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -17,10 +17,8 @@
         <span class="gold-text">GOLDEN</span>MATCH
       </div>
       <div class="nav-actions">
-        <button id="ytNavBtn" class="nav-btn yt-badge hidden" onclick="switchTab('adminPanel')" title="Yönetici Paneli">👑 YT</button>
         <button class="nav-btn dm-btn" onclick="switchTab('inbox')" aria-label="Mesajlar">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          <span id="unreadBadge" class="badge-dot hidden"></span>
         </button>
         <button class="nav-btn" onclick="openProfileEdit()" aria-label="Profil">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/></svg>
@@ -139,17 +137,8 @@
       </form>
     </main>
 
-    <!-- 5. YT YÖNETİM MASASI -->
-    <main id="adminPanelView" class="view-screen hidden">
-      <div class="sub-header">
-        <h2 class="gold-text">👑 YT Yönetim Masası</h2>
-        <button class="ghost-btn" onclick="switchTab('explore')">Çıkış</button>
-      </div>
-      <div id="adminUserCards" class="admin-scroll-list" style="max-height:300px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
-    </main>
-
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=2026"></script>
 </body>
 </html>
