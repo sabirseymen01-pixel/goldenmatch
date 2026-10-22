@@ -1,553 +1,265 @@
-// ==========================================================================
-// GOLDENMATCH - İSTEMCİ UYGULAMA MOTORU (APP.JS)
-// ==========================================================================
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>GoldenMatch ✨</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
 
-const tg = window.Telegram?.WebApp;
-if (tg) {
-  tg.ready();
-  tg.expand();
-}
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-wrapper">
 
-window.currentUserId = tg?.initDataUnsafe?.user?.id ? String(tg.initDataUnsafe.user.id) : '8245373459';
-window.currentUsername = tg?.initDataUnsafe?.user?.username || 'breskavica';
+    <header id="appNav" class="app-nav hidden">
+      <div class="brand-logo" onclick="switchTab('explore')">
+        <span class="gold-text">GOLDEN</span>MATCH
+      </div>
+      <div class="nav-actions">
+        <button class="nav-btn metaverse-entry-btn" onclick="switchTab('metaverse')" title="3D Lounge">
+          <span style="font-size: 16px;">🏛️</span>
+        </button>
+        <button id="ytNavBtn" class="nav-btn yt-badge hidden" onclick="switchTab('adminPanel')" title="Yönetici Paneli">👑 YT</button>
+        <button class="nav-btn" onclick="openFilterModal()" aria-label="Filtrele">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+        </button>
+        <button class="nav-btn dm-btn" onclick="switchTab('inbox')" aria-label="Mesajlar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span id="unreadBadge" class="badge-dot hidden"></span>
+        </button>
+        <button class="nav-btn" onclick="openProfileEdit()" aria-label="Profil">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/></svg>
+        </button>
+      </div>
+    </header>
 
-let currentProfile = null;
-let cardsList = [];
-let currentCardIndex = 0;
-let userPhotos = ['', '', '', ''];
-let activeMatchId = null;
-let activePartnerId = null;
-let chatPollingInterval = null;
-let adminUsersCache = [];
+    <main id="registerView" class="view-screen">
+      <div class="screen-header">
+        <h1 class="gold-text">GOLDENMATCH</h1>
+        <p class="subtitle">Kutsal profilini ve karakterini mühürle.</p>
+      </div>
 
-let filterCity = 'Hepsi';
-let filterRole = 'Hepsi';
-
-const DEFAULT_LOCATIONS = {
-  "İstanbul": ["Kadıköy", "Beşiktaş", "Şişli", "Beyoğlu", "Bakırköy", "Üsküdar", "Maltepe", "Ataşehir", "Sarıyer", "Fatih", "Bahçelievler", "Avcılar", "Kartal", "Pendik", "Beylikdüzü", "Başakşehir", "Zeytinburnu", "Kağıthane", "Eyüpsultan", "Tuzla"],
-  "Ankara": ["Çankaya", "Kızılay", "Tunalı", "Bahçelievler", "Yenimahalle", "Batıkent", "Keçiören", "Mamak", "Etimesgut", "Sincan", "Gölbaşı", "Ümitköy", "Çayyolu", "Altındağ"],
-  "İzmir": ["Alsancak", "Konak", "Karşıyaka", "Bornova", "Buca", "Bostanlı", "Göztepe", "Çiğli", "Gaziemir", "Balçova", "Narlıdere", "Çeşme", "Alaçatı", "Urla", "Foça", "Seferihisar"],
-  "Antalya": ["Muratpaşa", "Konyaaltı", "Lara", "Kepez", "Alanya", "Manavgat", "Kemer", "Kaş", "Serik", "Belek", "Side"],
-  "Bursa": ["Nilüfer", "Görükle", "Osmangazi", "Yıldırım", "Mudanya", "İnegöl", "Gemlik"],
-  "Adana": ["Çukurova", "Seyhan", "Yüreğir", "Sarıçam", "Ceyhan"],
-  "Mersin": ["Yenişehir", "Mezitli", "Toroslar", "Akdeniz", "Tarsus", "Erdemli"],
-  "Kocaeli": ["İzmit", "Gebze", "Darıca", "Gölcük", "Körfez", "Kartepe", "Başiskele"],
-  "Muğla": ["Bodrum", "Fethiye", "Marmaris", "Menteşe", "Datça", "Ortaca", "Milas"],
-  "Eskişehir": ["Tepebaşı", "Odunpazarı", "Bağlar"],
-  "Gaziantep": ["Şahinbey", "Şehitkamil"],
-  "Konya": ["Selçuklu", "Meram", "Karatay", "Bosna Hersek"],
-  "Kayseri": ["Melikgazi", "Kocasinan", "Talas"],
-  "Samsun": ["Atakum", "İlkadım", "Canik"],
-  "Trabzon": ["Ortahisar", "Akçaabat", "Yomra"],
-  "Diyarbakır": ["Kayapınar", "Bağlar", "Yenişehir", "Sur"],
-  "Aydın": ["Efeler", "Kuşadası", "Didim", "Nazilli", "Söke"],
-  "Balıkesir": ["Altıeylül", "Karesi", "Bandırma", "Edremit", "Ayvalık"],
-  "Çanakkale": ["Merkez", "Biga", "Gelibolu", "Bozcaada"],
-  "Denizli": ["Pamukkale", "Merkezefendi"],
-  "Hatay": ["Antakya", "İskenderun", "Defne", "Arsuz"],
-  "Sakarya": ["Adapazarı", "Serdivan", "Erenler", "Sapanca"],
-  "Tekirdağ": ["Süleymanpaşa", "Çorlu", "Çerkezköy"]
-};
-
-let allLocations = Object.assign({}, DEFAULT_LOCATIONS);
-
-window.addEventListener('DOMContentLoaded', async () => {
-  await loadLocations();
-  await checkUserProfile();
-});
-
-async function loadLocations() {
-  try {
-    const res = await fetch('/api/locations');
-    const data = await res.json();
-    if (data.success && data.locations && Object.keys(data.locations).length > 0) {
-      allLocations = Object.assign({}, DEFAULT_LOCATIONS, data.locations);
-    }
-  } catch (err) {}
-  populateCityChips();
-  populateFilterCityChips();
-}
-
-function populateCityChips(filterText = '') {
-  const container = document.getElementById('cityChipGrid');
-  if (!container) return;
-  container.innerHTML = '';
-  const currentSelectedCity = document.getElementById('city')?.value || '';
-  const cities = Object.keys(allLocations).filter(c => c.toLocaleLowerCase('tr-TR').includes(filterText.toLocaleLowerCase('tr-TR')));
-
-  cities.slice(0, 35).forEach(city => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'choice-chip' + (city === currentSelectedCity ? ' selected' : '');
-    btn.innerText = city;
-    btn.onclick = () => selectCity(city, btn);
-    container.appendChild(btn);
-  });
-}
-
-function filterCityChips() {
-  const q = document.getElementById('citySearchInput')?.value || '';
-  populateCityChips(q);
-}
-
-function selectCity(city, btnElem, preselectedDistrict = null) {
-  const cityInput = document.getElementById('city');
-  if (cityInput) cityInput.value = city;
-
-  document.querySelectorAll('#cityChipGrid .choice-chip').forEach(b => {
-    if (b.innerText.trim() === city) b.classList.add('selected');
-    else b.classList.remove('selected');
-  });
-  if (btnElem) btnElem.classList.add('selected');
-
-  const distContainer = document.getElementById('districtChipGrid');
-  if (!distContainer) return;
-  distContainer.innerHTML = '';
-
-  const distInput = document.getElementById('district');
-  if (distInput && !preselectedDistrict) distInput.value = '';
-
-  const districts = allLocations[city] || ['Merkez'];
-  districts.forEach(d => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'choice-chip';
-    b.innerText = d;
-    if (preselectedDistrict && d === preselectedDistrict) {
-      b.classList.add('selected');
-      if (distInput) distInput.value = d;
-    }
-    b.onclick = () => {
-      if (distInput) distInput.value = d;
-      distContainer.querySelectorAll('.choice-chip').forEach(x => x.classList.remove('selected'));
-      b.classList.add('selected');
-    };
-    distContainer.appendChild(b);
-  });
-}
-
-function selectChip(fieldId, value, elem) {
-  const input = document.getElementById(fieldId);
-  if (input) input.value = value;
-  const parent = elem ? elem.closest('.chip-grid') : null;
-  if (parent) {
-    parent.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
-    elem.classList.add('selected');
-  }
-  if (fieldId === 'city') selectCity(value, elem);
-}
-
-async function checkUserProfile() {
-  try {
-    const res = await fetch(`/api/profile/${window.currentUserId}?username=${window.currentUsername}`);
-    const data = await res.json();
-
-    if (data.isAdmin || data.isFounder) {
-      document.getElementById('ytNavBtn')?.classList.remove('hidden');
-    }
-
-    if (data.exists && data.profile) {
-      currentProfile = data.profile;
-      fillProfileForm(currentProfile);
-      document.getElementById('appNav')?.classList.remove('hidden');
-      switchTab('explore');
-      loadExploreCards();
-      loadDailyPick();
-    } else {
-      switchTab('register');
-    }
-  } catch (err) {
-    switchTab('register');
-  }
-}
-
-function fillProfileForm(p) {
-  document.getElementById('nickname').value = p.nickname || '';
-  document.getElementById('age').value = p.age || '';
-  document.getElementById('height').value = p.height || '';
-  document.getElementById('weight').value = p.weight || '';
-  document.getElementById('bio').value = p.bio || '';
-
-  if (p.city) selectCity(p.city, null, p.district || null);
-  if (p.role) selectChip('role', p.role, findButtonByText('role', p.role));
-  if (p.interestedRole) selectChip('interestedRole', p.interestedRole, findButtonByText('interestedRole', p.interestedRole));
-  if (p.archetype) selectChip('archetype', p.archetype, findButtonByCard('archetype', p.archetype));
-  if (p.expression) selectChip('expression', p.expression, findButtonByText('expression', p.expression));
-
-  if (p.photos && p.photos.length) {
-    p.photos.forEach((url, i) => {
-      if (url && i < 4) {
-        userPhotos[i] = url;
-        const slot = document.getElementById(`slot-${i}`);
-        if (slot) {
-          slot.querySelector('.slot-preview').src = url;
-          slot.classList.add('has-image');
-        }
-      }
-    });
-  }
-  document.getElementById('deleteAccountBtn')?.classList.remove('hidden');
-}
-
-function findButtonByText(targetName, text) {
-  const container = document.querySelector(`[data-target="${targetName}"]`);
-  return container ? Array.from(container.querySelectorAll('button')).find(b => b.innerText.trim() === text) : null;
-}
-
-function findButtonByCard(targetName, text) {
-  const container = document.querySelector(`[data-target="${targetName}"]`);
-  return (container && text) ? Array.from(container.querySelectorAll('button')).find(b => b.innerText.includes(text.split(' ')[0])) : null;
-}
-
-let activeSlotIndex = 0;
-function pickImage(slotIdx) {
-  activeSlotIndex = slotIdx;
-  document.getElementById('fileSelector')?.click();
-}
-
-function onFileSelected(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const base64 = e.target.result;
-    userPhotos[activeSlotIndex] = base64;
-    const slot = document.getElementById(`slot-${activeSlotIndex}`);
-    if (slot) {
-      slot.querySelector('.slot-preview').src = base64;
-      slot.classList.add('has-image');
-    }
-  };
-  reader.readAsDataURL(file);
-}
-
-async function handleFormSubmit(event) {
-  event.preventDefault();
-  const saveBtn = document.getElementById('saveBtn');
-  saveBtn.disabled = true;
-  saveBtn.innerText = '⚡ Mühürleniyor...';
-
-  let currentAvatarConfig = null;
-  try {
-    currentAvatarConfig = JSON.parse(localStorage.getItem('gm_avatar_config'));
-  } catch (e) {}
-
-  const payload = {
-    telegramId: window.currentUserId,
-    username: window.currentUsername,
-    nickname: document.getElementById('nickname').value.trim(),
-    age: Number(document.getElementById('age').value),
-    height: Number(document.getElementById('height').value) || null,
-    weight: Number(document.getElementById('weight').value) || null,
-    role: document.getElementById('role').value,
-    interestedRole: document.getElementById('interestedRole').value || 'Hepsi',
-    city: document.getElementById('city').value,
-    district: document.getElementById('district').value,
-    archetype: document.getElementById('archetype').value,
-    expression: document.getElementById('expression').value,
-    bio: document.getElementById('bio').value.trim(),
-    photos: userPhotos.filter(p => p !== ''),
-    avatarConfig: currentAvatarConfig || {}
-  };
-
-  try {
-    const res = await fetch('/api/profile', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-    if (data.success) {
-      currentProfile = data.profile;
-      document.getElementById('appNav')?.classList.remove('hidden');
-      document.getElementById('welcomeModal')?.classList.remove('hidden');
-    } else {
-      alert(data.message || 'Kayıt başarısız.');
-    }
-  } catch (err) {
-    alert('Sunucu hatası.');
-  } finally {
-    saveBtn.disabled = false;
-    saveBtn.innerText = 'Profili Mühürle & Başla';
-  }
-}
-
-function closeWelcomeAndExplore() {
-  document.getElementById('welcomeModal')?.classList.add('hidden');
-  switchTab('explore');
-  loadExploreCards();
-  loadDailyPick();
-}
-
-function switchTab(tabId) {
-  if (chatPollingInterval) {
-    clearInterval(chatPollingInterval);
-    chatPollingInterval = null;
-  }
-  document.querySelectorAll('.view-screen').forEach(s => s.classList.add('hidden'));
-
-  const navBar = document.getElementById('appNav');
-  if (tabId !== 'register' || currentProfile) {
-    navBar?.classList.remove('hidden');
-  }
-
-  if (tabId === 'register') {
-    document.getElementById('registerView')?.classList.remove('hidden');
-  } else if (tabId === 'explore') {
-    document.getElementById('exploreView')?.classList.remove('hidden');
-    loadExploreCards();
-  } else if (tabId === 'inbox') {
-    document.getElementById('inboxView')?.classList.remove('hidden');
-    document.getElementById('unreadBadge')?.classList.add('hidden');
-    loadInboxChats();
-  } else if (tabId === 'chatRoom') {
-    document.getElementById('chatRoomView')?.classList.remove('hidden');
-  } else if (tabId === 'metaverse') {
-    document.getElementById('metaverseView')?.classList.remove('hidden');
-    if (typeof initMetaverse === 'function') setTimeout(initMetaverse, 60);
-  } else if (tabId === 'adminPanel') {
-    document.getElementById('adminPanelView')?.classList.remove('hidden');
-    loadAdminDashboard();
-  }
-}
-
-function openProfileEdit() {
-  switchTab('register');
-}
-
-async function loadExploreCards() {
-  const stage = document.getElementById('activeCard');
-  if (!stage) return;
-  stage.innerHTML = '<div class="card-loader">Altın kader ağları taranıyor...</div>';
-  try {
-    const res = await fetch(`/api/cards?userId=${window.currentUserId}&city=${encodeURIComponent(filterCity)}&role=${encodeURIComponent(filterRole)}`);
-    const data = await res.json();
-    if (data.success) {
-      cardsList = data.cards;
-      currentCardIndex = 0;
-      renderCurrentCard();
-    }
-  } catch (err) {
-    stage.innerHTML = '<div class="card-loader">Kullanıcılar yüklenemedi.</div>';
-  }
-}
-
-function renderCurrentCard() {
-  const cardElem = document.getElementById('activeCard');
-  if (!cardElem) return;
-  if (!cardsList.length || currentCardIndex >= cardsList.length) {
-    cardElem.innerHTML = `<div class="card-loader"><h3 style="color:#e5a93c;">Şimdilik Kimse Kalmadı ✨</h3><button class="primary-btn sm-btn" onclick="switchTab('metaverse')" style="margin-top:12px;">🏛️ 3D Mekana Gir</button></div>`;
-    return;
-  }
-  const user = cardsList[currentCardIndex];
-  const photo = user.photos?.[0] || '';
-  cardElem.innerHTML = `
-    <img src="${photo}" style="width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0;" alt="">
-    <div style="position:absolute; bottom:0; left:0; right:0; padding:20px; background:linear-gradient(to top, rgba(0,0,0,0.9), transparent);">
-      <h3 style="color:#fff; font-size:22px; margin:0 0 4px 0;">${user.nickname}, ${user.age}</h3>
-      <p style="color:#d4af37; font-size:13px; margin:0;">${user.role} • 📍 ${user.city}</p>
-    </div>
-  `;
-}
-
-async function triggerCardSwipe(action) {
-  if (currentCardIndex >= cardsList.length) return;
-  const targetUser = cardsList[currentCardIndex];
-  try {
-    const res = await fetch('/api/like', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fromUserId: window.currentUserId, toUserId: targetUser.telegramId, action })
-    });
-    const data = await res.json();
-    if (data.isMatch) {
-      alert(`🎉 EŞLEŞTİNİZ! ${targetUser.nickname} ile mesajlaşabilirsiniz.`);
-    }
-  } catch (err) {}
-  currentCardIndex++;
-  renderCurrentCard();
-}
-
-async function loadDailyPick() {
-  try {
-    const res = await fetch(`/api/daily-pick?userId=${window.currentUserId}`);
-    const data = await res.json();
-    if (data.success && data.dailyPick) {
-      document.getElementById('dailyPickBanner')?.classList.remove('hidden');
-      const p = data.dailyPick;
-      document.getElementById('dailyPickContent').innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div><strong>${p.nickname}, ${p.age}</strong></div>
-          <button class="primary-btn sm-btn" onclick="likeDailyPick('${p.telegramId}')">⚡ Beğen</button>
+      <div class="photo-grid">
+        <div class="photo-slot main" onclick="pickImage(0)" id="slot-0">
+          <div class="slot-placeholder">
+            <span class="plus-icon">⚡</span>
+            <span class="slot-label">BAŞ PROFİL</span>
+          </div>
+          <img class="slot-preview" alt="Ana Fotoğraf">
         </div>
-      `;
-    }
-  } catch (e) {}
-}
+        <div class="photo-slot" onclick="pickImage(1)" id="slot-1"><span class="plus-icon">+</span><img class="slot-preview" alt="Foto 2"></div>
+        <div class="photo-slot" onclick="pickImage(2)" id="slot-2"><span class="plus-icon">+</span><img class="slot-preview" alt="Foto 3"></div>
+        <div class="photo-slot" onclick="pickImage(3)" id="slot-3"><span class="plus-icon">+</span><img class="slot-preview" alt="Foto 4"></div>
+      </div>
+      <input type="file" id="fileSelector" accept="image/*" style="display:none" onchange="onFileSelected(event)">
 
-async function likeDailyPick(targetId) {
-  await fetch('/api/like', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fromUserId: window.currentUserId, toUserId: targetId, action: 'like' })
-  });
-  document.getElementById('dailyPickBanner')?.classList.add('hidden');
-}
+      <form id="regForm" onsubmit="handleFormSubmit(event)" class="gold-form">
+        <div class="form-group">
+          <label>Rumuz / İsim</label>
+          <input type="text" id="nickname" placeholder="Mecliste görünecek adın" required>
+        </div>
 
-async function loadInboxChats() {
-  const list = document.getElementById('chatList');
-  if (!list) return;
-  list.innerHTML = '<div class="card-loader">Sohbetler yükleniyor...</div>';
-  try {
-    const res = await fetch(`/api/chats?userId=${window.currentUserId}`);
-    const data = await res.json();
-    if (data.success && data.chats) {
-      if (!data.chats.length) {
-        list.innerHTML = '<div class="card-loader">Henüz eşleşme yok.</div>';
-        return;
-      }
-      list.innerHTML = '';
-      data.chats.forEach(chat => {
-        const item = document.createElement('div');
-        item.className = 'chat-item';
-        item.onclick = () => openChatRoom(chat.matchId, chat.partner);
-        item.innerHTML = `
-          <div class="chat-avatar-wrap"><img src="${chat.partner.avatar || ''}" class="chat-avatar" alt=""></div>
-          <div class="chat-info"><div class="chat-name">${chat.partner.nickname}</div><div class="chat-snippet">${chat.lastMessage}</div></div>
-          <div class="chat-time">${chat.lastMessageTime || ''}</div>
-        `;
-        list.appendChild(item);
-      });
-    }
-  } catch (e) {
-    list.innerHTML = '<div class="card-loader">Sohbetler yüklenemedi.</div>';
-  }
-}
+        <div class="form-row-3">
+          <div class="form-group"><label>Yaş</label><input type="number" id="age" min="18" max="99" placeholder="18+" required></div>
+          <div class="form-group"><label>Boy (cm)</label><input type="number" id="height" placeholder="180"></div>
+          <div class="form-group"><label>Kilo (kg)</label><input type="number" id="weight" placeholder="75"></div>
+        </div>
 
-async function openChatRoom(matchId, partner) {
-  activeMatchId = matchId;
-  activePartnerId = partner.telegramId;
-  switchTab('chatRoom');
-  document.getElementById('chatPartnerName').innerText = partner.nickname;
-  await fetchMessages();
-  chatPollingInterval = setInterval(fetchMessages, 3000);
-}
+        <div class="form-group">
+          <label>Şehir Seçimi</label>
+          <input type="text" id="citySearchInput" onkeyup="filterCityChips()" placeholder="🔍 Şehir ara...">
+          <div class="chip-grid" id="cityChipGrid"></div>
+          <input type="hidden" id="city" required>
+        </div>
 
-async function fetchMessages() {
-  if (!activeMatchId) return;
-  try {
-    const res = await fetch(`/api/chats/${activeMatchId}?userId=${window.currentUserId}`);
-    const data = await res.json();
-    if (data.success) {
-      renderMessages(data.messages);
-      const paravanStatus = document.getElementById('chatParavanStatus');
-      const paravanBtn = document.getElementById('paravanBtn');
-      if (data.bothRevealed) {
-        paravanStatus.innerText = `🔓 Açık Kimlik (@${data.partner.username || 'Kullanıcı'})`;
-        paravanBtn.style.display = 'none';
-      } else {
-        paravanStatus.innerText = '🎭 Anonim Paravan Sohbeti';
-      }
-    }
-  } catch (e) {}
-}
+        <div class="form-group" id="districtGroup">
+          <label>İlçe / Semt</label>
+          <div class="chip-grid" id="districtChipGrid"></div>
+          <input type="hidden" id="district" required>
+        </div>
 
-function renderMessages(messages) {
-  const stream = document.getElementById('messageStream');
-  if (!stream) return;
-  stream.innerHTML = '';
-  messages.forEach(msg => {
-    const isMe = msg.senderId === window.currentUserId;
-    const bubble = document.createElement('div');
-    bubble.className = `chat-bubble ${isMe ? 'me' : 'them'}`;
-    bubble.innerHTML = `<span>${msg.text}</span><span class="bubble-time">${msg.time}</span>`;
-    stream.appendChild(bubble);
-  });
-  stream.scrollTop = stream.scrollHeight;
-}
+        <div class="form-group">
+          <label>Senin Rolün</label>
+          <div class="chip-grid" data-target="role">
+            <button type="button" class="choice-chip" onclick="selectChip('role', 'Top', this)">Top</button>
+            <button type="button" class="choice-chip" onclick="selectChip('role', 'Bottom', this)">Bottom</button>
+            <button type="button" class="choice-chip" onclick="selectChip('role', 'Verse', this)">Verse</button>
+            <button type="button" class="choice-chip" onclick="selectChip('role', 'Verse Top', this)">Verse Top</button>
+            <button type="button" class="choice-chip" onclick="selectChip('role', 'Verse Bottom', this)">Verse Bottom</button>
+            <button type="button" class="choice-chip" onclick="selectChip('role', 'Side', this)">Side</button>
+            <button type="button" class="choice-chip" onclick="selectChip('role', 'Trans', this)">Trans</button>
+          </div>
+          <input type="hidden" id="role" required>
+        </div>
 
-async function sendChatMessage(e) {
-  e.preventDefault();
-  const input = document.getElementById('chatInput');
-  const text = input.value.trim();
-  if (!text || !activeMatchId) return;
-  input.value = '';
-  await fetch(`/api/chats/${activeMatchId}/message`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ senderId: window.currentUserId, text })
-  });
-  fetchMessages();
-}
+        <div class="form-group">
+          <label>Aradığın Rol</label>
+          <div class="chip-grid" data-target="interestedRole">
+            <button type="button" class="choice-chip selected" onclick="selectChip('interestedRole', 'Hepsi', this)">Hepsi</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Top', this)">Top</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Bottom', this)">Bottom</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Verse', this)">Verse</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Verse Top', this)">Verse Top</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Verse Bottom', this)">Verse Bottom</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Side', this)">Side</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Trans', this)">Trans</button>
+          </div>
+          <input type="hidden" id="interestedRole" value="Hepsi" required>
+        </div>
 
-function sendIcebreaker(text) {
-  const input = document.getElementById('chatInput');
-  if (input) input.value = text;
-}
+        <div class="form-group">
+          <label>Olimpos Arketipi</label>
+          <div class="chip-grid vertical-chips" data-target="archetype">
+            <button type="button" class="choice-chip-card" onclick="selectChip('archetype', 'Apollon (Işık, Sanat & Karizma)', this)"><div class="chip-card-title">☀️ Apollon</div></button>
+            <button type="button" class="choice-chip-card" onclick="selectChip('archetype', 'Afrodit (Güzellik, Arzu & Zarafet)', this)"><div class="chip-card-title">🕊️ Afrodit</div></button>
+            <button type="button" class="choice-chip-card" onclick="selectChip('archetype', 'Ares (Tutku, Güç & Cesaret)', this)"><div class="chip-card-title">⚔️ Ares</div></button>
+            <button type="button" class="choice-chip-card" onclick="selectChip('archetype', 'Hermes (Zeka, Hız & Macera)', this)"><div class="chip-card-title">🪽 Hermes</div></button>
+            <button type="button" class="choice-chip-card" onclick="selectChip('archetype', 'Dionisos (Eğlence, Coşku & Özgürlük)', this)"><div class="chip-card-title">🍷 Dionisos</div></button>
+            <button type="button" class="choice-chip-card" onclick="selectChip('archetype', 'Athena (Bilgelik, Sadakat & Strateji)', this)"><div class="chip-card-title">🦉 Athena</div></button>
+          </div>
+          <input type="hidden" id="archetype" required>
+        </div>
 
-async function requestParavanReveal() {
-  if (!activeMatchId) return;
-  const res = await fetch(`/api/chats/${activeMatchId}/reveal`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId: window.currentUserId })
-  });
-  const data = await res.json();
-  if (data.bothRevealed) alert('🎉 Kimlikler açıldı!');
-  else alert('🎭 Paravan açma isteği gönderildi.');
-  fetchMessages();
-}
+        <div class="form-group">
+          <label>Tarz / İfade</label>
+          <div class="chip-grid" data-target="expression">
+            <button type="button" class="choice-chip" onclick="selectChip('expression', 'Maskülen', this)">Maskülen</button>
+            <button type="button" class="choice-chip" onclick="selectChip('expression', 'Feminen', this)">Feminen</button>
+            <button type="button" class="choice-chip" onclick="selectChip('expression', 'Twink', this)">Twink</button>
+            <button type="button" class="choice-chip" onclick="selectChip('expression', 'Daddy', this)">Daddy</button>
+            <button type="button" class="choice-chip" onclick="selectChip('expression', 'Ladyboy', this)">Ladyboy</button>
+            <button type="button" class="choice-chip" onclick="selectChip('expression', 'Diğer', this)">Diğer</button>
+          </div>
+          <input type="hidden" id="expression" required>
+        </div>
 
-async function cancelCurrentMatch() {
-  if (!activeMatchId || !confirm('Eşleşmeyi bitirmek istiyor musunuz?')) return;
-  await fetch(`/api/chats/${activeMatchId}/unmatch`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId: window.currentUserId })
-  });
-  switchTab('inbox');
-}
+        <div class="form-group">
+          <label>Biyografi</label>
+          <textarea id="bio" rows="3" placeholder="Kendinden bahset..."></textarea>
+        </div>
 
-function openChatReportModal() { document.getElementById('reportModal')?.classList.remove('hidden'); }
-function openReportModalCurrentCard() { document.getElementById('reportModal')?.classList.remove('hidden'); }
-function closeReportModal() { document.getElementById('reportModal')?.classList.add('hidden'); }
-async function submitReport() {
-  alert('Şikayetiniz iletildi.');
-  closeReportModal();
-}
+        <button type="submit" id="saveBtn" class="primary-btn gold-glow"><span>Profili Mühürle & Başla</span></button>
+        <button type="button" id="deleteAccountBtn" class="danger-outline-btn hidden" onclick="deleteMyAccount()">🗑️ Hesabımı Sil</button>
+      </form>
 
-function openFilterModal() { document.getElementById('filterModal')?.classList.remove('hidden'); }
-function closeFilterModal() { document.getElementById('filterModal')?.classList.add('hidden'); }
-function applyFilters() { closeFilterModal(); loadExploreCards(); }
+      <div class="bypass-area">
+        <button type="button" class="text-link-btn" onclick="directYtLogin()">👑 Yönetici (YT) Hızlı Girişi</button>
+      </div>
+    </main>
 
-async function deleteMyAccount() {
-  if (!confirm('Hesabınızı silmek istediğinize emin misiniz?')) return;
-  await fetch(`/api/profile/${window.currentUserId}`, { method: 'DELETE' });
-  location.reload();
-}
+    <main id="exploreView" class="view-screen hidden">
+      <div class="lounge-quick-card" onclick="switchTab('metaverse')">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-family:'Cinzel',serif; font-size:15px; font-weight:800; color:#d4af37;">🏛️ Canlı 3D Parametrik Lounge</div>
+            <div style="font-size:12px; color:#aaa;">Karakterinle mekana katıl!</div>
+          </div>
+          <button class="primary-btn sm-btn" style="padding: 6px 14px; font-size:11px;">Mekana Gir</button>
+        </div>
+      </div>
 
-async function loadAdminDashboard() {
-  try {
-    const res = await fetch(`/api/admin/dashboard-data?userId=${window.currentUserId}&username=${window.currentUsername}`);
-    const data = await res.json();
-    if (data.success) {
-      document.getElementById('ytStatTotal').innerText = data.stats.total;
-      document.getElementById('ytStatActive').innerText = data.stats.active;
-      document.getElementById('ytStatReports').innerText = data.stats.reportsCount;
-      adminUsersCache = data.users || [];
-      renderAdminUserList(adminUsersCache);
-    }
-  } catch (e) {}
-}
+      <div id="dailyPickBanner" class="daily-pick-banner hidden">
+        <div class="daily-badge">⭐ GÜNÜN KUTSAL SEÇİMİ</div>
+        <div id="dailyPickContent" class="daily-content"></div>
+      </div>
 
-function renderAdminUserList(users) {
-  const uList = document.getElementById('adminUserCards');
-  if (!uList) return;
-  uList.innerHTML = '';
-  users.forEach(u => {
-    const card = document.createElement('div');
-    card.className = 'admin-user-row';
-    card.innerHTML = `<div><strong>${u.nickname}</strong> (${u.role})</div>`;
-    uList.appendChild(card);
-  });
-}
+      <div class="card-stage" id="cardStage">
+        <div class="tinder-card" id="activeCard">
+          <div class="card-loader">Altın kader ağları taranıyor...</div>
+        </div>
+      </div>
+
+      <div class="swipe-actions">
+        <button class="action-circle pass-btn" onclick="triggerCardSwipe('pass')">✕</button>
+        <button class="action-circle report-btn-small" onclick="openReportModalCurrentCard()">🚩</button>
+        <button class="action-circle like-btn" onclick="triggerCardSwipe('like')">❤️</button>
+      </div>
+    </main>
+
+    <main id="inboxView" class="view-screen hidden">
+      <div class="sub-header">
+        <h2>Mesajlar 💬</h2>
+        <button class="ghost-btn" onclick="switchTab('explore')">Keşfet</button>
+      </div>
+      <div id="chatList" class="inbox-list"></div>
+    </main>
+
+    <main id="chatRoomView" class="view-screen hidden">
+      <div class="chat-header">
+        <button class="ghost-btn sm-btn" onclick="switchTab('inbox')">← Geri</button>
+        <div class="partner-meta">
+          <h3 id="chatPartnerName">Kullanıcı</h3>
+          <span id="chatParavanStatus" class="status-indicator">🎭 Anonim Paravan</span>
+        </div>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <button id="paravanBtn" class="paravan-pill" onclick="requestParavanReveal()">🎭 Paravanı Aç</button>
+          <button class="report-chat-pill" onclick="openChatReportModal()">🚩</button>
+          <button class="unmatch-pill" onclick="cancelCurrentMatch()">✕</button>
+        </div>
+      </div>
+
+      <div class="icebreakers-bar">
+        <button type="button" class="ice-btn" onclick="sendIcebreaker('Kahve mi kadeh mi? 🍷')">🍷 Kahve mi?</button>
+        <button type="button" class="ice-btn" onclick="sendIcebreaker('Ruh ikizin kim? ⚡')">⚡ Ruh İkizin?</button>
+      </div>
+
+      <div id="messageStream" class="chat-stream"></div>
+
+      <form class="chat-composer" onsubmit="sendChatMessage(event)">
+        <input type="text" id="chatInput" placeholder="Mesajınızı fısıldayın..." autocomplete="off">
+        <button type="submit" class="composer-btn">➤</button>
+      </form>
+    </main>
+
+    <main id="metaverseView" class="view-screen hidden">
+      <div id="canvas-container"></div>
+      <button class="metaverse-exit-btn" onclick="exitMetaverseToExplore()">← Ayrıl</button>
+      <div id="joystick-zone"></div>
+    </main>
+
+    <main id="adminPanelView" class="view-screen hidden">
+      <div class="sub-header">
+        <h2 class="gold-text">👑 YT Yönetim Masası</h2>
+        <button class="ghost-btn" onclick="switchTab('explore')">Çıkış</button>
+      </div>
+      <div class="stats-cards" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:14px;">
+        <div class="stat-pill" style="background:#12131d; padding:10px; border-radius:12px; text-align:center;"><span>Toplam</span><br><strong id="ytStatTotal" style="color:#d4af37;">0</strong></div>
+        <div class="stat-pill" style="background:#12131d; padding:10px; border-radius:12px; text-align:center;"><span>Aktif</span><br><strong id="ytStatActive" style="color:#2ed573;">0</strong></div>
+        <div class="stat-pill" style="background:#12131d; padding:10px; border-radius:12px; text-align:center;"><span>Şikayet</span><br><strong id="ytStatReports" style="color: #ff4757;">0</strong></div>
+      </div>
+      <div class="search-bar" style="margin-bottom:10px;">
+        <input type="text" id="userSearchInput" onkeyup="filterAdminUserList()" placeholder="🔍 Rumuz, şehir ara...">
+      </div>
+      <div id="adminUserCards" class="admin-scroll-list" style="max-height:300px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
+    </main>
+
+    <div id="filterModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeFilterModal()">
+      <div class="modal-sheet">
+        <div class="sheet-header"><h3>Filtreler</h3><button class="icon-close" onclick="closeFilterModal()">✕</button></div>
+        <div class="form-group"><label>Şehir</label><div class="chip-grid" id="filterCityChips"></div></div>
+        <button class="primary-btn full" onclick="applyFilters()" style="margin-top:14px;">Uygula</button>
+      </div>
+    </div>
+
+    <div id="welcomeModal" class="modal-backdrop hidden">
+      <div class="modal-sheet" style="text-align: center;">
+        <div class="welcome-seal">✨</div>
+        <h2 class="welcome-title gold-text">Profil Mühürlendi</h2>
+        <p class="welcome-desc">Olimpos meclisinde yerini aldın.</p>
+        <button class="primary-btn full" onclick="closeWelcomeAndExplore()">Keşfe Başla ➔</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+  <script src="metaverse.js"></script>
+</body>
+</html>
