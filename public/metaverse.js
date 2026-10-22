@@ -293,7 +293,6 @@ function setupGTAOrbitControls(container) {
   });
 }
 
-let lastSendTime = 0;
 const animClock = new THREE.Clock();
 
 function animate() {
