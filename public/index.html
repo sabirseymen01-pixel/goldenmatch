@@ -5,14 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>GoldenMatch ✨</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
-
   <link rel="stylesheet" href="style.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -23,13 +17,7 @@
         <span class="gold-text">GOLDEN</span>MATCH
       </div>
       <div class="nav-actions">
-        <button class="nav-btn metaverse-entry-btn" onclick="switchTab('metaverse')" title="3D Lounge">
-          <span style="font-size: 16px;">🏛️</span>
-        </button>
         <button id="ytNavBtn" class="nav-btn yt-badge hidden" onclick="switchTab('adminPanel')" title="Yönetici Paneli">👑 YT</button>
-        <button class="nav-btn" onclick="openFilterModal()" aria-label="Filtrele">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
-        </button>
         <button class="nav-btn dm-btn" onclick="switchTab('inbox')" aria-label="Mesajlar">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           <span id="unreadBadge" class="badge-dot hidden"></span>
@@ -40,10 +28,11 @@
       </div>
     </header>
 
+    <!-- 1. PROFİL KAYIT -->
     <main id="registerView" class="view-screen">
       <div class="screen-header">
         <h1 class="gold-text">GOLDENMATCH</h1>
-        <p class="subtitle">Kutsal profilini ve karakterini mühürle.</p>
+        <p class="subtitle">Kutsal profilini mühürle.</p>
       </div>
 
       <div class="photo-grid">
@@ -91,53 +80,9 @@
             <button type="button" class="choice-chip" onclick="selectChip('role', 'Top', this)">Top</button>
             <button type="button" class="choice-chip" onclick="selectChip('role', 'Bottom', this)">Bottom</button>
             <button type="button" class="choice-chip" onclick="selectChip('role', 'Verse', this)">Verse</button>
-            <button type="button" class="choice-chip" onclick="selectChip('role', 'Verse Top', this)">Verse Top</button>
-            <button type="button" class="choice-chip" onclick="selectChip('role', 'Verse Bottom', this)">Verse Bottom</button>
             <button type="button" class="choice-chip" onclick="selectChip('role', 'Side', this)">Side</button>
-            <button type="button" class="choice-chip" onclick="selectChip('role', 'Trans', this)">Trans</button>
           </div>
           <input type="hidden" id="role" required>
-        </div>
-
-        <div class="form-group">
-          <label>Aradığın Rol</label>
-          <div class="chip-grid" data-target="interestedRole">
-            <button type="button" class="choice-chip selected" onclick="selectChip('interestedRole', 'Hepsi', this)">Hepsi</button>
-            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Top', this)">Top</button>
-            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Bottom', this)">Bottom</button>
-            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Verse', this)">Verse</button>
-            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Verse Top', this)">Verse Top</button>
-            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Verse Bottom', this)">Verse Bottom</button>
-            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Side', this)">Side</button>
-            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Trans', this)">Trans</button>
-          </div>
-          <input type="hidden" id="interestedRole" value="Hepsi" required>
-        </div>
-
-        <div class="form-group">
-          <label>Olimpos Arketipi</label>
-          <div class="chip-grid vertical-chips" data-target="archetype">
-            <button type="button" class="choice-chip-card" onclick="selectChip('archetype', 'Apollon (Işık, Sanat & Karizma)', this)"><div class="chip-card-title">☀️ Apollon</div></button>
-            <button type="button" class="choice-chip-card" onclick="selectChip('archetype', 'Afrodit (Güzellik, Arzu & Zarafet)', this)"><div class="chip-card-title">🕊️ Afrodit</div></button>
-            <button type="button" class="choice-chip-card" onclick="selectChip('archetype', 'Ares (Tutku, Güç & Cesaret)', this)"><div class="chip-card-title">⚔️ Ares</div></button>
-            <button type="button" class="choice-chip-card" onclick="selectChip('archetype', 'Hermes (Zeka, Hız & Macera)', this)"><div class="chip-card-title">🪽 Hermes</div></button>
-            <button type="button" class="choice-chip-card" onclick="selectChip('archetype', 'Dionisos (Eğlence, Coşku & Özgürlük)', this)"><div class="chip-card-title">🍷 Dionisos</div></button>
-            <button type="button" class="choice-chip-card" onclick="selectChip('archetype', 'Athena (Bilgelik, Sadakat & Strateji)', this)"><div class="chip-card-title">🦉 Athena</div></button>
-          </div>
-          <input type="hidden" id="archetype" required>
-        </div>
-
-        <div class="form-group">
-          <label>Tarz / İfade</label>
-          <div class="chip-grid" data-target="expression">
-            <button type="button" class="choice-chip" onclick="selectChip('expression', 'Maskülen', this)">Maskülen</button>
-            <button type="button" class="choice-chip" onclick="selectChip('expression', 'Feminen', this)">Feminen</button>
-            <button type="button" class="choice-chip" onclick="selectChip('expression', 'Twink', this)">Twink</button>
-            <button type="button" class="choice-chip" onclick="selectChip('expression', 'Daddy', this)">Daddy</button>
-            <button type="button" class="choice-chip" onclick="selectChip('expression', 'Ladyboy', this)">Ladyboy</button>
-            <button type="button" class="choice-chip" onclick="selectChip('expression', 'Diğer', this)">Diğer</button>
-          </div>
-          <input type="hidden" id="expression" required>
         </div>
 
         <div class="form-group">
@@ -146,30 +91,11 @@
         </div>
 
         <button type="submit" id="saveBtn" class="primary-btn gold-glow"><span>Profili Mühürle & Başla</span></button>
-        <button type="button" id="deleteAccountBtn" class="danger-outline-btn hidden" onclick="deleteMyAccount()">🗑️ Hesabımı Sil</button>
       </form>
-
-      <div class="bypass-area">
-        <button type="button" class="text-link-btn" onclick="directYtLogin()">👑 Yönetici (YT) Hızlı Girişi</button>
-      </div>
     </main>
 
+    <!-- 2. KEŞFET (TINDER KARTLARI) -->
     <main id="exploreView" class="view-screen hidden">
-      <div class="lounge-quick-card" onclick="switchTab('metaverse')">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <div style="font-family:'Cinzel',serif; font-size:15px; font-weight:800; color:#d4af37;">🏛️ Canlı 3D Parametrik Lounge</div>
-            <div style="font-size:12px; color:#aaa;">Karakterinle mekana katıl!</div>
-          </div>
-          <button class="primary-btn sm-btn" style="padding: 6px 14px; font-size:11px;">Mekana Gir</button>
-        </div>
-      </div>
-
-      <div id="dailyPickBanner" class="daily-pick-banner hidden">
-        <div class="daily-badge">⭐ GÜNÜN KUTSAL SEÇİMİ</div>
-        <div id="dailyPickContent" class="daily-content"></div>
-      </div>
-
       <div class="card-stage" id="cardStage">
         <div class="tinder-card" id="activeCard">
           <div class="card-loader">Altın kader ağları taranıyor...</div>
@@ -178,11 +104,11 @@
 
       <div class="swipe-actions">
         <button class="action-circle pass-btn" onclick="triggerCardSwipe('pass')">✕</button>
-        <button class="action-circle report-btn-small" onclick="openReportModalCurrentCard()">🚩</button>
         <button class="action-circle like-btn" onclick="triggerCardSwipe('like')">❤️</button>
       </div>
     </main>
 
+    <!-- 3. MESAJLAR LİSTESİ -->
     <main id="inboxView" class="view-screen hidden">
       <div class="sub-header">
         <h2>Mesajlar 💬</h2>
@@ -191,6 +117,7 @@
       <div id="chatList" class="inbox-list"></div>
     </main>
 
+    <!-- 4. SOHBET ODASI & PARAVAN -->
     <main id="chatRoomView" class="view-screen hidden">
       <div class="chat-header">
         <button class="ghost-btn sm-btn" onclick="switchTab('inbox')">← Geri</button>
@@ -200,14 +127,8 @@
         </div>
         <div style="display: flex; gap: 6px; align-items: center;">
           <button id="paravanBtn" class="paravan-pill" onclick="requestParavanReveal()">🎭 Paravanı Aç</button>
-          <button class="report-chat-pill" onclick="openChatReportModal()">🚩</button>
           <button class="unmatch-pill" onclick="cancelCurrentMatch()">✕</button>
         </div>
-      </div>
-
-      <div class="icebreakers-bar">
-        <button type="button" class="ice-btn" onclick="sendIcebreaker('Kahve mi kadeh mi? 🍷')">🍷 Kahve mi?</button>
-        <button type="button" class="ice-btn" onclick="sendIcebreaker('Ruh ikizin kim? ⚡')">⚡ Ruh İkizin?</button>
       </div>
 
       <div id="messageStream" class="chat-stream"></div>
@@ -218,48 +139,17 @@
       </form>
     </main>
 
-    <main id="metaverseView" class="view-screen hidden">
-      <div id="canvas-container"></div>
-      <button class="metaverse-exit-btn" onclick="exitMetaverseToExplore()">← Ayrıl</button>
-      <div id="joystick-zone"></div>
-    </main>
-
+    <!-- 5. YT YÖNETİM MASASI -->
     <main id="adminPanelView" class="view-screen hidden">
       <div class="sub-header">
         <h2 class="gold-text">👑 YT Yönetim Masası</h2>
         <button class="ghost-btn" onclick="switchTab('explore')">Çıkış</button>
       </div>
-      <div class="stats-cards" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:14px;">
-        <div class="stat-pill" style="background:#12131d; padding:10px; border-radius:12px; text-align:center;"><span>Toplam</span><br><strong id="ytStatTotal" style="color:#d4af37;">0</strong></div>
-        <div class="stat-pill" style="background:#12131d; padding:10px; border-radius:12px; text-align:center;"><span>Aktif</span><br><strong id="ytStatActive" style="color:#2ed573;">0</strong></div>
-        <div class="stat-pill" style="background:#12131d; padding:10px; border-radius:12px; text-align:center;"><span>Şikayet</span><br><strong id="ytStatReports" style="color: #ff4757;">0</strong></div>
-      </div>
-      <div class="search-bar" style="margin-bottom:10px;">
-        <input type="text" id="userSearchInput" onkeyup="filterAdminUserList()" placeholder="🔍 Rumuz, şehir ara...">
-      </div>
       <div id="adminUserCards" class="admin-scroll-list" style="max-height:300px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
     </main>
-
-    <div id="filterModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeFilterModal()">
-      <div class="modal-sheet">
-        <div class="sheet-header"><h3>Filtreler</h3><button class="icon-close" onclick="closeFilterModal()">✕</button></div>
-        <div class="form-group"><label>Şehir</label><div class="chip-grid" id="filterCityChips"></div></div>
-        <button class="primary-btn full" onclick="applyFilters()" style="margin-top:14px;">Uygula</button>
-      </div>
-    </div>
-
-    <div id="welcomeModal" class="modal-backdrop hidden">
-      <div class="modal-sheet" style="text-align: center;">
-        <div class="welcome-seal">✨</div>
-        <h2 class="welcome-title gold-text">Profil Mühürlendi</h2>
-        <p class="welcome-desc">Olimpos meclisinde yerini aldın.</p>
-        <button class="primary-btn full" onclick="closeWelcomeAndExplore()">Keşfe Başla ➔</button>
-      </div>
-    </div>
 
   </div>
 
   <script src="app.js"></script>
-  <script src="metaverse.js"></script>
 </body>
 </html>
