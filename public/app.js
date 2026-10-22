@@ -1,708 +1,446 @@
-/* ==========================================================================
-   GOLDENMATCH - RESMİ ÜSTÜN MAJESTİK STİL DOSYASI (STYLE.CSS)
-   ========================================================================== */
+// ==========================================================================
+// GOLDENMATCH - SAF İSTEMCİ UYGULAMA MOTORU (APP.JS)
+// ==========================================================================
 
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  -webkit-tap-highlight-color: transparent;
+const tg = window.Telegram?.WebApp;
+if (tg) {
+  tg.ready();
+  tg.expand();
 }
 
-body {
-  background-color: #0b0a10;
-  color: #f0f0f5;
-  overflow-x: hidden;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
+window.currentUserId = tg?.initDataUnsafe?.user?.id ? String(tg.initDataUnsafe.user.id) : '8245373459';
+window.currentUsername = tg?.initDataUnsafe?.user?.username || 'breskavica';
+
+let currentProfile = null;
+let cardsList = [];
+let currentCardIndex = 0;
+let userPhotos = ['', '', '', ''];
+let activeMatchId = null;
+let activePartnerId = null;
+let chatPollingInterval = null;
+
+const DEFAULT_LOCATIONS = {
+  "İstanbul": ["Kadıköy", "Beşiktaş", "Şişli", "Beyoğlu", "Bakırköy", "Üsküdar", "Maltepe", "Ataşehir", "Sarıyer", "Fatih"],
+  "Ankara": ["Çankaya", "Kızılay", "Tunalı", "Bahçelievler", "Yenimahalle"],
+  "İzmir": ["Alsancak", "Konak", "Karşıyaka", "Bornova", "Buca"],
+  "Antalya": ["Muratpaşa", "Konyaaltı", "Lara", "Kepez"],
+  "Bursa": ["Nilüfer", "Osmangazi", "Yıldırım"]
+};
+
+let allLocations = Object.assign({}, DEFAULT_LOCATIONS);
+
+window.addEventListener('DOMContentLoaded', async () => {
+  await loadLocations();
+  await checkUserProfile();
+});
+
+async function loadLocations() {
+  try {
+    const res = await fetch('/api/locations');
+    const data = await res.json();
+    if (data.success && data.locations && Object.keys(data.locations).length > 0) {
+      allLocations = Object.assign({}, DEFAULT_LOCATIONS, data.locations);
+    }
+  } catch (err) {}
+  populateCityChips();
 }
 
-.app-wrapper {
-  width: 100%;
-  max-width: 440px;
-  height: 100vh;
-  max-height: 950px;
-  background: #13121d;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
-  border: 1px solid rgba(212, 175, 55, 0.25);
+function populateCityChips(filterText = '') {
+  const container = document.getElementById('cityChipGrid');
+  if (!container) return;
+  container.innerHTML = '';
+  const currentSelectedCity = document.getElementById('city')?.value || '';
+  const cities = Object.keys(allLocations).filter(c => c.toLocaleLowerCase('tr-TR').includes(filterText.toLocaleLowerCase('tr-TR')));
+
+  cities.forEach(city => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'choice-chip' + (city === currentSelectedCity ? ' selected' : '');
+    btn.innerText = city;
+    btn.onclick = () => selectCity(city, btn);
+    container.appendChild(btn);
+  });
 }
 
-@media(min-width: 441px) {
-  .app-wrapper {
-    border-radius: 32px;
+function filterCityChips() {
+  const q = document.getElementById('citySearchInput')?.value || '';
+  populateCityChips(q);
+}
+
+function selectCity(city, btnElem, preselectedDistrict = null) {
+  const cityInput = document.getElementById('city');
+  if (cityInput) cityInput.value = city;
+
+  document.querySelectorAll('#cityChipGrid .choice-chip').forEach(b => {
+    if (b.innerText.trim() === city) b.classList.add('selected');
+    else b.classList.remove('selected');
+  });
+  if (btnElem) btnElem.classList.add('selected');
+
+  const distContainer = document.getElementById('districtChipGrid');
+  if (!distContainer) return;
+  distContainer.innerHTML = '';
+
+  const distInput = document.getElementById('district');
+  if (distInput && !preselectedDistrict) distInput.value = '';
+
+  const districts = allLocations[city] || ['Merkez'];
+  districts.forEach(d => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'choice-chip';
+    b.innerText = d;
+    if (preselectedDistrict && d === preselectedDistrict) {
+      b.classList.add('selected');
+      if (distInput) distInput.value = d;
+    }
+    b.onclick = () => {
+      if (distInput) distInput.value = d;
+      distContainer.querySelectorAll('.choice-chip').forEach(x => x.classList.remove('selected'));
+      b.classList.add('selected');
+    };
+    distContainer.appendChild(b);
+  });
+}
+
+function selectChip(fieldId, value, elem) {
+  const input = document.getElementById(fieldId);
+  if (input) input.value = value;
+  const parent = elem ? elem.closest('.chip-grid') : null;
+  if (parent) {
+    parent.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
+    elem.classList.add('selected');
+  }
+  if (fieldId === 'city') selectCity(value, elem);
+}
+
+async function checkUserProfile() {
+  try {
+    const res = await fetch(`/api/profile/${window.currentUserId}?username=${window.currentUsername}`);
+    const data = await res.json();
+
+    if (data.isAdmin || data.isFounder) {
+      document.getElementById('ytNavBtn')?.classList.remove('hidden');
+    }
+
+    if (data.exists && data.profile) {
+      currentProfile = data.profile;
+      fillProfileForm(currentProfile);
+      document.getElementById('appNav')?.classList.remove('hidden');
+      switchTab('explore');
+      loadExploreCards();
+    } else {
+      switchTab('register');
+    }
+  } catch (err) {
+    switchTab('register');
   }
 }
 
-.hidden {
-  display: none !important;
-}
-
-/* ÜST NAVİGASYON */
-.app-nav {
-  height: 65px;
-  background: rgba(19, 18, 29, 0.94);
-  backdrop-filter: blur(14px);
-  border-bottom: 1px solid rgba(212, 175, 55, 0.25);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 18px;
-  z-index: 100;
-}
-
-.brand-logo {
-  font-family: 'Cinzel', serif;
-  font-size: 18px;
-  font-weight: 800;
-  letter-spacing: 1.2px;
-  cursor: pointer;
-}
-
-.gold-text {
-  background: linear-gradient(135deg, #ffffff 0%, #d4af37 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.nav-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.nav-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  color: #fff;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.nav-btn:hover {
-  background: rgba(212, 175, 55, 0.2);
-}
-
-.yt-badge {
-  background: linear-gradient(135deg, #6a11cb, #2575fc) !important;
-  font-size: 11px;
-  font-weight: 800;
-  border: none !important;
-}
-
-/* EKRAN AKIŞI */
-.view-screen {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-}
-
-.view-screen.hidden {
-  display: none !important;
-}
-
-.screen-header {
-  margin-bottom: 16px;
-  text-align: center;
-}
-
-.screen-header h1 {
-  font-family: 'Cinzel', serif;
-  font-size: 24px;
-  letter-spacing: 1px;
-}
-
-.subtitle {
-  font-size: 12px;
-  color: #8e8e9a;
-  margin-top: 4px;
-}
-
-/* FOTOĞRAF IZGARASI */
-.photo-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.photo-slot {
-  aspect-ratio: 3/4;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px dashed rgba(212, 175, 55, 0.4);
-  border-radius: 12px;
-  position: relative;
-  overflow: hidden;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.photo-slot.main {
-  grid-column: span 2;
-  grid-row: span 2;
-  border-style: solid;
-  border-color: #d4af37;
-}
-
-.slot-preview {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: none;
-}
-
-.photo-slot.has-image .slot-preview {
-  display: block;
-}
-
-.photo-slot.has-image .slot-placeholder {
-  display: none;
-}
-
-.slot-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  color: #d4af37;
-  font-size: 11px;
-}
-
-/* FORMLAR */
-.gold-form {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.form-group label {
-  font-size: 11px;
-  font-weight: 700;
-  color: #d4af37;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.form-group input, .form-group textarea {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  padding: 12px;
-  color: #fff;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.form-group input:focus, .form-group textarea:focus {
-  border-color: #d4af37;
-}
-
-.form-row-3 {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
-}
-
-.chip-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.choice-chip {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #ccc;
-  padding: 8px 14px;
-  border-radius: 20px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.choice-chip.selected {
-  background: #d4af37;
-  color: #0b0a10;
-  border-color: #d4af37;
-  font-weight: 700;
-}
-
-.primary-btn {
-  background: linear-gradient(135deg, #d4af37, #aa8220);
-  color: #0b0a10;
-  border: none;
-  padding: 14px;
-  border-radius: 14px;
-  font-weight: 800;
-  font-size: 14px;
-  cursor: pointer;
-  text-align: center;
-  box-shadow: 0 4px 20px rgba(212, 175, 55, 0.3);
-}
-
-.ghost-btn {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
-  padding: 8px 14px;
-  border-radius: 12px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.sm-btn {
-  padding: 6px 12px;
-  font-size: 11px;
-  border-radius: 10px;
-}
-
-/* TINDER KARTLARI */
-.lounge-quick-card {
-  background: linear-gradient(135deg, #1b1929, #252238);
-  border: 1px solid rgba(212, 175, 55, 0.4);
-  border-radius: 16px;
-  padding: 14px;
-  margin-bottom: 12px;
-  cursor: pointer;
-}
-
-.daily-pick-banner {
-  background: rgba(212, 175, 55, 0.1);
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  border-radius: 14px;
-  padding: 12px;
-  margin-bottom: 12px;
-}
-
-.daily-badge {
-  font-size: 10px;
-  font-weight: 800;
-  color: #d4af37;
-  margin-bottom: 4px;
-}
-
-.card-stage {
-  flex: 1;
-  position: relative;
-  background: #181624;
-  border-radius: 20px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  min-height: 380px;
-  max-height: 480px;
-}
-
-.tinder-card {
-  width: 100%;
-  height: 100%;
-  position: relative;
-}
-
-.card-loader {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: #777;
-  font-size: 13px;
-  text-align: center;
-  padding: 20px;
-}
-
-.swipe-actions {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 20px;
-  padding: 16px 0;
-}
-
-.action-circle {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 20px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-  transition: transform 0.1s;
-}
-
-.action-circle:active {
-  transform: scale(0.9);
-}
-
-.pass-btn {
-  background: #1e1c2b;
-  color: #ff4757;
-  border: 1px solid rgba(255, 71, 87, 0.3);
-}
-
-.like-btn {
-  background: linear-gradient(135deg, #ff4757, #ff6b81);
-  color: #fff;
-}
-
-.report-btn-small {
-  background: #1e1c2b;
-  color: #ffa502;
-  border: 1px solid rgba(255, 165, 2, 0.3);
-  width: 42px;
-  height: 42px;
-  font-size: 16px;
-}
-
-/* SOHBET / İNBOX LİSTESİ */
-.sub-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 14px;
-}
-
-.inbox-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.chat-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 10px;
-  border-radius: 14px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.chat-item:hover {
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.chat-avatar-wrap {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 1.5px solid #d4af37;
-  flex-shrink: 0;
-}
-
-.chat-avatar {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.chat-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.chat-name {
-  font-weight: 700;
-  font-size: 14px;
-  color: #fff;
-  margin-bottom: 2px;
-}
-
-.chat-snippet {
-  font-size: 12px;
-  color: #999;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.chat-time {
-  font-size: 10px;
-  color: #666;
-}
-
-/* BİREBİR SOHBET ODASI */
-.chat-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  margin-bottom: 10px;
-  gap: 8px;
-}
-
-.partner-meta h3 {
-  font-size: 14px;
-  color: #fff;
-}
-
-.status-indicator {
-  font-size: 10px;
-  color: #d4af37;
-}
-
-.paravan-pill, .report-chat-pill, .unmatch-pill {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  color: #d4af37;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 10px;
-  cursor: pointer;
-}
-
-.unmatch-pill {
-  color: #ff4757;
-  border-color: rgba(255, 71, 87, 0.3);
-}
-
-.icebreakers-bar {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  padding-bottom: 8px;
-  margin-bottom: 8px;
-}
-
-.ice-btn {
-  background: rgba(212, 175, 55, 0.1);
-  border: 1px solid rgba(212, 175, 55, 0.25);
-  color: #d4af37;
-  padding: 5px 10px;
-  border-radius: 14px;
-  font-size: 11px;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.chat-stream {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 4px;
-  max-height: calc(100vh - 280px);
-}
-
-.chat-bubble {
-  max-width: 75%;
-  padding: 10px 14px;
-  border-radius: 16px;
-  font-size: 13px;
-  position: relative;
-  word-break: break-word;
-}
-
-.chat-bubble.me {
-  background: linear-gradient(135deg, #d4af37, #b8972b);
-  color: #0b0a10;
-  align-self: flex-end;
-  border-bottom-right-radius: 4px;
-  font-weight: 500;
-}
-
-.chat-bubble.them {
-  background: #201e30;
-  color: #fff;
-  align-self: flex-start;
-  border-bottom-left-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.bubble-time {
-  font-size: 9px;
-  display: block;
-  text-align: right;
-  margin-top: 4px;
-  opacity: 0.7;
-}
-
-.chat-composer {
-  display: flex;
-  gap: 8px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  margin-top: 8px;
-}
-
-.chat-composer input {
-  flex: 1;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  padding: 10px 14px;
-  border-radius: 20px;
-  color: #fff;
-  outline: none;
-  font-size: 13px;
-}
-
-.composer-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: #d4af37;
-  color: #0b0a10;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-/* METAVERSE EKRANI İZOLASYONU */
-#metaverseView {
-  padding: 0 !important;
-  position: relative !important;
-  overflow: hidden !important;
-  background: #0a0a0f !important;
-  height: calc(100vh - 65px) !important;
-}
-
-#canvas-container {
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 10;
-}
-
-.metaverse-exit-btn {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  z-index: 50;
-  background: rgba(14, 13, 23, 0.85);
-  backdrop-filter: blur(12px);
-  border: 1px solid #d4af37;
-  color: #fff;
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-#joystick-zone {
-  position: absolute;
-  bottom: 25px;
-  left: 20px;
-  width: 110px;
-  height: 110px;
-  z-index: 50;
-  pointer-events: auto;
-}
-
-/* YT YÖNETİM MASASI */
-.stats-cards {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-.stat-pill {
-  background: #171622;
-  border: 1px solid rgba(212, 175, 55, 0.2);
-  padding: 10px;
-  border-radius: 12px;
-  text-align: center;
-}
-
-.stat-pill span {
-  font-size: 10px;
-  color: #888;
-}
-
-.stat-pill strong {
-  font-size: 16px;
-  color: #d4af37;
-}
-
-.admin-action-box {
-  border: 1.5px solid rgba(212, 175, 55, 0.4);
-  background: rgba(22, 22, 34, 0.7);
-  border-radius: 14px;
-  padding: 12px;
-  margin-bottom: 14px;
-}
-
-.admin-user-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #171622;
-  padding: 10px;
-  border-radius: 12px;
-  margin-bottom: 6px;
-  font-size: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.modal-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(8px);
-  z-index: 200;
-  display: flex;
-  align-items: flex-end;
-}
-
-.modal-sheet {
-  width: 100%;
-  background: #171622;
-  border-top: 1px solid rgba(212, 175, 55, 0.35);
-  border-radius: 24px 24px 0 0;
-  padding: 20px;
-  max-height: 80vh;
-  overflow-y: auto;
-}
-
-.sheet-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 14px;
-}
-
-.icon-close {
-  background: none;
-  border: none;
-  color: #aaa;
-  font-size: 18px;
-  cursor: pointer;
+function fillProfileForm(p) {
+  document.getElementById('nickname').value = p.nickname || '';
+  document.getElementById('age').value = p.age || '';
+  document.getElementById('height').value = p.height || '';
+  document.getElementById('weight').value = p.weight || '';
+  document.getElementById('bio').value = p.bio || '';
+
+  if (p.city) selectCity(p.city, null, p.district || null);
+  if (p.role) selectChip('role', p.role, findButtonByText('role', p.role));
+
+  if (p.photos && p.photos.length) {
+    p.photos.forEach((url, i) => {
+      if (url && i < 4) {
+        userPhotos[i] = url;
+        const slot = document.getElementById(`slot-${i}`);
+        if (slot) {
+          slot.querySelector('.slot-preview').src = url;
+          slot.classList.add('has-image');
+        }
+      }
+    });
+  }
+}
+
+function findButtonByText(targetName, text) {
+  const container = document.querySelector(`[data-target="${targetName}"]`);
+  return container ? Array.from(container.querySelectorAll('button')).find(b => b.innerText.trim() === text) : null;
+}
+
+let activeSlotIndex = 0;
+function pickImage(slotIdx) {
+  activeSlotIndex = slotIdx;
+  document.getElementById('fileSelector')?.click();
+}
+
+function onFileSelected(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const base64 = e.target.result;
+    userPhotos[activeSlotIndex] = base64;
+    const slot = document.getElementById(`slot-${activeSlotIndex}`);
+    if (slot) {
+      slot.querySelector('.slot-preview').src = base64;
+      slot.classList.add('has-image');
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+async function handleFormSubmit(event) {
+  event.preventDefault();
+  const saveBtn = document.getElementById('saveBtn');
+  saveBtn.disabled = true;
+  saveBtn.innerText = '⚡ Mühürleniyor...';
+
+  const payload = {
+    telegramId: window.currentUserId,
+    username: window.currentUsername,
+    nickname: document.getElementById('nickname').value.trim(),
+    age: Number(document.getElementById('age').value),
+    height: Number(document.getElementById('height').value) || null,
+    weight: Number(document.getElementById('weight').value) || null,
+    role: document.getElementById('role').value,
+    city: document.getElementById('city').value,
+    district: document.getElementById('district').value,
+    bio: document.getElementById('bio').value.trim(),
+    photos: userPhotos.filter(p => p !== '')
+  };
+
+  try {
+    const res = await fetch('/api/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.success) {
+      currentProfile = data.profile;
+      document.getElementById('appNav')?.classList.remove('hidden');
+      switchTab('explore');
+      loadExploreCards();
+    } else {
+      alert(data.message || 'Kayıt başarısız.');
+    }
+  } catch (err) {
+    alert('Sunucu hatası.');
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.innerText = 'Profili Mühürle & Başla';
+  }
+}
+
+function switchTab(tabId) {
+  if (chatPollingInterval) {
+    clearInterval(chatPollingInterval);
+    chatPollingInterval = null;
+  }
+  document.querySelectorAll('.view-screen').forEach(s => s.classList.add('hidden'));
+
+  const navBar = document.getElementById('appNav');
+  if (tabId !== 'register' || currentProfile) {
+    navBar?.classList.remove('hidden');
+  }
+
+  if (tabId === 'register') {
+    document.getElementById('registerView')?.classList.remove('hidden');
+  } else if (tabId === 'explore') {
+    document.getElementById('exploreView')?.classList.remove('hidden');
+    loadExploreCards();
+  } else if (tabId === 'inbox') {
+    document.getElementById('inboxView')?.classList.remove('hidden');
+    document.getElementById('unreadBadge')?.classList.add('hidden');
+    loadInboxChats();
+  } else if (tabId === 'chatRoom') {
+    document.getElementById('chatRoomView')?.classList.remove('hidden');
+  } else if (tabId === 'adminPanel') {
+    document.getElementById('adminPanelView')?.classList.remove('hidden');
+    loadAdminDashboard();
+  }
+}
+
+function openProfileEdit() {
+  switchTab('register');
+}
+
+async function loadExploreCards() {
+  const stage = document.getElementById('activeCard');
+  if (!stage) return;
+  stage.innerHTML = '<div class="card-loader">Altın kader ağları taranıyor...</div>';
+  try {
+    const res = await fetch(`/api/cards?userId=${window.currentUserId}&city=Hepsi&role=Hepsi`);
+    const data = await res.json();
+    if (data.success) {
+      cardsList = data.cards;
+      currentCardIndex = 0;
+      renderCurrentCard();
+    }
+  } catch (err) {
+    stage.innerHTML = '<div class="card-loader">Kullanıcılar yüklenemedi.</div>';
+  }
+}
+
+function renderCurrentCard() {
+  const cardElem = document.getElementById('activeCard');
+  if (!cardElem) return;
+  if (!cardsList.length || currentCardIndex >= cardsList.length) {
+    cardElem.innerHTML = `<div class="card-loader"><h3 style="color:#e5a93c;">Şimdilik Kimse Kalmadı ✨</h3></div>`;
+    return;
+  }
+  const user = cardsList[currentCardIndex];
+  const photo = user.photos?.[0] || '';
+  cardElem.innerHTML = `
+    <img src="${photo}" style="width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0;" alt="">
+    <div style="position:absolute; bottom:0; left:0; right:0; padding:20px; background:linear-gradient(to top, rgba(0,0,0,0.9), transparent);">
+      <h3 style="color:#fff; font-size:22px; margin:0 0 4px 0;">${user.nickname}, ${user.age}</h3>
+      <p style="color:#d4af37; font-size:13px; margin:0;">${user.role} • 📍 ${user.city}</p>
+    </div>
+  `;
+}
+
+async function triggerCardSwipe(action) {
+  if (currentCardIndex >= cardsList.length) return;
+  const targetUser = cardsList[currentCardIndex];
+  try {
+    const res = await fetch('/api/like', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fromUserId: window.currentUserId, toUserId: targetUser.telegramId, action })
+    });
+    const data = await res.json();
+    if (data.isMatch) {
+      alert(`🎉 EŞLEŞTİNİZ! ${targetUser.nickname} ile mesajlaşabilirsiniz.`);
+    }
+  } catch (err) {}
+  currentCardIndex++;
+  renderCurrentCard();
+}
+
+async function loadInboxChats() {
+  const list = document.getElementById('chatList');
+  if (!list) return;
+  list.innerHTML = '<div class="card-loader">Sohbetler yükleniyor...</div>';
+  try {
+    const res = await fetch(`/api/chats?userId=${window.currentUserId}`);
+    const data = await res.json();
+    if (data.success && data.chats) {
+      if (!data.chats.length) {
+        list.innerHTML = '<div class="card-loader">Henüz eşleşme yok.</div>';
+        return;
+      }
+      list.innerHTML = '';
+      data.chats.forEach(chat => {
+        const item = document.createElement('div');
+        item.className = 'chat-item';
+        item.onclick = () => openChatRoom(chat.matchId, chat.partner);
+        item.innerHTML = `
+          <div class="chat-avatar-wrap"><img src="${chat.partner.avatar || ''}" class="chat-avatar" alt=""></div>
+          <div class="chat-info"><div class="chat-name">${chat.partner.nickname}</div><div class="chat-snippet">${chat.lastMessage}</div></div>
+          <div class="chat-time">${chat.lastMessageTime || ''}</div>
+        `;
+        list.appendChild(item);
+      });
+    }
+  } catch (e) {
+    list.innerHTML = '<div class="card-loader">Sohbetler yüklenemedi.</div>';
+  }
+}
+
+async function openChatRoom(matchId, partner) {
+  activeMatchId = matchId;
+  activePartnerId = partner.telegramId;
+  switchTab('chatRoom');
+  document.getElementById('chatPartnerName').innerText = partner.nickname;
+  await fetchMessages();
+  chatPollingInterval = setInterval(fetchMessages, 3000);
+}
+
+async function fetchMessages() {
+  if (!activeMatchId) return;
+  try {
+    const res = await fetch(`/api/chats/${activeMatchId}?userId=${window.currentUserId}`);
+    const data = await res.json();
+    if (data.success) {
+      renderMessages(data.messages);
+      const paravanStatus = document.getElementById('chatParavanStatus');
+      const paravanBtn = document.getElementById('paravanBtn');
+      if (data.bothRevealed) {
+        paravanStatus.innerText = `🔓 Açık Kimlik (@${data.partner.username || 'Kullanıcı'})`;
+        paravanBtn.style.display = 'none';
+      } else {
+        paravanStatus.innerText = '🎭 Anonim Paravan Sohbeti';
+      }
+    }
+  } catch (e) {}
+}
+
+function renderMessages(messages) {
+  const stream = document.getElementById('messageStream');
+  if (!stream) return;
+  stream.innerHTML = '';
+  messages.forEach(msg => {
+    const isMe = msg.senderId === window.currentUserId;
+    const bubble = document.createElement('div');
+    bubble.className = `chat-bubble ${isMe ? 'me' : 'them'}`;
+    bubble.innerHTML = `<span>${msg.text}</span><span class="bubble-time">${msg.time}</span>`;
+    stream.appendChild(bubble);
+  });
+  stream.scrollTop = stream.scrollHeight;
+}
+
+async function sendChatMessage(e) {
+  e.preventDefault();
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text || !activeMatchId) return;
+  input.value = '';
+  await fetch(`/api/chats/${activeMatchId}/message`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ senderId: window.currentUserId, text })
+  });
+  fetchMessages();
+}
+
+async function requestParavanReveal() {
+  if (!activeMatchId) return;
+  const res = await fetch(`/api/chats/${activeMatchId}/reveal`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: window.currentUserId })
+  });
+  const data = await res.json();
+  if (data.bothRevealed) alert('🎉 Kimlikler açıldı!');
+  else alert('🎭 Paravan açma isteği gönderildi.');
+  fetchMessages();
+}
+
+async function cancelCurrentMatch() {
+  if (!activeMatchId || !confirm('Eşleşmeyi bitirmek istiyor musunuz?')) return;
+  await fetch(`/api/chats/${activeMatchId}/unmatch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: window.currentUserId })
+  });
+  switchTab('inbox');
+}
+
+async function loadAdminDashboard() {
+  try {
+    const res = await fetch(`/api/admin/dashboard-data?userId=${window.currentUserId}&username=${window.currentUsername}`);
+    const data = await res.json();
+    if (data.success) {
+      const uList = document.getElementById('adminUserCards');
+      if (uList && data.users) {
+        uList.innerHTML = '';
+        data.users.forEach(u => {
+          const card = document.createElement('div');
+          card.className = 'admin-user-row';
+          card.innerHTML = `<div><strong>${u.nickname}</strong> (${u.role})</div>`;
+          uList.appendChild(card);
+        });
+      }
+    }
+  } catch (e) {}
 }
