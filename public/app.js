@@ -25,6 +25,13 @@ let selectedMessageForReport = null;
 let filterCity = 'Hepsi';
 let filterDistrict = 'Hepsi';
 let filterRole = 'Hepsi';
+let filterMinAge = 18;
+let filterMaxAge = 99;
+
+// Ses kaydı için değişkenler
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
 
 const DEFAULT_LOCATIONS = {
   "İstanbul": ["Kadıköy", "Beşiktaş", "Şişli", "Beyoğlu", "Bakırköy", "Üsküdar", "Maltepe", "Ataşehir", "Sarıyer", "Fatih", "Bahçelievler", "Avcılar", "Kartal", "Pendik", "Beylikdüzü"],
@@ -190,6 +197,8 @@ function closeFilterModal() {
 }
 
 function applyFilters() {
+  filterMinAge = Number(document.getElementById('filterMinAge')?.value) || 18;
+  filterMaxAge = Number(document.getElementById('filterMaxAge')?.value) || 99;
   closeFilterModal();
   loadExploreCards();
 }
@@ -369,13 +378,13 @@ function openProfileEdit() {
   switchTab('register');
 }
 
-// ----------------- KEŞFET & KARTLAR (iOS Dokunmatik Kaydırma & Matlaşma) -----------------
+// ----------------- KEŞFET & KARTLAR (iOS Kaydırma, Matlaşma & Mesafe km) -----------------
 async function loadExploreCards() {
   const stage = document.getElementById('activeCard');
   if (!stage) return;
   stage.innerHTML = '<div class="card-loader">Altın kader ağları taranıyor...</div>';
   try {
-    const res = await fetch(`/api/cards?userId=${window.currentUserId}&city=${encodeURIComponent(filterCity)}&district=${encodeURIComponent(filterDistrict)}&role=${encodeURIComponent(filterRole)}`);
+    const res = await fetch(`/api/cards?userId=${window.currentUserId}&city=${encodeURIComponent(filterCity)}&district=${encodeURIComponent(filterDistrict)}&role=${encodeURIComponent(filterRole)}&minAge=${filterMinAge}&maxAge=${filterMaxAge}`);
     const data = await res.json();
     if (data.success) {
       cardsList = data.cards;
@@ -396,11 +405,13 @@ function renderCurrentCard() {
   }
   const user = cardsList[currentCardIndex];
   const photo = user.photos?.[0] || '';
+  const distanceText = user.distanceKm !== null ? ` • 📍 ${user.distanceKm} km uzakta` : '';
+  
   cardElem.innerHTML = `
     <img src="${photo}" style="width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0; pointer-events:none;" alt="">
     <div style="position:absolute; bottom:0; left:0; right:0; padding:20px; background:linear-gradient(to top, rgba(0,0,0,0.9), transparent);">
       <h3 style="color:#fff; font-size:22px; margin:0 0 4px 0;">${user.nickname}, ${user.age}</h3>
-      <p style="color:#d4af37; font-size:13px; margin:0;">${user.role} • 📍 ${user.city} / ${user.district || 'Merkez'}</p>
+      <p style="color:#d4af37; font-size:13px; margin:0;">${user.role} • 📍 ${user.city} / ${user.district || 'Merkez'}${distanceText}</p>
     </div>
   `;
   initCardSwipePhysics(cardElem);
@@ -469,7 +480,7 @@ async function triggerCardSwipe(action) {
   renderCurrentCard();
 }
 
-// ----------------- MESAJLAR & UNREAD BADGE -----------------
+// ----------------- MESAJLAR & MEDYA / SESLİ MESAJ -----------------
 async function checkUnreadMessages() {
   try {
     const res = await fetch(`/api/chats?userId=${window.currentUserId}`);
@@ -550,31 +561,96 @@ function renderMessages(messages) {
     const isMe = msg.senderId === window.currentUserId;
     const bubble = document.createElement('div');
     bubble.className = `chat-bubble ${isMe ? 'me' : 'them'} selectable`;
-    if (selectedMessageForReport === msg.text) {
+    if (selectedMessageForReport === (msg.text || msg.mediaUrl)) {
       bubble.classList.add('selected-for-report');
     }
     bubble.onclick = () => {
-      selectedMessageForReport = msg.text;
+      selectedMessageForReport = msg.text || msg.mediaUrl;
       renderMessages(messages);
     };
-    bubble.innerHTML = `<span>${msg.text}</span><span class="bubble-time">${msg.time}</span>`;
+
+    let contentHtml = `<span>${msg.text || ''}</span>`;
+    if (msg.type === 'image' && msg.mediaUrl) {
+      contentHtml = `<img src="${msg.mediaUrl}" style="max-width:100%; border-radius:12px; margin-bottom:4px;" alt="Fotoğraf">`;
+    } else if (msg.type === 'audio' && msg.mediaUrl) {
+      contentHtml = `<audio controls src="${msg.mediaUrl}" style="max-width:200px; height:32px;"></audio>`;
+    }
+
+    bubble.innerHTML = `${contentHtml}<span class="bubble-time">${msg.time}</span>`;
     stream.appendChild(bubble);
   });
   stream.scrollTop = stream.scrollHeight;
 }
 
-async function sendChatMessage(e) {
-  e.preventDefault();
+async function sendChatMessage(e, customType = 'text', customMediaUrl = '') {
+  if (e) e.preventDefault();
   const input = document.getElementById('chatInput');
-  const text = input.value.trim();
-  if (!text || !activeMatchId) return;
-  input.value = '';
+  const text = input ? input.value.trim() : '';
+  if (!activeMatchId) return;
+
+  if (customType === 'text' && !text) return;
+  if (input) input.value = '';
+
   await fetch(`/api/chats/${activeMatchId}/message`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ senderId: window.currentUserId, text })
+    body: JSON.stringify({
+      senderId: window.currentUserId,
+      text: customType === 'text' ? text : '',
+      type: customType,
+      mediaUrl: customMediaUrl
+    })
   });
   fetchMessages();
+}
+
+async function onChatMediaSelected(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const base64 = e.target.result;
+    await sendChatMessage(null, 'image', base64);
+  };
+  reader.readAsDataURL(file);
+}
+
+// Ses Kaydı Fonksiyonu (Microphone API)
+async function toggleAudioRecording() {
+  const btn = document.getElementById('recordAudioBtn');
+  if (!isRecording) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        audioChunks.push(event.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          const base64Audio = reader.result;
+          await sendChatMessage(null, 'audio', base64Audio);
+        };
+        reader.readAsDataURL(audioBlob);
+      };
+
+      mediaRecorder.start();
+      isRecording = true;
+      if (btn) btn.style.background = '#ff4757';
+    } catch (err) {
+      alert('Mikrofon erişimi reddedildi veya desteklenmiyor.');
+    }
+  } else {
+    if (mediaRecorder) {
+      mediaRecorder.stop();
+    }
+    isRecording = false;
+    if (btn) btn.style.background = '';
+  }
 }
 
 async function requestParavanReveal() {
@@ -600,12 +676,11 @@ async function cancelCurrentMatch() {
   switchTab('inbox');
 }
 
-// Şikayet Etme (Mesaj Seçmeli)
 async function reportCurrentPartner() {
   let reason = prompt('Şikayet sebebinizi belirtin:');
   if (!reason || !activePartnerId) return;
   if (selectedMessageForReport) {
-    reason += ` [Seçilen Mesaj: "${selectedMessageForReport}"]`;
+    reason += ` [İlgili Mesaj/İçerik: "${selectedMessageForReport}"]`;
   }
   try {
     const res = await fetch('/api/report', {
@@ -615,7 +690,7 @@ async function reportCurrentPartner() {
     });
     const data = await res.json();
     if (data.success) {
-      alert('⚠️ Şikayetiniz ve seçilen mesaj YT ekibine iletildi.');
+      alert('⚠️ Şikayetiniz YT ekibine iletildi.');
       selectedMessageForReport = null;
     }
   } catch (e) {
@@ -623,7 +698,7 @@ async function reportCurrentPartner() {
   }
 }
 
-// ----------------- YÖNETİCİ (YT) PANELİ & RAPORLAR -----------------
+// ----------------- YÖNETİCİ (YT) PANELİ & TELEGRAM KULLANICI TAKİBİ -----------------
 async function loadAdminDashboard() {
   try {
     const res = await fetch(`/api/admin/dashboard-data?userId=${window.currentUserId}&username=${window.currentUsername}`);
@@ -634,13 +709,17 @@ async function loadAdminDashboard() {
 
       const uList = document.getElementById('adminUserCards');
       if (uList && data.users) {
-        uList.innerHTML = '<h3 style="color:#d4af37; font-size:14px; margin-bottom:8px;">👥 Üye Listesi & YT Yönetimi</h3>';
+        uList.innerHTML = '<h3 style="color:#d4af37; font-size:14px; margin-bottom:8px;">👥 Üye Listesi & Telegram Kullanıcı Takibi</h3>';
         data.users.forEach(u => {
           const isAdmin = data.admins?.includes(u.telegramId) || data.admins?.includes(u.username);
+          const tgTag = u.username ? `@${u.username}` : `ID:${u.telegramId}`;
           const card = document.createElement('div');
           card.style.cssText = 'background:#1c1b29; padding:10px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; font-size:13px; margin-bottom:6px;';
           card.innerHTML = `
-            <div><strong>${u.nickname}</strong> (${u.role}) - <span style="color:#d4af37;">${u.city}</span> ${isAdmin ? '<span style="color:#2ed573;">[YT]</span>' : ''}</div>
+            <div>
+              <strong>${u.nickname}</strong> (${u.role}) - <span style="color:#d4af37;">${u.city}</span> ${isAdmin ? '<span style="color:#2ed573;">[YT]</span>' : ''}<br>
+              <span style="font-size:11px; color:#888;">Telegram: <strong style="color:#fff;">${tgTag}</strong></span>
+            </div>
             <div style="display:flex; gap:6px;">
               ${windowIsFounder ? `<button onclick="toggleAdmin('${u.telegramId}')" style="background:${isAdmin ? '#e58e26' : '#3c6382'}; color:#fff; border:none; padding:6px 10px; border-radius:8px; cursor:pointer; font-weight:700;">${isAdmin ? 'YT Al' : 'YT Yap'}</button>` : ''}
               <button onclick="toggleBanUser('${u.telegramId}')" style="background:${u.isBanned ? '#2ed573' : '#ff4757'}; color:#fff; border:none; padding:6px 10px; border-radius:8px; cursor:pointer; font-weight:700;">${u.isBanned ? 'Aç' : 'Banla'}</button>
