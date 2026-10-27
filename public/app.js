@@ -544,7 +544,26 @@ async function cancelCurrentMatch() {
   switchTab('inbox');
 }
 
-// ----------------- YÖNETİCİ (YT) PANELİ & KURUCU KONTROLÜ -----------------
+// Şikayet Etme Fonksiyonu
+async function reportCurrentPartner() {
+  const reason = prompt('Şikayet sebebinizi belirtin (Örn: Uygunsuz davranış):');
+  if (!reason || !activePartnerId) return;
+  try {
+    const res = await fetch('/api/report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetId: activePartnerId, reporterId: window.currentUserId, reason })
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert('⚠️ Şikayetiniz YT ekibine iletildi.');
+    }
+  } catch (e) {
+    alert('Şikayet iletilemedi.');
+  }
+}
+
+// ----------------- YÖNETİCİ (YT) PANELİ & RAPORLAR -----------------
 async function loadAdminDashboard() {
   try {
     const res = await fetch(`/api/admin/dashboard-data?userId=${window.currentUserId}&username=${window.currentUsername}`);
@@ -555,20 +574,40 @@ async function loadAdminDashboard() {
 
       const uList = document.getElementById('adminUserCards');
       if (uList && data.users) {
-        uList.innerHTML = '';
+        uList.innerHTML = '<h3 style="color:#d4af37; font-size:14px; margin-bottom:8px;">👥 Üye Listesi & YT Yönetimi</h3>';
         data.users.forEach(u => {
           const isAdmin = data.admins?.includes(u.telegramId) || data.admins?.includes(u.username);
           const card = document.createElement('div');
-          card.style.cssText = 'background:#1c1b29; padding:10px; border-radius:10px; display:flex; justify-content:space-between; align-items:center; font-size:13px;';
+          card.style.cssText = 'background:#1c1b29; padding:10px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; font-size:13px; margin-bottom:6px;';
           card.innerHTML = `
-            <div><strong>${u.nickname}</strong> (${u.role}) - <span style="color:#d4af37;">${u.city}</span> ${isAdmin ? '<span style="color:#d4af37;">[YT]</span>' : ''}</div>
+            <div><strong>${u.nickname}</strong> (${u.role}) - <span style="color:#d4af37;">${u.city}</span> ${isAdmin ? '<span style="color:#2ed573;">[YT]</span>' : ''}</div>
             <div style="display:flex; gap:6px;">
-              ${windowIsFounder ? `<button onclick="toggleAdmin('${u.telegramId}')" style="background:${isAdmin ? '#e58e26' : '#3c6382'}; color:#fff; border:none; padding:4px 8px; border-radius:6px; cursor:pointer;">${isAdmin ? 'YT Al' : 'YT Yap'}</button>` : ''}
-              <button onclick="toggleBanUser('${u.telegramId}')" style="background:${u.isBanned ? '#2ed573' : '#ff4757'}; color:#fff; border:none; padding:4px 8px; border-radius:6px; cursor:pointer;">${u.isBanned ? 'Aç' : 'Banla'}</button>
+              ${windowIsFounder ? `<button onclick="toggleAdmin('${u.telegramId}')" style="background:${isAdmin ? '#e58e26' : '#3c6382'}; color:#fff; border:none; padding:6px 10px; border-radius:8px; cursor:pointer; font-weight:700;">${isAdmin ? 'YT Al' : 'YT Yap'}</button>` : ''}
+              <button onclick="toggleBanUser('${u.telegramId}')" style="background:${u.isBanned ? '#2ed573' : '#ff4757'}; color:#fff; border:none; padding:6px 10px; border-radius:8px; cursor:pointer; font-weight:700;">${u.isBanned ? 'Aç' : 'Banla'}</button>
             </div>
           `;
           uList.appendChild(card);
         });
+
+        // Şikayet ve Raporlar Bölümü
+        if (data.reports && data.reports.length > 0) {
+          const repHeading = document.createElement('h3');
+          repHeading.style.cssText = 'color:#ff4757; font-size:14px; margin:16px 0 8px 0;';
+          repHeading.innerText = `🚨 Bildirilen Şikayetler (${data.reports.length})`;
+          uList.appendChild(repHeading);
+
+          data.reports.forEach(r => {
+            const repCard = document.createElement('div');
+            repCard.style.cssText = 'background:#241923; border:1px solid rgba(255,71,87,0.3); padding:10px; border-radius:12px; font-size:12px; margin-bottom:6px; color:#fff;';
+            repCard.innerHTML = `
+              <div><strong>Şikayet Edilen:</strong> <span style="color:#ff4757;">${r.targetNickname}</span></div>
+              <div><strong>Şikayet Eden:</strong> ${r.reporterNickname}</div>
+              <div><strong>Sebep:</strong> ${r.reason}</div>
+              <div style="font-size:10px; color:#aaa; margin-top:4px;">Tarih: ${r.date}</div>
+            `;
+            uList.appendChild(repCard);
+          });
+        }
       }
     }
   } catch (e) {}
