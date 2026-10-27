@@ -13,7 +13,7 @@ let Server;
 try {
   Server = require('socket.io').Server;
 } catch (e) {
-  console.warn('⚠️ socket.io modülü henüz yüklenemedi.');
+  console.warn('⚠️ socket.io modülü yüklenemedi.');
 }
 
 const app = express();
@@ -40,7 +40,6 @@ app.use(limiter);
 app.use(cors());
 app.use(express.json({ limit: '35mb' }));
 
-// Önbellek kilitlenmesini önleyen statik dosya sunumu
 app.use(express.static(path.join(__dirname, 'public'), {
   etag: false,
   maxAge: 0,
@@ -65,7 +64,7 @@ const UserSchema = new mongoose.Schema({
   height: Number,
   weight: Number,
   role: String,
-  interestedRole: String,
+  interestedRole: { type: String, default: 'Hepsi' },
   city: String,
   district: String,
   archetype: String,
@@ -100,6 +99,16 @@ const MatchSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 
+const ReportSchema = new mongoose.Schema({
+  id: String,
+  targetId: String,
+  targetNickname: String,
+  reporterId: String,
+  reporterNickname: String,
+  reason: String,
+  date: String
+});
+
 const AdminSchema = new mongoose.Schema({
   target: { type: String, unique: true },
   type: String
@@ -108,6 +117,7 @@ const AdminSchema = new mongoose.Schema({
 const UserModel = mongoose.model('User', UserSchema);
 const LikeModel = mongoose.model('Like', LikeSchema);
 const MatchModel = mongoose.model('Match', MatchSchema);
+const ReportModel = mongoose.model('Report', ReportSchema);
 const AdminModel = mongoose.model('Admin', AdminSchema);
 
 const FOUNDER_ID = String(process.env.FOUNDER_ID || '8245373459').trim().toLowerCase();
@@ -138,11 +148,11 @@ const bot = BOT_TOKEN ? new Telegraf(BOT_TOKEN) : null;
 if (bot) {
   bot.start((ctx) => {
     ctx.reply(
-      `Merhaba ${ctx.from.first_name}! ✨\n\nGoldenMatch meclisine hoş geldin. Keşfetmeye başlamak için dokun:`,
+      `Merhaba ${ctx.from.first_name}! ✨\n\nGoldenMatch meclisine hoş geldin. Keşfe başlamak için dokun:`,
       Markup.inlineKeyboard([Markup.button.webApp("🔥 GoldenMatch'i Aç", WEBAPP_URL)])
     );
   });
-  bot.launch({ dropPendingUpdates: true }).catch(err => console.warn('Bot başlatma uyarısı:', err.message));
+  bot.launch({ dropPendingUpdates: true }).catch(err => console.warn('Bot uyarısı:', err.message));
 }
 
 // ================= API ROTALARI =================
@@ -182,7 +192,7 @@ app.post('/api/profile', async (req, res) => {
       city,
       district: district || '',
       archetype: archetype || 'Apollon',
-      expression,
+      expression: expression || 'Maskülen',
       bio,
       photos: photos || [],
       isVerified: false,
@@ -207,6 +217,7 @@ app.delete('/api/profile/:id', async (req, res) => {
 app.get('/api/cards', async (req, res) => {
   const currentUserId = String(req.query.userId);
   const filterCity = req.query.city;
+  const filterDistrict = req.query.district;
   const filterRole = req.query.role;
 
   const currentUser = await UserModel.findOne({ telegramId: currentUserId });
@@ -215,6 +226,7 @@ app.get('/api/cards', async (req, res) => {
 
   let query = { telegramId: { $ne: currentUserId, $nin: Array.from(likedUserIds) }, isBanned: false };
   if (filterCity && filterCity !== 'Hepsi') query.city = filterCity;
+  if (filterDistrict && filterDistrict !== 'Hepsi') query.district = filterDistrict;
   if (filterRole && filterRole !== 'Hepsi') query.role = filterRole;
 
   const users = await UserModel.find(query);
@@ -275,7 +287,7 @@ app.get('/api/chats', async (req, res) => {
       unread: lastMsg ? (lastMsg.senderId !== userId && !lastMsg.read) : true
     });
   }
-  res.json({ success: true, chats: userChats });
+  res.json({ success: true, chats: userChats, totalUnread: userChats.filter(c => c.unread).length });
 });
 
 app.get('/api/chats/:matchId', async (req, res) => {
@@ -344,12 +356,42 @@ app.post('/api/chats/:matchId/unmatch', async (req, res) => {
   res.json({ success: true });
 });
 
-// Socket.io (Sadece gerçek zamanlı sohbet bildirimleri için)
-if (io) {
-  io.on('connection', (socket) => {
-    socket.on('disconnect', () => {});
-  });
+// ================= YÖNETİCİ PANELİ (YT) API =================
+async function checkAdminAuth(req, res, next) {
+  const requesterId = req.headers['x-user-id'] || req.query.userId;
+  const requesterUsername = req.headers['x-user-name'] || req.query.username;
+  const isAdmin = await isUserAdmin(requesterId, requesterUsername);
+  if (isAdmin) return next();
+  return res.status(403).json({ success: false, message: 'Yetki reddedildi.' });
 }
+
+app.get('/api/admin/dashboard-data', checkAdminAuth, async (req, res) => {
+  const userList = await UserModel.find();
+  const reportsList = await ReportModel.find().sort({ _id: -1 });
+  const requesterId = req.headers['x-user-id'] || req.query.userId;
+  const requesterUsername = req.headers['x-user-name'] || req.query.username;
+
+  res.json({
+    success: true,
+    isFounder: isFounder(requesterId, requesterUsername),
+    stats: {
+      total: userList.length,
+      active: userList.filter(u => !u.isBanned).length,
+      banned: userList.filter(u => u.isBanned).length,
+      reportsCount: reportsList.length
+    },
+    users: userList,
+    reports: reportsList
+  });
+});
+
+app.post('/api/admin/toggle-ban', checkAdminAuth, async (req, res) => {
+  const user = await UserModel.findOne({ telegramId: String(req.body.targetTelegramId) });
+  if (!user) return res.status(404).json({ success: false });
+  user.isBanned = !user.isBanned;
+  await user.save();
+  res.json({ success: true, isBanned: user.isBanned });
+});
 
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, '0.0.0.0', () => {
