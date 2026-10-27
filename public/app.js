@@ -1,5 +1,5 @@
 // ==========================================================================
-// GOLDENMATCH - İSTEMCİ UYGULAMA MOTORU (APP.JS)
+// GOLDENMATCH - GELİŞMİŞ İSTEMCİ UYGULAMA MOTORU (APP.JS)
 // ==========================================================================
 
 const tg = window.Telegram?.WebApp;
@@ -19,12 +19,16 @@ let activeMatchId = null;
 let activePartnerId = null;
 let chatPollingInterval = null;
 
+let filterCity = 'Hepsi';
+let filterDistrict = 'Hepsi';
+let filterRole = 'Hepsi';
+
 const DEFAULT_LOCATIONS = {
-  "İstanbul": ["Kadıköy", "Beşiktaş", "Şişli", "Beyoğlu", "Bakırköy", "Üsküdar", "Maltepe", "Ataşehir", "Sarıyer", "Fatih"],
-  "Ankara": ["Çankaya", "Kızılay", "Tunalı", "Bahçelievler", "Yenimahalle"],
-  "İzmir": ["Alsancak", "Konak", "Karşıyaka", "Bornova", "Buca"],
-  "Antalya": ["Muratpaşa", "Konyaaltı", "Lara", "Kepez"],
-  "Bursa": ["Nilüfer", "Osmangazi", "Yıldırım"]
+  "İstanbul": ["Kadıköy", "Beşiktaş", "Şişli", "Beyoğlu", "Bakırköy", "Üsküdar", "Maltepe", "Ataşehir", "Sarıyer", "Fatih", "Bahçelievler", "Avcılar", "Kartal", "Pendik", "Beylikdüzü"],
+  "Ankara": ["Çankaya", "Kızılay", "Tunalı", "Bahçelievler", "Yenimahalle", "Batıkent", "Keçiören", "Mamak"],
+  "İzmir": ["Alsancak", "Konak", "Karşıyaka", "Bornova", "Buca", "Bostanlı", "Göztepe"],
+  "Antalya": ["Muratpaşa", "Konyaaltı", "Lara", "Kepez", "Alanya"],
+  "Bursa": ["Nilüfer", "Osmangazi", "Yıldırım", "Mudanya"]
 };
 
 let allLocations = Object.assign({}, DEFAULT_LOCATIONS);
@@ -43,8 +47,10 @@ async function loadLocations() {
     }
   } catch (err) {}
   populateCityChips();
+  populateFilterCityChips();
 }
 
+// ----------------- KAYIT / PROFİL ŞEHİR & İLÇE -----------------
 function populateCityChips(filterText = '') {
   const container = document.getElementById('cityChipGrid');
   if (!container) return;
@@ -103,21 +109,97 @@ function selectCity(city, btnElem, preselectedDistrict = null) {
   });
 }
 
-function selectChip(fieldId, value, elem) {
-  const input = document.getElementById(fieldId);
-  if (input) input.value = value;
-  const parent = elem ? elem.closest('.chip-grid') : null;
-  if (parent) {
-    parent.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
-    elem.classList.add('selected');
-  }
-  if (fieldId === 'city') selectCity(value, elem);
+// ----------------- GELİŞMİŞ FİLTRELEME -----------------
+function populateFilterCityChips() {
+  const container = document.getElementById('filterCityChips');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const allBtn = document.createElement('button');
+  allBtn.type = 'button';
+  allBtn.className = 'choice-chip' + (filterCity === 'Hepsi' ? ' selected' : '');
+  allBtn.innerText = 'Tüm Şehirler';
+  allBtn.onclick = () => setFilterCity('Hepsi', allBtn);
+  container.appendChild(allBtn);
+
+  Object.keys(allLocations).forEach(city => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'choice-chip' + (city === filterCity ? ' selected' : '');
+    btn.innerText = city;
+    btn.onclick = () => setFilterCity(city, btn);
+    container.appendChild(btn);
+  });
 }
 
+function setFilterCity(city, elem) {
+  filterCity = city;
+  filterDistrict = 'Hepsi';
+  document.querySelectorAll('#filterCityChips .choice-chip').forEach(b => b.classList.remove('selected'));
+  elem.classList.add('selected');
+  populateFilterDistrictChips();
+}
+
+function populateFilterDistrictChips() {
+  const container = document.getElementById('filterDistrictChips');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const allBtn = document.createElement('button');
+  allBtn.type = 'button';
+  allBtn.className = 'choice-chip selected';
+  allBtn.innerText = 'Tüm İlçeler';
+  allBtn.onclick = () => setFilterDistrict('Hepsi', allBtn);
+  container.appendChild(allBtn);
+
+  if (filterCity !== 'Hepsi' && allLocations[filterCity]) {
+    allLocations[filterCity].forEach(d => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'choice-chip' + (d === filterDistrict ? ' selected' : '');
+      btn.innerText = d;
+      btn.onclick = () => setFilterDistrict(d, btn);
+      container.appendChild(btn);
+    });
+  }
+}
+
+function setFilterDistrict(district, elem) {
+  filterDistrict = district;
+  document.querySelectorAll('#filterDistrictChips .choice-chip').forEach(b => b.classList.remove('selected'));
+  elem.classList.add('selected');
+}
+
+function setFilterRole(role, elem) {
+  filterRole = role;
+  document.querySelectorAll('#filterRoleChips .choice-chip').forEach(b => b.classList.remove('selected'));
+  elem.classList.add('selected');
+}
+
+function openFilterModal() {
+  populateFilterCityChips();
+  populateFilterDistrictChips();
+  document.getElementById('filterModal')?.classList.remove('hidden');
+}
+
+function closeFilterModal() {
+  document.getElementById('filterModal')?.classList.add('hidden');
+}
+
+function applyFilters() {
+  closeFilterModal();
+  loadExploreCards();
+}
+
+// ----------------- GENEL YETKİ VE PROFİL KONTROLÜ -----------------
 async function checkUserProfile() {
   try {
     const res = await fetch(`/api/profile/${window.currentUserId}?username=${window.currentUsername}`);
     const data = await res.json();
+
+    if (data.isAdmin || data.isFounder) {
+      document.getElementById('ytNavBtn')?.classList.remove('hidden');
+    }
 
     if (data.exists && data.profile) {
       currentProfile = data.profile;
@@ -125,6 +207,7 @@ async function checkUserProfile() {
       document.getElementById('appNav')?.classList.remove('hidden');
       switchTab('explore');
       loadExploreCards();
+      checkUnreadMessages();
     } else {
       switchTab('register');
     }
@@ -142,6 +225,8 @@ function fillProfileForm(p) {
 
   if (p.city) selectCity(p.city, null, p.district || null);
   if (p.role) selectChip('role', p.role, findButtonByText('role', p.role));
+  if (p.interestedRole) selectChip('interestedRole', p.interestedRole, findButtonByText('interestedRole', p.interestedRole));
+  if (p.archetype) selectChip('archetype', p.archetype, findButtonByText('archetype', p.archetype));
 
   if (p.photos && p.photos.length) {
     p.photos.forEach((url, i) => {
@@ -155,11 +240,23 @@ function fillProfileForm(p) {
       }
     });
   }
+  document.getElementById('deleteAccountBtn')?.classList.remove('hidden');
 }
 
 function findButtonByText(targetName, text) {
   const container = document.querySelector(`[data-target="${targetName}"]`);
-  return container ? Array.from(container.querySelectorAll('button')).find(b => b.innerText.trim() === text) : null;
+  return container ? Array.from(container.querySelectorAll('button')).find(b => b.innerText.includes(text)) : null;
+}
+
+function selectChip(fieldId, value, elem) {
+  const input = document.getElementById(fieldId);
+  if (input) input.value = value;
+  const parent = elem ? elem.closest('.chip-grid') : null;
+  if (parent) {
+    parent.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
+    elem.classList.add('selected');
+  }
+  if (fieldId === 'city') selectCity(value, elem);
 }
 
 let activeSlotIndex = 0;
@@ -198,8 +295,10 @@ async function handleFormSubmit(event) {
     height: Number(document.getElementById('height').value) || null,
     weight: Number(document.getElementById('weight').value) || null,
     role: document.getElementById('role').value,
+    interestedRole: document.getElementById('interestedRole')?.value || 'Hepsi',
     city: document.getElementById('city').value,
     district: document.getElementById('district').value,
+    archetype: document.getElementById('archetype')?.value || 'Apollon',
     bio: document.getElementById('bio').value.trim(),
     photos: userPhotos.filter(p => p !== '')
   };
@@ -227,6 +326,12 @@ async function handleFormSubmit(event) {
   }
 }
 
+async function deleteMyAccount() {
+  if (!confirm('Hesabınızı silmek istediğinize emin misiniz?')) return;
+  await fetch(`/api/profile/${window.currentUserId}`, { method: 'DELETE' });
+  location.reload();
+}
+
 function switchTab(tabId) {
   if (chatPollingInterval) {
     clearInterval(chatPollingInterval);
@@ -246,9 +351,13 @@ function switchTab(tabId) {
     loadExploreCards();
   } else if (tabId === 'inbox') {
     document.getElementById('inboxView')?.classList.remove('hidden');
+    document.getElementById('unreadBadge')?.classList.add('hidden');
     loadInboxChats();
   } else if (tabId === 'chatRoom') {
     document.getElementById('chatRoomView')?.classList.remove('hidden');
+  } else if (tabId === 'adminPanel') {
+    document.getElementById('adminPanelView')?.classList.remove('hidden');
+    loadAdminDashboard();
   }
 }
 
@@ -256,12 +365,13 @@ function openProfileEdit() {
   switchTab('register');
 }
 
+// ----------------- KEŞFET & KARTLAR -----------------
 async function loadExploreCards() {
   const stage = document.getElementById('activeCard');
   if (!stage) return;
   stage.innerHTML = '<div class="card-loader">Altın kader ağları taranıyor...</div>';
   try {
-    const res = await fetch(`/api/cards?userId=${window.currentUserId}&city=Hepsi&role=Hepsi`);
+    const res = await fetch(`/api/cards?userId=${window.currentUserId}&city=${encodeURIComponent(filterCity)}&district=${encodeURIComponent(filterDistrict)}&role=${encodeURIComponent(filterRole)}`);
     const data = await res.json();
     if (data.success) {
       cardsList = data.cards;
@@ -286,7 +396,7 @@ function renderCurrentCard() {
     <img src="${photo}" style="width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0;" alt="">
     <div style="position:absolute; bottom:0; left:0; right:0; padding:20px; background:linear-gradient(to top, rgba(0,0,0,0.9), transparent);">
       <h3 style="color:#fff; font-size:22px; margin:0 0 4px 0;">${user.nickname}, ${user.age}</h3>
-      <p style="color:#d4af37; font-size:13px; margin:0;">${user.role} • 📍 ${user.city}</p>
+      <p style="color:#d4af37; font-size:13px; margin:0;">${user.role} • 📍 ${user.city} / ${user.district || 'Merkez'}</p>
     </div>
   `;
 }
@@ -307,6 +417,19 @@ async function triggerCardSwipe(action) {
   } catch (err) {}
   currentCardIndex++;
   renderCurrentCard();
+}
+
+// ----------------- MESAJLAR & UNREAD BADGE -----------------
+async function checkUnreadMessages() {
+  try {
+    const res = await fetch(`/api/chats?userId=${window.currentUserId}`);
+    const data = await res.json();
+    if (data.success && data.totalUnread > 0) {
+      document.getElementById('unreadBadge')?.classList.remove('hidden');
+    } else {
+      document.getElementById('unreadBadge')?.classList.add('hidden');
+    }
+  } catch (e) {}
 }
 
 async function loadInboxChats() {
@@ -333,6 +456,7 @@ async function loadInboxChats() {
         `;
         list.appendChild(item);
       });
+      document.getElementById('unreadBadge')?.classList.add('hidden');
     }
   } catch (e) {
     list.innerHTML = '<div class="card-loader">Sohbetler yüklenemedi.</div>';
@@ -416,4 +540,39 @@ async function cancelCurrentMatch() {
     body: JSON.stringify({ userId: window.currentUserId })
   });
   switchTab('inbox');
+}
+
+// ----------------- YÖNETİCİ (YT) PANELİ -----------------
+async function loadAdminDashboard() {
+  try {
+    const res = await fetch(`/api/admin/dashboard-data?userId=${window.currentUserId}&username=${window.currentUsername}`);
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('ytStatTotal').innerText = data.stats.total;
+      document.getElementById('ytStatActive').innerText = data.stats.active;
+
+      const uList = document.getElementById('adminUserCards');
+      if (uList && data.users) {
+        uList.innerHTML = '';
+        data.users.forEach(u => {
+          const card = document.createElement('div');
+          card.style.cssText = 'background:#1c1b29; padding:10px; border-radius:10px; display:flex; justify-content:space-between; align-items:center; font-size:13px;';
+          card.innerHTML = `
+            <div><strong>${u.nickname}</strong> (${u.role}) - <span style="color:#d4af37;">${u.city}</span></div>
+            <button onclick="toggleBanUser('${u.telegramId}')" style="background:${u.isBanned ? '#2ed573' : '#ff4757'}; color:#fff; border:none; padding:4px 8px; border-radius:6px; cursor:pointer;">${u.isBanned ? 'Aç' : 'Banla'}</button>
+          `;
+          uList.appendChild(card);
+        });
+      }
+    }
+  } catch (e) {}
+}
+
+async function toggleBanUser(targetTelegramId) {
+  await fetch('/api/admin/toggle-ban', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ targetTelegramId, userId: window.currentUserId, username: window.currentUsername })
+  });
+  loadAdminDashboard();
 }
