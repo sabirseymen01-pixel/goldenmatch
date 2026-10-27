@@ -1,820 +1,481 @@
-// ==========================================================================
-// GOLDENMATCH - ULTRA-HD 4D PARAMETRİK LOUNGE & GTA-TPS MOTORU
-// ==========================================================================
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-let scene, camera, renderer, player, joystick;
-let composer, bloomPass;
-let moveVector = { x: 0, y: 0 };
-let socket = null;
-let otherPlayers = {};
-let currentTargetUser = null;
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
-
-// Kullanıcı Tarafından Canlı Yönetilen Meta Ayarlar Portu Parametreleri
-let cameraSettings = {
-  distance: 9.0,      // GTA ferah takip mesafesi
-  fov: 65,            // Doğal derinlik açısı
-  heightOffset: 1.8,  // Omuz hizası
-  exposure: 1.15      // Sinematik pozlama
-};
-
-// GTA / Minecraft Tarzı 3. Şahıs Dinamik Kamera Açıları
-let camYaw = 0;
-let camPitch = 0.28;
-const camTarget = new THREE.Vector3();
-let isPointerOrbiting = false;
-let lastPointerX = 0, lastPointerY = 0;
-
-// Animasyon & Eylem Durumları
-let currentActionState = 'idle';
-let walkCycle = 0;
-let isMoving = false;
-let isSprinting = false;
-
-// Işıklar & Ambiyans
-let hemiLight, sunLight, chandelierLight;
-let isGhostMode = false;
-let isAdminEditor = false;
-
-// Avatar Konfigürasyonu
-let myAvatarConfig = {
-  gender: 'female',
-  skinColor: '#f7d2b7',
-  eyeColor: '#9b59b6',
-  eyeShape: 'almond',
-  hairStyle: 'twin_pigtails',
-  hairColor: '#00d2d3',
-  hat: 'none',
-  glasses: 'cyber_sunglasses',
-  necklace: 'heavy_chain',
-  outfitTop: 'bandage_corset',
-  outfitTopColor: '#f0f0f5',
-  outfitBottom: 'strapped_shorts',
-  outfitBottomColor: '#f0f0f5',
-  shoes: 'laced_boots',
-  shoesColor: '#ffffff'
-};
-
-try {
-  const saved = localStorage.getItem('gm_avatar_config');
-  if (saved) myAvatarConfig = Object.assign(myAvatarConfig, JSON.parse(saved));
-  const savedCam = localStorage.getItem('gm_camera_settings');
-  if (savedCam) cameraSettings = Object.assign(cameraSettings, JSON.parse(savedCam));
-} catch (e) {}
-
-// ==========================================================================
-// 1. PROCEDURAL PBR DOKU ÜRETECİLERİ (ROBLOX PLASTİKLİĞİNİ BİTİREN KISIM)
-// ==========================================================================
-function createProceduralParquet() {
-  const c = document.createElement('canvas');
-  c.width = 1024; c.height = 1024;
-  const ctx = c.getContext('2d');
-  ctx.fillStyle = '#26160e';
-  ctx.fillRect(0, 0, 1024, 1024);
-
-  const rows = 16, cols = 8;
-  const w = 1024 / cols, h = 1024 / rows;
-  for (let i = 0; i < rows; i++) {
-    for (let j = 0; j < cols; j++) {
-      const shift = (i % 2) * (w / 2);
-      const x = (j * w + shift) % 1024;
-      const y = i * h;
-      const tone = 25 + Math.floor(Math.sin(i * 3 + j * 5) * 8);
-      ctx.fillStyle = `rgb(${tone + 38}, ${tone + 18}, ${tone + 6})`;
-      ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
-    }
-  }
-  const tex = new THREE.CanvasTexture(c);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(4, 4);
-  return tex;
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  -webkit-tap-highlight-color: transparent;
 }
 
-function createProceduralMarble() {
-  const c = document.createElement('canvas');
-  c.width = 512; c.height = 512;
-  const ctx = c.getContext('2d');
-  ctx.fillStyle = '#f8f6f0';
-  ctx.fillRect(0, 0, 512, 512);
-
-  ctx.strokeStyle = 'rgba(212, 175, 55, 0.32)';
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.moveTo(0, 80);
-  ctx.bezierCurveTo(140, 220, 320, 120, 512, 440);
-  ctx.stroke();
-
-  ctx.strokeStyle = 'rgba(90, 85, 80, 0.16)';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(110, 0);
-  ctx.bezierCurveTo(230, 270, 360, 380, 512, 190);
-  ctx.stroke();
-
-  return new THREE.CanvasTexture(c);
+body {
+  background-color: #0b0a10;
+  color: #f0f0f5;
+  overflow-x: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
 }
 
-// ==========================================================================
-// 2. SAHNE, SİNEMATİK POST-PROCESSING VE PARAMETRİK MEKAN
-// ==========================================================================
-function initMetaverse() {
-  const container = document.getElementById('canvas-container');
-  if (!container) return;
-
-  if (renderer && scene) {
-    onWindowResize();
-    return;
-  }
-
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x13111c);
-  scene.fog = new THREE.FogExp2(0x13111c, 0.012);
-
-  camera = new THREE.PerspectiveCamera(cameraSettings.fov, container.clientWidth / container.clientHeight, 0.1, 1000);
-
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
-  renderer.setSize(container.clientWidth, container.clientHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.outputEncoding = THREE.sRGBEncoding;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = cameraSettings.exposure;
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-  container.innerHTML = '';
-  container.appendChild(renderer.domElement);
-
-  const renderPass = new THREE.RenderPass(scene, camera);
-  bloomPass = new THREE.UnrealBloomPass(
-    new THREE.Vector2(container.clientWidth, container.clientHeight),
-    0.42, 0.4, 0.86
-  );
-  composer = new THREE.EffectComposer(renderer);
-  composer.addPass(renderPass);
-  composer.addPass(bloomPass);
-
-  hemiLight = new THREE.HemisphereLight(0xfff2e6, 0x1f1929, 0.7);
-  scene.add(hemiLight);
-
-  sunLight = new THREE.DirectionalLight(0xffeed6, 1.9);
-  sunLight.position.set(25, 45, 20);
-  sunLight.castShadow = true;
-  sunLight.shadow.mapSize.width = 2048;
-  sunLight.shadow.mapSize.height = 2048;
-  sunLight.shadow.bias = -0.00015;
-  scene.add(sunLight);
-
-  buildParametricGoldenAuditorium();
-
-  player = buildStylizedAvatarMesh(myAvatarConfig);
-  scene.add(player);
-
-  setupJoystick();
-  setupKeyboardControls();
-  setupGTAOrbitControls(container);
-  loadSavedWorldItems();
-  populateYtItemDrawer();
-  setupSocket();
-
-  renderer.domElement.addEventListener('pointerdown', onSceneClick);
-  window.addEventListener('resize', onWindowResize);
-  syncSettingsPortUI();
-  animate();
+.app-wrapper {
+  width: 100%;
+  max-width: 440px;
+  height: 100vh;
+  max-height: 950px;
+  background: #13121d;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
+  border: 1px solid rgba(212, 175, 55, 0.25);
 }
 
-function buildParametricGoldenAuditorium() {
-  const floorMat = new THREE.MeshStandardMaterial({
-    map: createProceduralParquet(),
-    roughness: 0.28,
-    metalness: 0.05
-  });
-  const marbleMat = new THREE.MeshStandardMaterial({
-    map: createProceduralMarble(),
-    roughness: 0.16,
-    metalness: 0.08
-  });
-  const pinkVelvetMat = new THREE.MeshStandardMaterial({
-    color: 0xd95272,
-    roughness: 0.45,
-    metalness: 0.05
-  });
-  const goldSculptMat = new THREE.MeshStandardMaterial({
-    color: 0xdfb76c,
-    metalness: 0.92,
-    roughness: 0.18
-  });
-
-  const centerFloor = new THREE.Mesh(new THREE.CylinderGeometry(20, 20, 0.6, 48), floorMat);
-  centerFloor.position.set(0, -2.6, 0);
-  centerFloor.receiveShadow = true;
-  scene.add(centerFloor);
-
-  for (let i = 0; i < 7; i++) {
-    const radius = 34 - i * 3.6;
-    const height = 0.55;
-    const ringGeo = new THREE.CylinderGeometry(radius, radius + 1.2, height, 48);
-    const stepMesh = new THREE.Mesh(ringGeo, pinkVelvetMat);
-    stepMesh.position.set(0, (6 - i) * height - 2.5, 0);
-    stepMesh.receiveShadow = true;
-    stepMesh.castShadow = true;
-    scene.add(stepMesh);
-  }
-
-  for (let j = 0; j < 12; j++) {
-    const ribbonGroup = new THREE.Group();
-    const curveRadius = 14 + j * 2.2;
-    const tubeGeo = new THREE.TorusGeometry(curveRadius, 0.45, 12, 64, Math.PI * 1.4);
-    const ribbon = new THREE.Mesh(tubeGeo, j % 2 === 0 ? marbleMat : pinkVelvetMat);
-    ribbon.rotation.x = Math.PI / 2 + (j * 0.06);
-    ribbon.rotation.y = (j * 0.18);
-    ribbon.position.set(Math.sin(j) * 3, 14 + (j * 0.9), Math.cos(j) * 2);
-    ribbon.castShadow = true;
-    ribbonGroup.add(ribbon);
-    scene.add(ribbonGroup);
-  }
-
-  const chandelier = new THREE.Mesh(
-    new THREE.TorusGeometry(3.6, 0.06, 16, 64),
-    new THREE.MeshBasicMaterial({ color: 0xffe0a3 })
-  );
-  chandelier.rotation.x = Math.PI / 2;
-  chandelier.position.set(0, 8.5, 0);
-  scene.add(chandelier);
-
-  chandelierLight = new THREE.PointLight(0xffb359, 1.4, 25, 1.5);
-  chandelierLight.position.set(0, 8.2, 0);
-  chandelierLight.castShadow = true;
-  scene.add(chandelierLight);
-
-  spawnGoldenSpiralSculpture(16, 1.2, -6, goldSculptMat);
-  spawnGoldenSpiralSculpture(-16, 1.2, -6, goldSculptMat);
-  buildModernCurvedBar();
-}
-
-function spawnGoldenSpiralSculpture(x, y, z, mat) {
-  const group = new THREE.Group();
-  for (let i = 0; i < 18; i++) {
-    const geom = new THREE.TorusGeometry(1.6 - (i * 0.04), 0.14, 12, 32, Math.PI * 1.2);
-    const ring = new THREE.Mesh(geom, mat);
-    ring.rotation.x = Math.PI / 3;
-    ring.rotation.z = i * 0.38;
-    ring.position.y = i * 0.55;
-    ring.castShadow = true;
-    group.add(ring);
-  }
-  group.position.set(x, y, z);
-  scene.add(group);
-}
-
-function buildModernCurvedBar() {
-  const barMat = new THREE.MeshStandardMaterial({ color: 0x181720, roughness: 0.22 });
-  const goldTrim = new THREE.MeshStandardMaterial({ color: 0xdfb76c, metalness: 0.92, roughness: 0.15 });
-
-  const barMesh = new THREE.Mesh(new THREE.CylinderGeometry(9, 9, 2.4, 32, 1, false, 0, Math.PI), barMat);
-  barMesh.rotation.y = -Math.PI / 2;
-  barMesh.position.set(0, 1.2, -12);
-  barMesh.castShadow = true;
-  barMesh.receiveShadow = true;
-  scene.add(barMesh);
-
-  const trim = new THREE.Mesh(new THREE.CylinderGeometry(9.2, 9.2, 0.2, 32, 1, false, 0, Math.PI), goldTrim);
-  trim.rotation.y = -Math.PI / 2;
-  trim.position.set(0, 2.4, -12);
-  scene.add(trim);
-}
-
-// ==========================================================================
-// 3. STİLİZE İNSANSI AVATAR MİMARİSİ
-// ==========================================================================
-function buildStylizedAvatarMesh(cfg) {
-  const root = new THREE.Group();
-  const isFemale = cfg.gender === 'female';
-
-  const skinMat = new THREE.MeshStandardMaterial({ color: cfg.skinColor || '#f7d2b7', roughness: 0.65 });
-  const eyeMat = new THREE.MeshStandardMaterial({ color: cfg.eyeColor || '#9b59b6', roughness: 0.1 });
-  const hairMat = new THREE.MeshStandardMaterial({ color: cfg.hairColor || '#00d2d3', roughness: 0.35, metalness: 0.1 });
-  const topMat = new THREE.MeshStandardMaterial({ color: cfg.outfitTopColor || '#ffffff', roughness: 0.45 });
-  const bottomMat = new THREE.MeshStandardMaterial({ color: cfg.outfitBottomColor || '#1a1a24', roughness: 0.45 });
-  const goldMat = new THREE.MeshStandardMaterial({ color: 0xdfb76c, metalness: 0.92, roughness: 0.18 });
-  const bootsMat = new THREE.MeshStandardMaterial({ color: cfg.shoesColor || '#ffffff', roughness: 0.35 });
-
-  const pelvis = new THREE.Group();
-  pelvis.position.y = 1.85;
-  root.add(pelvis);
-
-  const torsoWidth = isFemale ? 0.68 : 0.92;
-  const chestWidth = isFemale ? 0.82 : 1.08;
-  const torso = new THREE.Mesh(
-    new THREE.CylinderGeometry(chestWidth * 0.45, torsoWidth * 0.4, 1.3, 20),
-    cfg.outfitTop !== 'none' ? topMat : skinMat
-  );
-  torso.position.y = 0.65;
-  torso.castShadow = true;
-  pelvis.add(torso);
-
-  const headGroup = new THREE.Group();
-  headGroup.position.y = 1.85;
-  pelvis.add(headGroup);
-
-  const headGeo = new THREE.SphereGeometry(0.38, 24, 24);
-  headGeo.scale(1, 1.2, 1.08);
-  const head = new THREE.Mesh(headGeo, skinMat);
-  head.castShadow = true;
-  headGroup.add(head);
-
-  const hairGeo = new THREE.SphereGeometry(0.41, 16, 16);
-  const cap = new THREE.Mesh(hairGeo, hairMat);
-  cap.position.set(0, 0.12, -0.04);
-  headGroup.add(cap);
-
-  if (cfg.glasses === 'cyber_sunglasses') {
-    const glasses = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.14, 0.16), new THREE.MeshStandardMaterial({ color: 0x111116, roughness: 0.1 }));
-    glasses.position.set(0, 0.06, 0.37);
-    headGroup.add(glasses);
-  }
-
-  const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.7, 12), skinMat);
-  armL.position.set(-0.45, 1.1, 0);
-  armL.castShadow = true;
-  pelvis.add(armL);
-
-  const armR = armL.clone();
-  armR.position.x = 0.45;
-  pelvis.add(armR);
-
-  const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.1, 1.1, 14), bootsMat);
-  legL.position.set(-0.2, -0.55, 0);
-  legL.castShadow = true;
-  pelvis.add(legL);
-
-  const legR = legL.clone();
-  legR.position.x = 0.2;
-  pelvis.add(legR);
-
-  root.userData.joints = { pelvis, headGroup, armL, armR, legL, legR };
-  root.userData.config = cfg;
-  return root;
-}
-
-// ==========================================================================
-// 4. CANLI META AYARLAR PORTU YÖNETİMİ (⚙️)
-// ==========================================================================
-window.toggleMetaSettingsPort = function() {
-  const modal = document.getElementById('metaSettingsPort');
-  modal?.classList.toggle('hidden');
-};
-
-window.onMetaSettingChange = function(type, value) {
-  const val = parseFloat(value);
-  if (type === 'distance') {
-    cameraSettings.distance = val;
-    document.getElementById('label-cam-dist').innerText = val.toFixed(1) + 'm';
-  } else if (type === 'fov') {
-    cameraSettings.fov = val;
-    document.getElementById('label-cam-fov').innerText = val + '°';
-    if (camera) {
-      camera.fov = val;
-      camera.updateProjectionMatrix();
-    }
-  } else if (type === 'height') {
-    cameraSettings.heightOffset = val;
-    document.getElementById('label-cam-height').innerText = val.toFixed(1) + 'm';
-  } else if (type === 'exposure') {
-    cameraSettings.exposure = val;
-    document.getElementById('label-cam-exp').innerText = val.toFixed(2);
-    if (renderer) renderer.toneMappingExposure = val;
-  }
-  localStorage.setItem('gm_camera_settings', JSON.stringify(cameraSettings));
-};
-
-window.applyPerspectivePreset = function(preset, btnElem) {
-  document.querySelectorAll('.view-preset-btns .view-btn').forEach(b => b.classList.remove('active'));
-  if (btnElem) btnElem.classList.add('active');
-
-  if (preset === 'wide') {
-    cameraSettings.distance = 9.5;
-    cameraSettings.fov = 68;
-    cameraSettings.heightOffset = 1.8;
-  } else if (preset === 'close') {
-    cameraSettings.distance = 5.5;
-    cameraSettings.fov = 55;
-    cameraSettings.heightOffset = 1.6;
-  } else if (preset === 'top') {
-    cameraSettings.distance = 14.0;
-    cameraSettings.fov = 48;
-    cameraSettings.heightOffset = 4.2;
-  } else if (preset === 'fps') {
-    cameraSettings.distance = 0.4;
-    cameraSettings.fov = 85;
-    cameraSettings.heightOffset = 1.7;
-  }
-
-  syncSettingsPortUI();
-  if (camera) {
-    camera.fov = cameraSettings.fov;
-    camera.updateProjectionMatrix();
-  }
-  localStorage.setItem('gm_camera_settings', JSON.stringify(cameraSettings));
-};
-
-function syncSettingsPortUI() {
-  const sDist = document.getElementById('slider-cam-dist');
-  const sFov = document.getElementById('slider-cam-fov');
-  const sHeight = document.getElementById('slider-cam-height');
-  const sExp = document.getElementById('slider-cam-exp');
-
-  if (sDist) sDist.value = cameraSettings.distance;
-  if (sFov) sFov.value = cameraSettings.fov;
-  if (sHeight) sHeight.value = cameraSettings.heightOffset;
-  if (sExp) sExp.value = cameraSettings.exposure;
-
-  document.getElementById('label-cam-dist')?.innerText = cameraSettings.distance.toFixed(1) + 'm';
-  document.getElementById('label-cam-fov')?.innerText = cameraSettings.fov + '°';
-  document.getElementById('label-cam-height')?.innerText = cameraSettings.heightOffset.toFixed(1) + 'm';
-  document.getElementById('label-cam-exp')?.innerText = cameraSettings.exposure.toFixed(2);
-}
-
-// ==========================================================================
-// 5. GTA TARZI KAMERA VE İNSANSI ANİMASYON DÖNGÜSÜ
-// ==========================================================================
-function setupGTAOrbitControls(container) {
-  container.addEventListener('mousedown', (e) => {
-    if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
-      isPointerOrbiting = true;
-      lastPointerX = e.clientX;
-      lastPointerY = e.clientY;
-    }
-  });
-
-  window.addEventListener('mouseup', () => { isPointerOrbiting = false; });
-
-  window.addEventListener('mousemove', (e) => {
-    if (!isPointerOrbiting) return;
-    const dx = e.clientX - lastPointerX;
-    const dy = e.clientY - lastPointerY;
-    lastPointerX = e.clientX;
-    lastPointerY = e.clientY;
-
-    camYaw -= dx * 0.0055;
-    camPitch += dy * 0.0055;
-    camPitch = Math.max(-0.15, Math.min(Math.PI / 2.6, camPitch));
-  });
-
-  container.addEventListener('touchstart', (e) => {
-    const t = e.touches[0];
-    if (t.clientX > window.innerWidth * 0.35) {
-      isPointerOrbiting = true;
-      lastPointerX = t.clientX;
-      lastPointerY = t.clientY;
-    }
-  }, { passive: true });
-
-  container.addEventListener('touchmove', (e) => {
-    if (!isPointerOrbiting) return;
-    const t = e.touches[0];
-    const dx = t.clientX - lastPointerX;
-    const dy = t.clientY - lastPointerY;
-    lastPointerX = t.clientX;
-    lastPointerY = t.clientY;
-
-    camYaw -= dx * 0.0075;
-    camPitch += dy * 0.0075;
-    camPitch = Math.max(-0.15, Math.min(Math.PI / 2.6, camPitch));
-  }, { passive: true });
-
-  container.addEventListener('touchend', () => { isPointerOrbiting = false; });
-}
-
-let lastSendTime = 0;
-const animClock = new THREE.Clock();
-
-function animate() {
-  requestAnimationFrame(animate);
-  const delta = animClock.getDelta();
-  const joints = player?.userData?.joints;
-
-  if (player && (Math.abs(moveVector.x) > 0.05 || Math.abs(moveVector.y) > 0.05)) {
-    currentActionState = 'walk';
-    const currentSpeed = isSprinting ? 6.5 : 3.4;
-
-    const inputAngle = Math.atan2(moveVector.x, moveVector.y);
-    const targetHeading = camYaw + inputAngle;
-
-    player.rotation.y += THREE.MathUtils.clamp(
-      THREE.MathUtils.euclideanModulo(targetHeading - player.rotation.y + Math.PI, Math.PI * 2) - Math.PI,
-      -delta * 14,
-      delta * 14
-    );
-
-    player.position.x += Math.sin(targetHeading) * currentSpeed * delta;
-    player.position.z += Math.cos(targetHeading) * currentSpeed * delta;
-
-    walkCycle += delta * (isSprinting ? 14 : 9);
-    if (joints) {
-      joints.legL.rotation.x = Math.sin(walkCycle) * 0.6;
-      joints.legR.rotation.x = -Math.sin(walkCycle) * 0.6;
-      joints.armL.rotation.x = -Math.sin(walkCycle) * 0.5;
-      joints.armR.rotation.x = Math.sin(walkCycle) * 0.5;
-      joints.pelvis.position.y = 1.85 + Math.abs(Math.sin(walkCycle * 2)) * 0.06;
-    }
-
-    const now = Date.now();
-    if (socket && now - lastSendTime > 50) {
-      lastSendTime = now;
-      socket.emit('player_move', {
-        x: player.position.x,
-        y: player.position.y,
-        z: player.position.z,
-        rotY: player.rotation.y,
-        actionState: 'walk'
-      });
-    }
-  } else if (player) {
-    if (currentActionState === 'sit') {
-      if (joints) {
-        joints.pelvis.position.y = 1.0;
-        joints.legL.rotation.x = -Math.PI / 2.2;
-        joints.legR.rotation.x = -Math.PI / 2.2;
-      }
-    } else if (currentActionState === 'crouch') {
-      if (joints) {
-        joints.pelvis.position.y = 1.25;
-        joints.legL.rotation.x = -Math.PI / 3.5;
-        joints.legR.rotation.x = -Math.PI / 3.5;
-      }
-    } else {
-      currentActionState = 'idle';
-      walkCycle += delta * 2;
-      if (joints) {
-        joints.legL.rotation.x = 0;
-        joints.legR.rotation.x = 0;
-        joints.armL.rotation.x = 0;
-        joints.armR.rotation.x = 0;
-        joints.pelvis.position.y = 1.85 + Math.sin(walkCycle) * 0.02;
-      }
-    }
-  }
-
-  if (player && camera) {
-    const desiredX = player.position.x + Math.sin(camYaw) * Math.cos(camPitch) * cameraSettings.distance;
-    const desiredY = player.position.y + cameraSettings.heightOffset + Math.sin(camPitch) * cameraSettings.distance;
-    const desiredZ = player.position.z + Math.cos(camYaw) * Math.cos(camPitch) * cameraSettings.distance;
-
-    camera.position.lerp(new THREE.Vector3(desiredX, desiredY, desiredZ), 0.16);
-    camTarget.set(player.position.x, player.position.y + (cameraSettings.heightOffset * 0.8), player.position.z);
-    camera.lookAt(camTarget);
-  }
-
-  if (composer) {
-    composer.render();
-  } else if (renderer && scene && camera) {
-    renderer.render(scene, camera);
+@media(min-width: 441px) {
+  .app-wrapper {
+    border-radius: 32px;
   }
 }
 
-// ==========================================================================
-// 6. JOYSTICK, EYLEM VE SOKET KONTROLLERİ
-// ==========================================================================
-window.toggleSprint = function() {
-  isSprinting = !isSprinting;
-  const btn = document.getElementById('action-sprint-btn');
-  if (btn) btn.style.borderColor = isSprinting ? '#d4af37' : 'rgba(212,175,55,0.5)';
-};
-
-function togglePlayerSit() {
-  const btn = document.getElementById('action-sit-btn');
-  if (currentActionState === 'sit') {
-    currentActionState = 'idle';
-    btn?.classList.remove('active');
-  } else {
-    currentActionState = 'sit';
-    document.getElementById('action-crouch-btn')?.classList.remove('active');
-    btn?.classList.add('active');
-  }
-  syncActionStateWithSocket();
+.hidden {
+  display: none !important;
 }
 
-function togglePlayerCrouch() {
-  const btn = document.getElementById('action-crouch-btn');
-  if (currentActionState === 'crouch') {
-    currentActionState = 'idle';
-    btn?.classList.remove('active');
-  } else {
-    currentActionState = 'crouch';
-    document.getElementById('action-sit-btn')?.classList.remove('active');
-    btn?.classList.add('active');
-  }
-  syncActionStateWithSocket();
+.app-nav {
+  height: 65px;
+  background: rgba(19, 18, 29, 0.94);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.25);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 18px;
+  z-index: 100;
 }
 
-window.setMetaverseAmbiance = function(mode, el) {
-  document.querySelectorAll('.amb-btn').forEach(b => b.classList.remove('active'));
-  if (el) el.classList.add('active');
-
-  if (mode === 'sunset') {
-    scene.background.set(0x18101a);
-    scene.fog.color.set(0x18101a);
-    sunLight.color.set(0xff753a);
-    sunLight.intensity = 2.2;
-    hemiLight.intensity = 0.45;
-    renderer.toneMappingExposure = 1.12;
-  } else if (mode === 'day') {
-    scene.background.set(0xd2deea);
-    scene.fog.color.set(0xd2deea);
-    sunLight.color.set(0xffffff);
-    sunLight.intensity = 2.0;
-    hemiLight.intensity = 0.75;
-    renderer.toneMappingExposure = 1.2;
-  } else if (mode === 'night') {
-    scene.background.set(0x07080d);
-    scene.fog.color.set(0x07080d);
-    sunLight.color.set(0x354b66);
-    sunLight.intensity = 0.35;
-    hemiLight.intensity = 0.2;
-    renderer.toneMappingExposure = 1.3;
-  }
-};
-
-function setupKeyboardControls() {
-  const keys = { KeyW: false, KeyS: false, KeyA: false, KeyD: false, ShiftLeft: false };
-
-  window.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-    if (keys[e.code] !== undefined) keys[e.code] = true;
-    updateKeyMove();
-  });
-
-  window.addEventListener('keyup', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-    if (keys[e.code] !== undefined) keys[e.code] = false;
-    updateKeyMove();
-  });
-
-  function updateKeyMove() {
-    let x = 0, y = 0;
-    if (keys.KeyW) y += 1;
-    if (keys.KeyS) y -= 1;
-    if (keys.KeyD) x += 1;
-    if (keys.KeyA) x -= 1;
-
-    if (!joystick || (moveVector.x === 0 && moveVector.y === 0)) {
-      moveVector.x = x;
-      moveVector.y = y;
-      isMoving = (x !== 0 || y !== 0);
-    }
-    isSprinting = !!keys.ShiftLeft;
-  }
+.brand-logo {
+  font-family: 'Cinzel', serif;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  cursor: pointer;
 }
 
-function syncActionStateWithSocket() {
-  if (socket && player) {
-    socket.emit('player_move', {
-      x: player.position.x,
-      y: player.position.y,
-      z: player.position.z,
-      rotY: player.rotation.y,
-      actionState: currentActionState
-    });
-  }
+.gold-text {
+  background: linear-gradient(135deg, #ffffff 0%, #d4af37 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-function setupJoystick() {
-  const zone = document.getElementById('joystick-zone');
-  if (!zone || typeof nipplejs === 'undefined') return;
-  zone.innerHTML = '';
-
-  joystick = nipplejs.create({
-    zone: zone,
-    mode: 'static',
-    position: { left: '60px', top: '60px' },
-    color: '#e5a93c',
-    size: 90
-  });
-
-  joystick.on('move', (evt, data) => {
-    if (data && data.vector) {
-      moveVector.x = data.vector.x;
-      moveVector.y = data.vector.y;
-      isMoving = true;
-    }
-  });
-
-  joystick.on('end', () => {
-    moveVector.x = 0;
-    moveVector.y = 0;
-    isMoving = false;
-  });
+.nav-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
-function setupSocket() {
-  if (socket) return;
-  socket = typeof io !== 'undefined' ? io() : null;
-  if (!socket) return;
-
-  socket.emit('join_metaverse', {
-    telegramId: window.currentUserId,
-    nickname: document.getElementById('nickname')?.value || 'Misafir',
-    city: document.getElementById('city')?.value || '',
-    district: document.getElementById('district')?.value || '',
-    role: document.getElementById('role')?.value || '',
-    avatar: (typeof images !== 'undefined' && images[0]) ? images[0] : '',
-    avatarConfig: myAvatarConfig,
-    x: player.position.x,
-    y: player.position.y,
-    z: player.position.z,
-    isGhost: isGhostMode
-  });
+.nav-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  color: #fff;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 }
 
-function loadSavedWorldItems() {
-  fetch('/api/metaverse/items')
-    .then(r => r.json())
-    .then(data => {
-      if (data.success && data.items) {
-        data.items.forEach(item => {
-          const box = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0xdfb76c }));
-          box.position.set(item.position.x, 0.5, item.position.z);
-          scene.add(box);
-        });
-      }
-    });
+.view-screen {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
 }
 
-function populateYtItemDrawer() {
-  const grid = document.getElementById('yt-items-catalog');
-  if (!grid) return;
-  grid.innerHTML = `
-    <div class="drawer-item-card" onclick="spawnItem('golden_spiral')">
-      <span class="drawer-item-icon">🎗️</span>
-      <div class="drawer-item-name">Altın Anıt</div>
-    </div>
-  `;
+.view-screen.hidden {
+  display: none !important;
 }
 
-function spawnItem(itemType) {
-  if (!player) return;
-  const box = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0xdfb76c }));
-  box.position.set(player.position.x, 0.5, player.position.z - 2);
-  scene.add(box);
+.screen-header {
+  margin-bottom: 16px;
+  text-align: center;
 }
 
-function enterMetaverseAsGhost() {
-  isGhostMode = true;
-  isAdminEditor = true;
-  switchTab('metaverse');
-  alert('👻 Hayalet Modu Aktif.');
+.subtitle {
+  font-size: 12px;
+  color: #8e8e9a;
+  margin-top: 4px;
 }
 
-function toggleYtItemDrawer() {
-  document.getElementById('ytItemDrawer')?.classList.toggle('hidden');
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
 }
 
-function onSceneClick(event) {
-  const container = document.getElementById('canvas-container');
-  if (!container || !camera) return;
-
-  const rect = container.getBoundingClientRect();
-  mouse.x = ((event.clientX - rect.left) / container.clientWidth) * 2 - 1;
-  mouse.y = -((event.clientY - rect.top) / container.clientHeight) * 2 + 1;
-  raycaster.setFromCamera(mouse, camera);
-
-  const meshes = Object.values(otherPlayers).map(p => p.group);
-  const intersects = raycaster.intersectObjects(meshes, true);
-  if (intersects.length > 0) {
-    let clicked = intersects[0].object;
-    while (clicked.parent && !clicked.userData.telegramId) clicked = clicked.parent;
-    if (clicked.userData && clicked.userData.telegramId) {
-      currentTargetUser = clicked.userData;
-      document.getElementById('metaProfileName').innerText = currentTargetUser.nickname;
-      document.getElementById('metaProfileImg').src = currentTargetUser.avatar || '';
-      document.getElementById('metaverseProfileModal').classList.remove('hidden');
-    }
-  }
+.photo-slot {
+  aspect-ratio: 3/4;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed rgba(212, 175, 55, 0.4);
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-function sendWorldChat() {
-  const input = document.getElementById('world-chat-input');
-  if (!input || !player) return;
-  const text = input.value.trim();
-  if (!text) return;
-  if (socket) socket.emit('world_chat_message', { text });
-  input.value = '';
+.photo-slot.main {
+  grid-column: span 2;
+  grid-row: span 2;
+  border-style: solid;
+  border-color: #d4af37;
 }
 
-function exitMetaverseToExplore() {
-  if (socket) {
-    socket.disconnect();
-    socket = null;
-  }
-  switchTab('explore');
+.slot-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: none;
 }
 
-function onWindowResize() {
-  const container = document.getElementById('canvas-container');
-  if (!container || !camera || !renderer) return;
-  camera.aspect = container.clientWidth / container.clientHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(container.clientWidth, container.clientHeight);
-  if (composer) composer.setSize(container.clientWidth, container.clientHeight);
+.photo-slot.has-image .slot-preview {
+  display: block;
 }
+
+.photo-slot.has-image .slot-placeholder {
+  display: none;
+}
+
+.slot-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: #d4af37;
+  font-size: 11px;
+}
+
+.gold-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #d4af37;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.form-group input, .form-group textarea {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 12px;
+  color: #fff;
+  font-size: 14px;
+  outline: none;
+}
+
+.form-row-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.choice-chip {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ccc;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.choice-chip.selected {
+  background: #d4af37;
+  color: #0b0a10;
+  border-color: #d4af37;
+  font-weight: 700;
+}
+
+.primary-btn {
+  background: linear-gradient(135deg, #d4af37, #aa8220);
+  color: #0b0a10;
+  border: none;
+  padding: 14px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(212, 175, 55, 0.3);
+}
+
+.ghost-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.card-stage {
+  flex: 1;
+  position: relative;
+  background: #181624;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  min-height: 380px;
+  max-height: 480px;
+}
+
+.tinder-card {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.card-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #777;
+  font-size: 13px;
+  text-align: center;
+  padding: 20px;
+}
+
+.swipe-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 0;
+}
+
+.action-circle {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 20px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+}
+
+.pass-btn {
+  background: #1e1c2b;
+  color: #ff4757;
+  border: 1px solid rgba(255, 71, 87, 0.3);
+}
+
+.like-btn {
+  background: linear-gradient(135deg, #ff4757, #ff6b81);
+  color: #fff;
+}
+
+.sub-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.inbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chat-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 10px;
+  border-radius: 14px;
+  cursor: pointer;
+}
+
+.chat-avatar-wrap {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1.5px solid #d4af37;
+  flex-shrink: 0;
+}
+
+.chat-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.chat-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: #fff;
+  margin-bottom: 2px;
+}
+
+.chat-snippet {
+  font-size: 12px;
+  color: #999;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-time {
+  font-size: 10px;
+  color: #666;
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 10px;
+  gap: 8px;
+}
+
+.partner-meta h3 {
+  font-size: 14px;
+  color: #fff;
+}
+
+.status-indicator {
+  font-size: 10px;
+  color: #d4af37;
+}
+
+.paravan-pill, .unmatch-pill {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  color: #d4af37;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.unmatch-pill {
+  color: #ff4757;
+  border-color: rgba(255, 71, 87, 0.3);
+}
+
+.chat-stream {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px;
+  max-height: calc(100vh - 240px);
+}
+
+.chat-bubble {
+  max-width: 75%;
+  padding: 10px 14px;
+  border-radius: 16px;
+  font-size: 13px;
+  position: relative;
+  word-break: break-word;
+}
+
+.chat-bubble.me {
+  background: linear-gradient(135deg, #d4af37, #b8972b);
+  color: #0b0a10;
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+  font-weight: 500;
+}
+
+.chat-bubble.them {
+  background: #201e30;
+  color: #fff;
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.bubble-time {
+  font-size: 9px;
+  display: block;
+  text-align: right;
+  margin-top: 4px;
+  opacity: 0.7;
+}
+
+.chat-composer {
+  display: flex;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 8px;
+}
+
+.chat-composer input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 12);
+  padding: 10px 14px;
+  border-radius: 20px;
+  color: #fff;
+  outline: none;
+  font-size: 13px;
+}
+
+.composer-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #d4af37;
+  color: #0b0a10;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
