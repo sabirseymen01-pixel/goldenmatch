@@ -20,6 +20,7 @@ let activePartnerId = null;
 let chatPollingInterval = null;
 let windowIsAdmin = false;
 let windowIsFounder = false;
+let selectedMessageForReport = null;
 
 let filterCity = 'Hepsi';
 let filterDistrict = 'Hepsi';
@@ -368,6 +369,7 @@ function openProfileEdit() {
   switchTab('register');
 }
 
+// ----------------- KEŞFET & KARTLAR (iOS Dokunmatik Kaydırma & Matlaşma) -----------------
 async function loadExploreCards() {
   const stage = document.getElementById('activeCard');
   if (!stage) return;
@@ -395,12 +397,58 @@ function renderCurrentCard() {
   const user = cardsList[currentCardIndex];
   const photo = user.photos?.[0] || '';
   cardElem.innerHTML = `
-    <img src="${photo}" style="width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0;" alt="">
+    <img src="${photo}" style="width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0; pointer-events:none;" alt="">
     <div style="position:absolute; bottom:0; left:0; right:0; padding:20px; background:linear-gradient(to top, rgba(0,0,0,0.9), transparent);">
       <h3 style="color:#fff; font-size:22px; margin:0 0 4px 0;">${user.nickname}, ${user.age}</h3>
       <p style="color:#d4af37; font-size:13px; margin:0;">${user.role} • 📍 ${user.city} / ${user.district || 'Merkez'}</p>
     </div>
   `;
+  initCardSwipePhysics(cardElem);
+}
+
+function initCardSwipePhysics(card) {
+  let startX = 0, currentX = 0, isDragging = false;
+
+  const onStart = (clientX) => {
+    isDragging = true;
+    startX = clientX;
+    card.style.transition = 'none';
+  };
+
+  const onMove = (clientX) => {
+    if (!isDragging) return;
+    currentX = clientX - startX;
+    const rotate = currentX * 0.06;
+    const opacityFactor = Math.max(0.4, 1 - Math.abs(currentX) / 350);
+    card.style.transform = `translate(${currentX}px, 0px) rotate(${rotate}deg)`;
+    card.style.opacity = opacityFactor;
+  };
+
+  const onEnd = () => {
+    if (!isDragging) return;
+    isDragging = false;
+    card.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease';
+    if (currentX > 100) {
+      card.style.transform = `translate(500px, 50px) rotate(30deg)`;
+      card.style.opacity = '0';
+      setTimeout(() => triggerCardSwipe('like'), 250);
+    } else if (currentX < -100) {
+      card.style.transform = `translate(-500px, 50px) rotate(-30deg)`;
+      card.style.opacity = '0';
+      setTimeout(() => triggerCardSwipe('pass'), 250);
+    } else {
+      card.style.transform = 'translate(0px, 0px) rotate(0deg)';
+      card.style.opacity = '1';
+    }
+  };
+
+  card.onmousedown = (e) => onStart(e.clientX);
+  window.onmousemove = (e) => onMove(e.clientX);
+  window.onmouseup = () => onEnd();
+
+  card.ontouchstart = (e) => onStart(e.touches[0].clientX);
+  card.ontouchmove = (e) => onMove(e.touches[0].clientX);
+  card.ontouchend = () => onEnd();
 }
 
 async function triggerCardSwipe(action) {
@@ -468,6 +516,7 @@ async function loadInboxChats() {
 async function openChatRoom(matchId, partner) {
   activeMatchId = matchId;
   activePartnerId = partner.telegramId;
+  selectedMessageForReport = null;
   switchTab('chatRoom');
   document.getElementById('chatPartnerName').innerText = partner.nickname;
   await fetchMessages();
@@ -500,7 +549,14 @@ function renderMessages(messages) {
   messages.forEach(msg => {
     const isMe = msg.senderId === window.currentUserId;
     const bubble = document.createElement('div');
-    bubble.className = `chat-bubble ${isMe ? 'me' : 'them'}`;
+    bubble.className = `chat-bubble ${isMe ? 'me' : 'them'} selectable`;
+    if (selectedMessageForReport === msg.text) {
+      bubble.classList.add('selected-for-report');
+    }
+    bubble.onclick = () => {
+      selectedMessageForReport = msg.text;
+      renderMessages(messages);
+    };
     bubble.innerHTML = `<span>${msg.text}</span><span class="bubble-time">${msg.time}</span>`;
     stream.appendChild(bubble);
   });
@@ -544,10 +600,13 @@ async function cancelCurrentMatch() {
   switchTab('inbox');
 }
 
-// Şikayet Etme Fonksiyonu
+// Şikayet Etme (Mesaj Seçmeli)
 async function reportCurrentPartner() {
-  const reason = prompt('Şikayet sebebinizi belirtin (Örn: Uygunsuz davranış):');
+  let reason = prompt('Şikayet sebebinizi belirtin:');
   if (!reason || !activePartnerId) return;
+  if (selectedMessageForReport) {
+    reason += ` [Seçilen Mesaj: "${selectedMessageForReport}"]`;
+  }
   try {
     const res = await fetch('/api/report', {
       method: 'POST',
@@ -556,7 +615,8 @@ async function reportCurrentPartner() {
     });
     const data = await res.json();
     if (data.success) {
-      alert('⚠️ Şikayetiniz YT ekibine iletildi.');
+      alert('⚠️ Şikayetiniz ve seçilen mesaj YT ekibine iletildi.');
+      selectedMessageForReport = null;
     }
   } catch (e) {
     alert('Şikayet iletilemedi.');
@@ -589,7 +649,6 @@ async function loadAdminDashboard() {
           uList.appendChild(card);
         });
 
-        // Şikayet ve Raporlar Bölümü
         if (data.reports && data.reports.length > 0) {
           const repHeading = document.createElement('h3');
           repHeading.style.cssText = 'color:#ff4757; font-size:14px; margin:16px 0 8px 0;';
@@ -602,7 +661,7 @@ async function loadAdminDashboard() {
             repCard.innerHTML = `
               <div><strong>Şikayet Edilen:</strong> <span style="color:#ff4757;">${r.targetNickname}</span></div>
               <div><strong>Şikayet Eden:</strong> ${r.reporterNickname}</div>
-              <div><strong>Sebep:</strong> ${r.reason}</div>
+              <div><strong>Sebep/Mesaj:</strong> ${r.reason}</div>
               <div style="font-size:10px; color:#aaa; margin-top:4px;">Tarih: ${r.date}</div>
             `;
             uList.appendChild(repCard);
