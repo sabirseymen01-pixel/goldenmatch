@@ -18,6 +18,8 @@ let userPhotos = ['', '', '', ''];
 let activeMatchId = null;
 let activePartnerId = null;
 let chatPollingInterval = null;
+let windowIsAdmin = false;
+let windowIsFounder = false;
 
 let filterCity = 'Hepsi';
 let filterDistrict = 'Hepsi';
@@ -197,8 +199,13 @@ async function checkUserProfile() {
     const res = await fetch(`/api/profile/${window.currentUserId}?username=${window.currentUsername}`);
     const data = await res.json();
 
-    if (data.isAdmin || data.isFounder) {
+    windowIsAdmin = !!(data.isAdmin || data.isFounder);
+    windowIsFounder = !!data.isFounder;
+
+    if (windowIsAdmin) {
       document.getElementById('ytNavBtn')?.classList.remove('hidden');
+    } else {
+      document.getElementById('ytNavBtn')?.classList.add('hidden');
     }
 
     if (data.exists && data.profile) {
@@ -225,8 +232,6 @@ function fillProfileForm(p) {
 
   if (p.city) selectCity(p.city, null, p.district || null);
   if (p.role) selectChip('role', p.role, findButtonByText('role', p.role));
-  if (p.interestedRole) selectChip('interestedRole', p.interestedRole, findButtonByText('interestedRole', p.interestedRole));
-  if (p.archetype) selectChip('archetype', p.archetype, findButtonByText('archetype', p.archetype));
 
   if (p.photos && p.photos.length) {
     p.photos.forEach((url, i) => {
@@ -240,12 +245,11 @@ function fillProfileForm(p) {
       }
     });
   }
-  document.getElementById('deleteAccountBtn')?.classList.remove('hidden');
 }
 
 function findButtonByText(targetName, text) {
   const container = document.querySelector(`[data-target="${targetName}"]`);
-  return container ? Array.from(container.querySelectorAll('button')).find(b => b.innerText.includes(text)) : null;
+  return container ? Array.from(container.querySelectorAll('button')).find(b => b.innerText.trim() === text) : null;
 }
 
 function selectChip(fieldId, value, elem) {
@@ -295,10 +299,8 @@ async function handleFormSubmit(event) {
     height: Number(document.getElementById('height').value) || null,
     weight: Number(document.getElementById('weight').value) || null,
     role: document.getElementById('role').value,
-    interestedRole: document.getElementById('interestedRole')?.value || 'Hepsi',
     city: document.getElementById('city').value,
     district: document.getElementById('district').value,
-    archetype: document.getElementById('archetype')?.value || 'Apollon',
     bio: document.getElementById('bio').value.trim(),
     photos: userPhotos.filter(p => p !== '')
   };
@@ -326,17 +328,18 @@ async function handleFormSubmit(event) {
   }
 }
 
-async function deleteMyAccount() {
-  if (!confirm('Hesabınızı silmek istediğinize emin misiniz?')) return;
-  await fetch(`/api/profile/${window.currentUserId}`, { method: 'DELETE' });
-  location.reload();
-}
-
 function switchTab(tabId) {
   if (chatPollingInterval) {
     clearInterval(chatPollingInterval);
     chatPollingInterval = null;
   }
+
+  if (tabId === 'adminPanel' && !windowIsAdmin) {
+    alert('⚠️ Bu porta sadece Kurucu ve YT üyeleri girebilir!');
+    switchTab('explore');
+    return;
+  }
+
   document.querySelectorAll('.view-screen').forEach(s => s.classList.add('hidden'));
 
   const navBar = document.getElementById('appNav');
@@ -365,7 +368,6 @@ function openProfileEdit() {
   switchTab('register');
 }
 
-// ----------------- KEŞFET & KARTLAR -----------------
 async function loadExploreCards() {
   const stage = document.getElementById('activeCard');
   if (!stage) return;
@@ -542,7 +544,7 @@ async function cancelCurrentMatch() {
   switchTab('inbox');
 }
 
-// ----------------- YÖNETİCİ (YT) PANELİ -----------------
+// ----------------- YÖNETİCİ (YT) PANELİ & KURUCU KONTROLÜ -----------------
 async function loadAdminDashboard() {
   try {
     const res = await fetch(`/api/admin/dashboard-data?userId=${window.currentUserId}&username=${window.currentUsername}`);
@@ -555,17 +557,36 @@ async function loadAdminDashboard() {
       if (uList && data.users) {
         uList.innerHTML = '';
         data.users.forEach(u => {
+          const isAdmin = data.admins?.includes(u.telegramId) || data.admins?.includes(u.username);
           const card = document.createElement('div');
           card.style.cssText = 'background:#1c1b29; padding:10px; border-radius:10px; display:flex; justify-content:space-between; align-items:center; font-size:13px;';
           card.innerHTML = `
-            <div><strong>${u.nickname}</strong> (${u.role}) - <span style="color:#d4af37;">${u.city}</span></div>
-            <button onclick="toggleBanUser('${u.telegramId}')" style="background:${u.isBanned ? '#2ed573' : '#ff4757'}; color:#fff; border:none; padding:4px 8px; border-radius:6px; cursor:pointer;">${u.isBanned ? 'Aç' : 'Banla'}</button>
+            <div><strong>${u.nickname}</strong> (${u.role}) - <span style="color:#d4af37;">${u.city}</span> ${isAdmin ? '<span style="color:#d4af37;">[YT]</span>' : ''}</div>
+            <div style="display:flex; gap:6px;">
+              ${windowIsFounder ? `<button onclick="toggleAdmin('${u.telegramId}')" style="background:${isAdmin ? '#e58e26' : '#3c6382'}; color:#fff; border:none; padding:4px 8px; border-radius:6px; cursor:pointer;">${isAdmin ? 'YT Al' : 'YT Yap'}</button>` : ''}
+              <button onclick="toggleBanUser('${u.telegramId}')" style="background:${u.isBanned ? '#2ed573' : '#ff4757'}; color:#fff; border:none; padding:4px 8px; border-radius:6px; cursor:pointer;">${u.isBanned ? 'Aç' : 'Banla'}</button>
+            </div>
           `;
           uList.appendChild(card);
         });
       }
     }
   } catch (e) {}
+}
+
+async function toggleAdmin(targetId) {
+  if (!windowIsFounder) {
+    alert('Bu işlem sadece Kurucuya özeldir.');
+    return;
+  }
+  const res = await fetch('/api/admin/toggle-admin', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: window.currentUserId, username: window.currentUsername, targetId })
+  });
+  const data = await res.json();
+  alert(data.message);
+  loadAdminDashboard();
 }
 
 async function toggleBanUser(targetTelegramId) {
