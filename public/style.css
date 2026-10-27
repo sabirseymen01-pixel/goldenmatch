@@ -6,6 +6,8 @@
   padding: 0;
   font-family: 'Plus Jakarta Sans', sans-serif;
   -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 body {
@@ -28,13 +30,14 @@ body {
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.95);
   border: 1px solid rgba(212, 175, 55, 0.25);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 @media(min-width: 441px) {
   .app-wrapper {
-    border-radius: 32px;
+    border-radius: 36px;
   }
 }
 
@@ -42,11 +45,21 @@ body {
   display: none !important;
 }
 
+/* iOS Tarzı Akıcı Buton ve Dokunma Efektleri */
+button, .choice-chip, .action-circle, .chat-item, .photo-slot {
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.2s ease, border-color 0.2s ease;
+}
+
+button:active, .choice-chip:active, .action-circle:active {
+  transform: scale(0.92) !important;
+}
+
 .app-nav {
   height: 65px;
-  background: rgba(19, 18, 29, 0.94);
-  backdrop-filter: blur(14px);
-  border-bottom: 1px solid rgba(212, 175, 55, 0.25);
+  background: rgba(19, 18, 29, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -85,6 +98,25 @@ body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  position: relative;
+}
+
+.badge-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 10px;
+  height: 10px;
+  background: #ff4757;
+  border-radius: 50%;
+  border: 2px solid #13121d;
+  animation: pulse-badge 1.5s infinite;
+}
+
+@keyframes pulse-badge {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(255, 71, 87, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
 }
 
 .view-screen {
@@ -93,10 +125,12 @@ body {
   padding: 16px;
   display: flex;
   flex-direction: column;
+  animation: fadeIniOS 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.view-screen.hidden {
-  display: none !important;
+@keyframes fadeIniOS {
+  from { opacity: 0; transform: translateY(10px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .screen-header {
@@ -121,13 +155,17 @@ body {
   aspect-ratio: 3/4;
   background: rgba(255, 255, 255, 0.04);
   border: 1px dashed rgba(212, 175, 55, 0.4);
-  border-radius: 12px;
+  border-radius: 14px;
   position: relative;
   overflow: hidden;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.photo-slot:active {
+  transform: scale(0.95);
 }
 
 .photo-slot.main {
@@ -182,13 +220,19 @@ body {
 }
 
 .form-group input, .form-group textarea {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  padding: 12px;
+  border-radius: 14px;
+  padding: 14px;
   color: #fff;
   font-size: 14px;
   outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-group input:focus, .form-group textarea:focus {
+  border-color: #d4af37;
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.2);
 }
 
 .form-row-3 {
@@ -214,23 +258,24 @@ body {
 }
 
 .choice-chip.selected {
-  background: #d4af37;
+  background: linear-gradient(135deg, #d4af37, #aa8220);
   color: #0b0a10;
   border-color: #d4af37;
   font-weight: 700;
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
 }
 
 .primary-btn {
   background: linear-gradient(135deg, #d4af37, #aa8220);
   color: #0b0a10;
   border: none;
-  padding: 14px;
-  border-radius: 14px;
+  padding: 16px;
+  border-radius: 16px;
   font-weight: 800;
   font-size: 14px;
   cursor: pointer;
   text-align: center;
-  box-shadow: 0 4px 20px rgba(212, 175, 55, 0.3);
+  box-shadow: 0 6px 20px rgba(212, 175, 55, 0.35);
 }
 
 .ghost-btn {
@@ -247,17 +292,19 @@ body {
   flex: 1;
   position: relative;
   background: #181624;
-  border-radius: 20px;
+  border-radius: 24px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.08);
   min-height: 380px;
   max-height: 480px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
 .tinder-card {
   width: 100%;
   height: 100%;
   position: relative;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .card-loader {
@@ -276,21 +323,21 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 20px;
+  gap: 24px;
   padding: 16px 0;
 }
 
 .action-circle {
-  width: 56px;
-  height: 56px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 20px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+  font-size: 22px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
 }
 
 .pass-btn {
@@ -314,7 +361,7 @@ body {
 .inbox-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .chat-item {
@@ -323,14 +370,19 @@ body {
   gap: 12px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 10px;
-  border-radius: 14px;
+  padding: 12px;
+  border-radius: 16px;
   cursor: pointer;
 }
 
+.chat-item:active {
+  transform: scale(0.98);
+  background: rgba(255, 255, 255, 0.06);
+}
+
 .chat-avatar-wrap {
-  width: 50px;
-  height: 50px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   overflow: hidden;
   border: 1.5px solid #d4af37;
@@ -352,7 +404,7 @@ body {
   font-weight: 700;
   font-size: 14px;
   color: #fff;
-  margin-bottom: 2px;
+  margin-bottom: 3px;
 }
 
 .chat-snippet {
@@ -388,17 +440,17 @@ body {
   color: #d4af37;
 }
 
-.paravan-pill, .unmatch-pill {
+.paravan-pill, .unmatch-pill, .report-pill {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(212, 175, 55, 0.3);
   color: #d4af37;
-  padding: 4px 8px;
-  border-radius: 12px;
+  padding: 5px 10px;
+  border-radius: 14px;
   font-size: 10px;
   cursor: pointer;
 }
 
-.unmatch-pill {
+.unmatch-pill, .report-pill {
   color: #ff4757;
   border-color: rgba(255, 71, 87, 0.3);
 }
@@ -415,11 +467,17 @@ body {
 
 .chat-bubble {
   max-width: 75%;
-  padding: 10px 14px;
-  border-radius: 16px;
+  padding: 12px 16px;
+  border-radius: 18px;
   font-size: 13px;
   position: relative;
   word-break: break-word;
+  animation: bubblePop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes bubblePop {
+  from { opacity: 0; transform: scale(0.8) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 .chat-bubble.me {
@@ -457,17 +515,17 @@ body {
 .chat-composer input {
   flex: 1;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 12);
-  padding: 10px 14px;
-  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 12px 16px;
+  border-radius: 24px;
   color: #fff;
   outline: none;
   font-size: 13px;
 }
 
 .composer-btn {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: #d4af37;
   color: #0b0a10;
@@ -479,3 +537,49 @@ body {
   flex-shrink: 0;
 }
 
+/* Modal ve Gelişmiş Filtreler */
+.modal-backdrop {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  animation: fadeIn 0.2s ease forwards;
+}
+
+.modal-sheet {
+  width: 100%;
+  background: #181624;
+  border-top-left-radius: 28px;
+  border-top-right-radius: 28px;
+  padding: 24px 20px;
+  border-top: 1px solid rgba(212, 175, 55, 0.3);
+  max-height: 80vh;
+  overflow-y: auto;
+  animation: slideUpiOS 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideUpiOS {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.icon-close {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #fff;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+}
