@@ -17,8 +17,13 @@
         <span class="gold-text">GOLDEN</span>MATCH
       </div>
       <div class="nav-actions">
+        <button id="ytNavBtn" class="nav-btn yt-badge hidden" onclick="switchTab('adminPanel')" title="Yönetici Paneli">👑 YT</button>
+        <button class="nav-btn" onclick="openFilterModal()" aria-label="Filtrele">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+        </button>
         <button class="nav-btn dm-btn" onclick="switchTab('inbox')" aria-label="Mesajlar">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span id="unreadBadge" class="badge-dot hidden"></span>
         </button>
         <button class="nav-btn" onclick="openProfileEdit()" aria-label="Profil">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/></svg>
@@ -26,11 +31,11 @@
       </div>
     </header>
 
-    <!-- 1. PROFİL KAYIT -->
+    <!-- 1. PROFİL KAYIT / DÜZENLEME -->
     <main id="registerView" class="view-screen">
       <div class="screen-header">
         <h1 class="gold-text">GOLDENMATCH</h1>
-        <p class="subtitle">Kutsal profilini mühürle.</p>
+        <p class="subtitle">Kutsal profilini ve karakterini mühürle.</p>
       </div>
 
       <div class="photo-grid">
@@ -78,9 +83,35 @@
             <button type="button" class="choice-chip" onclick="selectChip('role', 'Top', this)">Top</button>
             <button type="button" class="choice-chip" onclick="selectChip('role', 'Bottom', this)">Bottom</button>
             <button type="button" class="choice-chip" onclick="selectChip('role', 'Verse', this)">Verse</button>
+            <button type="button" class="choice-chip" onclick="selectChip('role', 'Verse Top', this)">Verse Top</button>
+            <button type="button" class="choice-chip" onclick="selectChip('role', 'Verse Bottom', this)">Verse Bottom</button>
             <button type="button" class="choice-chip" onclick="selectChip('role', 'Side', this)">Side</button>
+            <button type="button" class="choice-chip" onclick="selectChip('role', 'Trans', this)">Trans</button>
           </div>
           <input type="hidden" id="role" required>
+        </div>
+
+        <div class="form-group">
+          <label>Aradığın Rol</label>
+          <div class="chip-grid" data-target="interestedRole">
+            <button type="button" class="choice-chip selected" onclick="selectChip('interestedRole', 'Hepsi', this)">Hepsi</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Top', this)">Top</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Bottom', this)">Bottom</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Verse', this)">Verse</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Side', this)">Side</button>
+          </div>
+          <input type="hidden" id="interestedRole" value="Hepsi" required>
+        </div>
+
+        <div class="form-group">
+          <label>Olimpos Arketipi</label>
+          <div class="chip-grid vertical-chips" data-target="archetype">
+            <button type="button" class="choice-chip" onclick="selectChip('archetype', 'Apollon', this)">☀️ Apollon</button>
+            <button type="button" class="choice-chip" onclick="selectChip('archetype', 'Afrodit', this)">🕊️ Afrodit</button>
+            <button type="button" class="choice-chip" onclick="selectChip('archetype', 'Ares', this)">⚔️ Ares</button>
+            <button type="button" class="choice-chip" onclick="selectChip('archetype', 'Hermes', this)">🪽 Hermes</button>
+          </div>
+          <input type="hidden" id="archetype" required>
         </div>
 
         <div class="form-group">
@@ -89,6 +120,7 @@
         </div>
 
         <button type="submit" id="saveBtn" class="primary-btn gold-glow"><span>Profili Mühürle & Başla</span></button>
+        <button type="button" id="deleteAccountBtn" class="danger-outline-btn hidden" onclick="deleteMyAccount()" style="margin-top:10px; width:100%; background:transparent; border:1px solid #ff4757; color:#ff4757; padding:12px; border-radius:14px; cursor:pointer;">🗑️ Hesabımı Sil</button>
       </form>
     </main>
 
@@ -136,6 +168,49 @@
         <button type="submit" class="composer-btn">➤</button>
       </form>
     </main>
+
+    <!-- 5. YÖNETİCİ PANELİ (YT) -->
+    <main id="adminPanelView" class="view-screen hidden">
+      <div class="sub-header">
+        <h2 class="gold-text">👑 YT Yönetim Masası</h2>
+        <button class="ghost-btn" onclick="switchTab('explore')">Çıkış</button>
+      </div>
+      <div class="stats-cards" style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px;">
+        <div class="stat-pill" style="background:#171622; padding:10px; border-radius:12px; text-align:center;"><span>Toplam Üye</span><br><strong id="ytStatTotal" style="color:#d4af37;">0</strong></div>
+        <div class="stat-pill" style="background:#171622; padding:10px; border-radius:12px; text-align:center;"><span>Aktif</span><br><strong id="ytStatActive" style="color:#2ed573;">0</strong></div>
+      </div>
+      <div id="adminUserCards" class="admin-scroll-list" style="max-height:400px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
+    </main>
+
+    <!-- GELİŞMİŞ FİLTRE MODALI -->
+    <div id="filterModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeFilterModal()">
+      <div class="modal-sheet">
+        <div class="sheet-header"><h3>Gelişmiş Filtreler</h3><button class="icon-close" onclick="closeFilterModal()">✕</button></div>
+        
+        <div class="form-group" style="margin-bottom:12px;">
+          <label>Şehir Filtresi</label>
+          <div class="chip-grid" id="filterCityChips"></div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:12px;">
+          <label>İlçe / Semt Filtresi</label>
+          <div class="chip-grid" id="filterDistrictChips"></div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:16px;">
+          <label>Rol Filtresi</label>
+          <div class="chip-grid" id="filterRoleChips">
+            <button type="button" class="choice-chip selected" onclick="setFilterRole('Hepsi', this)">Hepsi</button>
+            <button type="button" class="choice-chip" onclick="setFilterRole('Top', this)">Top</button>
+            <button type="button" class="choice-chip" onclick="setFilterRole('Bottom', this)">Bottom</button>
+            <button type="button" class="choice-chip" onclick="setFilterRole('Verse', this)">Verse</button>
+            <button type="button" class="choice-chip" onclick="setFilterRole('Side', this)">Side</button>
+          </div>
+        </div>
+
+        <button class="primary-btn full" onclick="applyFilters()" style="width:100%;">Filtreleri Uygula</button>
+      </div>
+    </div>
 
   </div>
 
