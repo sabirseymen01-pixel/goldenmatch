@@ -164,7 +164,11 @@
 
       <div id="messageStream" class="chat-stream"></div>
 
+      <!-- WhatsApp Tarzı Medya ve Ses Gönderme Paneli -->
       <form class="chat-composer" onsubmit="sendChatMessage(event)">
+        <input type="file" id="chatMediaInput" accept="image/*" style="display:none" onchange="onChatMediaSelected(event)">
+        <button type="button" class="media-attach-btn" onclick="document.getElementById('chatMediaInput').click()" title="Fotoğraf Ekle">📷</button>
+        <button type="button" id="recordAudioBtn" class="media-attach-btn" onclick="toggleAudioRecording()" title="Sesli Mesaj">🎤</button>
         <input type="text" id="chatInput" placeholder="Mesajınızı fısıldayın..." autocomplete="off">
         <button type="submit" class="composer-btn">➤</button>
       </form>
@@ -183,7 +187,7 @@
       <div id="adminUserCards" class="admin-scroll-list" style="max-height:400px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
     </main>
 
-    <!-- GELİŞMİŞ FİLTRE MODALI -->
+    <!-- GELİŞMİŞ FİLTRE MODALI (Yaş Aralığı Dahil) -->
     <div id="filterModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeFilterModal()">
       <div class="modal-sheet">
         <div class="sheet-header"><h3>Gelişmiş Filtreler</h3><button class="icon-close" onclick="closeFilterModal()">✕</button></div>
@@ -196,6 +200,14 @@
         <div class="form-group" style="margin-bottom:12px;">
           <label>İlçe / Semt Filtresi</label>
           <div class="chip-grid" id="filterDistrictChips"></div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:12px;">
+          <label>Yaş Aralığı: <span id="ageRangeLabel" style="color:#d4af37;">18 - 99</span></label>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <input type="number" id="filterMinAge" value="18" min="18" max="99" style="width:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:10px; color:#fff;" placeholder="Min Yaş">
+            <input type="number" id="filterMaxAge" value="99" min="18" max="99" style="width:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:10px; color:#fff;" placeholder="Max Yaş">
+          </div>
         </div>
 
         <div class="form-group" style="margin-bottom:16px;">
