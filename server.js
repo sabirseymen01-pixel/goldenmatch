@@ -356,6 +356,27 @@ app.post('/api/chats/:matchId/unmatch', async (req, res) => {
   res.json({ success: true });
 });
 
+// Şikayet / Raporlama Rotası
+app.post('/api/report', async (req, res) => {
+  const { targetId, reporterId, reason } = req.body;
+  if (!targetId || !reporterId || !reason) return res.status(400).json({ success: false });
+
+  const targetUser = await UserModel.findOne({ telegramId: targetId });
+  const reporterUser = await UserModel.findOne({ telegramId: reporterId });
+
+  await ReportModel.create({
+    id: Date.now().toString(),
+    targetId,
+    targetNickname: targetUser ? targetUser.nickname : 'Bilinmeyen',
+    reporterId,
+    reporterNickname: reporterUser ? reporterUser.nickname : 'Bilinmeyen',
+    reason,
+    date: new Date().toLocaleString('tr-TR')
+  });
+
+  res.json({ success: true, message: 'Şikayet iletildi.' });
+});
+
 // ================= YÖNETİCİ PANELİ (YT) API =================
 async function checkAdminAuth(req, res, next) {
   const requesterId = req.headers['x-user-id'] || req.query.userId;
@@ -368,6 +389,7 @@ async function checkAdminAuth(req, res, next) {
 app.get('/api/admin/dashboard-data', checkAdminAuth, async (req, res) => {
   const userList = await UserModel.find();
   const reportsList = await ReportModel.find().sort({ _id: -1 });
+  const allAdmins = await AdminModel.find();
   const requesterId = req.headers['x-user-id'] || req.query.userId;
   const requesterUsername = req.headers['x-user-name'] || req.query.username;
 
@@ -381,7 +403,8 @@ app.get('/api/admin/dashboard-data', checkAdminAuth, async (req, res) => {
       reportsCount: reportsList.length
     },
     users: userList,
-    reports: reportsList
+    reports: reportsList,
+    admins: allAdmins.map(a => a.target)
   });
 });
 
@@ -391,6 +414,24 @@ app.post('/api/admin/toggle-ban', checkAdminAuth, async (req, res) => {
   user.isBanned = !user.isBanned;
   await user.save();
   res.json({ success: true, isBanned: user.isBanned });
+});
+
+// Kurucunun YT Ekleme / Çıkarma Rotası
+app.post('/api/admin/toggle-admin', async (req, res) => {
+  const { userId, username, targetId } = req.body;
+  if (!isFounder(userId, username)) {
+    return res.status(403).json({ success: false, message: 'Bu işlem sadece Kurucuya özeldir.' });
+  }
+
+  const tid = String(targetId).trim();
+  const existing = await AdminModel.findOne({ target: tid });
+  if (existing) {
+    await AdminModel.deleteOne({ target: tid });
+    return res.json({ success: true, isAdmin: false, message: 'YT yetkisi alındı.' });
+  } else {
+    await AdminModel.create({ target: tid, type: 'id' });
+    return res.json({ success: true, isAdmin: true, message: 'YT yetkisi verildi.' });
+  }
 });
 
 const PORT = process.env.PORT || 10000;
