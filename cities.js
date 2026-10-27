@@ -1,150 +1,92 @@
-// cities.js - İl ve Semt/İlçe Bazlı Koordinat ve Mesafe Motoru
+// ==========================================================================
+// GOLDENMATCH - COĞRAFİ KONUM VE MESAFE HESAPLAMA MOTORU (CITIES.JS)
+// ==========================================================================
 
 const LOCATIONS_DATA = {
   "İstanbul": {
-    coords: { lat: 41.0082, lng: 28.9784 },
-    districts: {
-      "Kadıköy": { lat: 40.9927, lng: 29.0287 },
-      "Beşiktaş": { lat: 41.0428, lng: 29.0077 },
-      "Şişli": { lat: 41.0602, lng: 28.9877 },
-      "Beyoğlu": { lat: 41.0369, lng: 28.9775 },
-      "Bakırköy": { lat: 40.9792, lng: 28.8718 },
-      "Üsküdar": { lat: 41.0267, lng: 29.0153 },
-      "Fatih": { lat: 41.0186, lng: 28.9497 },
-      "Maltepe": { lat: 40.9247, lng: 29.1311 },
-      "Ataşehir": { lat: 40.9847, lng: 29.1067 },
-      "Sarıyer": { lat: 41.1663, lng: 29.0498 },
-      "Kartal": { lat: 40.9014, lng: 29.1866 },
-      "Pendik": { lat: 40.8756, lng: 29.2333 },
-      "Beylikdüzü": { lat: 41.0015, lng: 28.6419 },
-      "Esenyurt": { lat: 41.0343, lng: 28.6801 },
-      "Bahçelievler": { lat: 41.0000, lng: 28.8600 },
-      "Bağcılar": { lat: 41.0333, lng: 28.8500 },
-      "Küçükçekmece": { lat: 41.0000, lng: 28.7833 },
-      "Zeytinburnu": { lat: 40.9917, lng: 28.9042 }
-    }
+    "Merkez": { lat: 41.0082, lng: 28.9784 },
+    "Kadıköy": { lat: 40.9901, lng: 29.0279 },
+    "Beşiktaş": { lat: 41.0428, lng: 29.0077 },
+    "Şişli": { lat: 41.0602, lng: 28.9877 },
+    "Beyoğlu": { lat: 41.0369, lng: 28.9775 },
+    "Bakırköy": { lat: 40.9791, lng: 28.8756 },
+    "Üsküdar": { lat: 41.0267, lng: 29.0153 },
+    "Maltepe": { lat: 40.9295, lng: 29.1308 },
+    "Ataşehir": { lat: 40.9923, lng: 29.1136 },
+    "Sarıyer": { lat: 41.1685, lng: 29.0573 },
+    "Fatih": { lat: 41.0104, lng: 28.9482 },
+    "Bahçelievler": { lat: 40.9978, lng: 28.8595 },
+    "Avcılar": { lat: 40.9781, lng: 28.7214 },
+    "Kartal": { lat: 40.8923, lng: 29.1843 },
+    "Pendik": { lat: 40.8756, lng: 29.2341 },
+    "Beylikdüzü": { lat: 41.0015, lng: 28.6421 }
   },
   "Ankara": {
-    coords: { lat: 39.9334, lng: 32.8597 },
-    districts: {
-      "Çankaya": { lat: 39.9167, lng: 32.8500 },
-      "Keçiören": { lat: 39.9833, lng: 32.8667 },
-      "Yenimahalle": { lat: 39.9667, lng: 32.8167 },
-      "Mamak": { lat: 39.9333, lng: 32.9167 },
-      "Etimesgut": { lat: 39.9500, lng: 32.6833 },
-      "Sincan": { lat: 39.9667, lng: 32.5833 },
-      "Altındağ": { lat: 39.9417, lng: 32.8542 },
-      "Gölbaşı": { lat: 39.7833, lng: 32.8000 }
-    }
+    "Merkez": { lat: 39.9334, lng: 32.8597 },
+    "Çankaya": { lat: 39.9208, lng: 32.8541 },
+    "Kızılay": { lat: 39.9207, lng: 32.8540 },
+    "Tunalı": { lat: 39.9056, lng: 32.8597 },
+    "Bahçelievler": { lat: 39.9221, lng: 32.8234 },
+    "Yenimahalle": { lat: 39.9687, lng: 32.7938 },
+    "Batıkent": { lat: 39.9734, lng: 32.7189 },
+    "Keçiören": { lat: 39.9663, lng: 32.8617 },
+    "Mamak": { lat: 39.9298, lng: 32.9341 }
   },
   "İzmir": {
-    coords: { lat: 38.4237, lng: 27.1428 },
-    districts: {
-      "Konak": { lat: 38.4189, lng: 27.1287 },
-      "Karşıyaka": { lat: 38.4594, lng: 27.1106 },
-      "Bornova": { lat: 38.4636, lng: 27.2164 },
-      "Buca": { lat: 38.3878, lng: 27.1778 },
-      "Alsancak": { lat: 38.4386, lng: 27.1433 },
-      "Çiğli": { lat: 38.4914, lng: 27.0583 },
-      "Bayraklı": { lat: 38.4622, lng: 27.1658 },
-      "Balçova": { lat: 38.3892, lng: 27.0461 },
-      "Çeşme": { lat: 38.3236, lng: 26.3042 },
-      "Urla": { lat: 38.3228, lng: 26.7636 }
-    }
-  },
-  "Adana": {
-    coords: { lat: 37.0000, lng: 35.3213 },
-    districts: {
-      "Seyhan": { lat: 36.9850, lng: 35.3250 },
-      "Çukurova": { lat: 37.0500, lng: 35.2667 },
-      "Yüreğir": { lat: 36.9833, lng: 35.3500 },
-      "Sarıçam": { lat: 37.0333, lng: 35.4000 },
-      "Ceyhan": { lat: 37.0297, lng: 35.8175 }
-    }
-  },
-  "Eskişehir": {
-    coords: { lat: 39.7767, lng: 30.5206 },
-    districts: {
-      "Tepebaşı": { lat: 39.7900, lng: 30.5000 },
-      "Odunpazarı": { lat: 39.7600, lng: 30.5300 }
-    }
+    "Merkez": { lat: 38.4192, lng: 27.1287 },
+    "Alsancak": { lat: 38.4385, lng: 27.1425 },
+    "Konak": { lat: 38.4189, lng: 27.1287 },
+    "Karşıyaka": { lat: 38.4578, lng: 27.1147 },
+    "Bornova": { lat: 38.4622, lng: 27.2163 },
+    "Buca": { lat: 38.3813, lng: 27.1738 },
+    "Bostanlı": { lat: 38.4552, lng: 27.0961 },
+    "Göztepe": { lat: 38.4031, lng: 27.0863 }
   },
   "Antalya": {
-    coords: { lat: 36.8969, lng: 30.7133 },
-    districts: {
-      "Muratpaşa": { lat: 36.8833, lng: 30.7000 },
-      "Kepez": { lat: 36.9333, lng: 30.6833 },
-      "Konyaaltı": { lat: 36.8667, lng: 30.6333 },
-      "Alanya": { lat: 36.5438, lng: 31.9998 }
-    }
+    "Merkez": { lat: 36.8969, lng: 30.7133 },
+    "Muratpaşa": { lat: 36.8791, lng: 30.7077 },
+    "Konyaaltı": { lat: 36.8756, lng: 30.6384 },
+    "Lara": { lat: 36.8523, lng: 30.7845 },
+    "Kepez": { lat: 36.9167, lng: 30.6667 },
+    "Alanya": { lat: 36.5438, lng: 31.9998 }
   },
   "Bursa": {
-    coords: { lat: 40.1885, lng: 29.0610 },
-    districts: {
-      "Osmangazi": { lat: 40.1900, lng: 29.0600 },
-      "Nilüfer": { lat: 40.2100, lng: 28.9800 },
-      "Yıldırım": { lat: 40.1800, lng: 29.1000 }
-    }
+    "Merkez": { lat: 40.1828, lng: 29.0665 },
+    "Nilüfer": { lat: 40.2187, lng: 28.8595 },
+    "Osmangazi": { lat: 40.2526, lng: 29.0621 },
+    "Yıldırım": { lat: 40.1833, lng: 29.1333 },
+    "Mudanya": { lat: 40.3776, lng: 28.8837 }
   }
-  // Diğer iller de aynı hiyerarşik formatta koordinatlarıyla listelenebilir
 };
 
-// Belirtilen il ve ilçe için koordinat bulucu yardımcı fonksiyon
-function resolveCoords(cityName, districtName) {
-  if (!cityName) return null;
-  const cityData = LOCATIONS_DATA[cityName];
-  if (!cityData) return null;
+// Haversine Formülü ile İki Nokta Arasındaki KM Mesafesini Hesaplama
+function calculateExactDistance(loc1, loc2) {
+  try {
+    const city1 = LOCATIONS_DATA[loc1.city];
+    const city2 = LOCATIONS_DATA[loc2.city];
+    if (!city1 || !city2) return null;
 
-  // Semt/İlçe koordinatı mevcutsa onu kullan
-  if (districtName && cityData.districts && cityData.districts[districtName]) {
-    return cityData.districts[districtName];
+    const point1 = city1[loc1.district] || city1["Merkez"];
+    const point2 = city2[loc2.district] || city2["Merkez"];
+    if (!point1 || !point2) return null;
+
+    const R = 6371; // Dünya yarıçapı (km)
+    const dLat = (point2.lat - point1.lat) * (Math.PI / 180);
+    const dLon = (point2.lng - point1.lng) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(point1.lat * (Math.PI / 180)) * Math.cos(point2.lat * (Math.PI / 180)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c;
+
+    return Math.round(distance);
+  } catch (e) {
+    return null;
   }
-
-  // Semt bulunamazsa il merkez koordinatını döndür
-  return cityData.coords;
 }
 
-// İki konum (il + ilçe) arasındaki mesafeyi hesaplayan fonksiyon
-function calculateExactDistance(userA, userB) {
-  if (!userA?.city || !userB?.city) return null;
-
-  // İkisi de aynı il ve aynı semtteyse mesafe 0 kabul edilir
-  if (
-    userA.city.trim().toLowerCase() === userB.city.trim().toLowerCase() &&
-    userA.district &&
-    userB.district &&
-    userA.district.trim().toLowerCase() === userB.district.trim().toLowerCase()
-  ) {
-    return 0;
-  }
-
-  const coordA = resolveCoords(userA.city, userA.district);
-  const coordB = resolveCoords(userB.city, userB.district);
-
-  if (!coordA || !coordB) return null;
-
-  const toRad = (deg) => (deg * Math.PI) / 180;
-  const R = 6371; // Dünya yarıçapı km
-
-  const dLat = toRad(coordB.lat - coordA.lat);
-  const dLng = toRad(coordB.lng - coordA.lng);
-
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(coordA.lat)) *
-      Math.cos(toRad(coordB.lat)) *
-      Math.sin(dLng / 2) *
-      Math.sin(dLng / 2);
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distance = Math.round(R * c);
-
-  // Aynı il içinde farklı semtlerdeyseler ve hesaplama 0 çıkarsa min 1 km gösterilir
-  if (distance === 0 && userA.district !== userB.district) {
-    return 1;
-  }
-
-  return distance;
-}
-
-module.exports = { LOCATIONS_DATA, calculateExactDistance, resolveCoords };
+module.exports = {
+  LOCATIONS_DATA,
+  calculateExactDistance
+};
