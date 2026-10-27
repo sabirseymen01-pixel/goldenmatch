@@ -156,7 +156,14 @@ if (bot) {
 }
 
 // ================= API ROTALARI =================
-app.get('/api/locations', (req, res) => res.json({ success: true, locations: LOCATIONS_DATA }));
+app.get('/api/locations', (req, res) => {
+  // Şehir isimleri ve içindeki ilçe key'lerini client'a gönderiyoruz
+  const formattedLocations = {};
+  for (const [city, districtsObj] of Object.entries(LOCATIONS_DATA)) {
+    formattedLocations[city] = Object.keys(districtsObj);
+  }
+  res.json({ success: true, locations: formattedLocations });
+});
 
 app.get('/api/profile/:id', async (req, res) => {
   const tid = String(req.params.id);
@@ -190,7 +197,7 @@ app.post('/api/profile', async (req, res) => {
       role,
       interestedRole: interestedRole || 'Hepsi',
       city,
-      district: district || '',
+      district: district || 'Merkez',
       archetype: archetype || 'Apollon',
       expression: expression || 'Maskülen',
       bio,
@@ -233,7 +240,10 @@ app.get('/api/cards', async (req, res) => {
   const cards = users.map(user => {
     let distanceKm = null;
     if (currentUser?.city && user.city) {
-      distanceKm = calculateExactDistance({ city: currentUser.city, district: currentUser.district }, { city: user.city, district: user.district });
+      distanceKm = calculateExactDistance(
+        { city: currentUser.city, district: currentUser.district },
+        { city: user.city, district: user.district }
+      );
     }
     return { ...user.toObject(), distanceKm };
   });
