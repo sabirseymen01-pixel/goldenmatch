@@ -92,6 +92,8 @@ const MatchSchema = new mongoose.Schema({
     id: String,
     senderId: String,
     text: String,
+    type: { type: String, default: 'text' }, // 'text', 'image', 'audio'
+    mediaUrl: String,
     time: String,
     read: { type: Boolean, default: false }
   }],
@@ -157,7 +159,6 @@ if (bot) {
 
 // ================= API ROTALARI =================
 app.get('/api/locations', (req, res) => {
-  // Şehir isimleri ve içindeki ilçe key'lerini client'a gönderiyoruz
   const formattedLocations = {};
   for (const [city, districtsObj] of Object.entries(LOCATIONS_DATA)) {
     formattedLocations[city] = Object.keys(districtsObj);
@@ -226,12 +227,18 @@ app.get('/api/cards', async (req, res) => {
   const filterCity = req.query.city;
   const filterDistrict = req.query.district;
   const filterRole = req.query.role;
+  const minAge = Number(req.query.minAge) || 18;
+  const maxAge = Number(req.query.maxAge) || 99;
 
   const currentUser = await UserModel.findOne({ telegramId: currentUserId });
   const myLikes = await LikeModel.find({ fromUserId: currentUserId });
   const likedUserIds = new Set(myLikes.map(l => l.toUserId));
 
-  let query = { telegramId: { $ne: currentUserId, $nin: Array.from(likedUserIds) }, isBanned: false };
+  let query = { 
+    telegramId: { $ne: currentUserId, $nin: Array.from(likedUserIds) }, 
+    isBanned: false,
+    age: { $gte: minAge, $lte: maxAge }
+  };
   if (filterCity && filterCity !== 'Hepsi') query.city = filterCity;
   if (filterDistrict && filterDistrict !== 'Hepsi') query.district = filterDistrict;
   if (filterRole && filterRole !== 'Hepsi') query.role = filterRole;
@@ -283,6 +290,13 @@ app.get('/api/chats', async (req, res) => {
     const bothRevealed = match.paravan1 && match.paravan2;
     const lastMsg = match.messages[match.messages.length - 1];
 
+    let snippetText = 'Yeni eşleşme! Selam ver ✨';
+    if (lastMsg) {
+      if (lastMsg.type === 'image') snippetText = '📷 Fotoğraf';
+      else if (lastMsg.type === 'audio') snippetText = '🎤 Sesli Mesaj';
+      else snippetText = lastMsg.text;
+    }
+
     userChats.push({
       matchId: match.matchId,
       partner: {
@@ -292,7 +306,7 @@ app.get('/api/chats', async (req, res) => {
         username: bothRevealed ? (partner?.username ? `@${partner.username}` : `ID:${partnerId}`) : null
       },
       bothRevealed,
-      lastMessage: lastMsg ? lastMsg.text : 'Yeni eşleşme! Selam ver ✨',
+      lastMessage: snippetText,
       lastMessageTime: lastMsg ? lastMsg.time : '',
       unread: lastMsg ? (lastMsg.senderId !== userId && !lastMsg.read) : true
     });
@@ -327,14 +341,19 @@ app.get('/api/chats/:matchId', async (req, res) => {
 });
 
 app.post('/api/chats/:matchId/message', async (req, res) => {
-  const { senderId, text } = req.body;
+  const { senderId, text, type, mediaUrl } = req.body;
   const match = await MatchModel.findOne({ matchId: req.params.matchId });
-  if (!match || !text?.trim()) return res.status(400).json({ success: false });
+  if (!match) return res.status(400).json({ success: false });
+
+  const msgType = type || 'text';
+  if (msgType === 'text' && !text?.trim()) return res.status(400).json({ success: false });
 
   const msg = {
     id: Date.now().toString(),
     senderId: String(senderId),
-    text: text.trim().slice(0, 500),
+    text: text ? text.trim().slice(0, 500) : '',
+    type: msgType,
+    mediaUrl: mediaUrl || '',
     time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
     read: false
   };
@@ -366,7 +385,6 @@ app.post('/api/chats/:matchId/unmatch', async (req, res) => {
   res.json({ success: true });
 });
 
-// Şikayet / Raporlama Rotası
 app.post('/api/report', async (req, res) => {
   const { targetId, reporterId, reason } = req.body;
   if (!targetId || !reporterId || !reason) return res.status(400).json({ success: false });
@@ -426,7 +444,6 @@ app.post('/api/admin/toggle-ban', checkAdminAuth, async (req, res) => {
   res.json({ success: true, isBanned: user.isBanned });
 });
 
-// Kurucunun YT Ekleme / Çıkarma Rotası
 app.post('/api/admin/toggle-admin', async (req, res) => {
   const { userId, username, targetId } = req.body;
   if (!isFounder(userId, username)) {
