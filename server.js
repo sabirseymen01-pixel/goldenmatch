@@ -92,7 +92,7 @@ const UserSchema = new mongoose.Schema({
   isVerified: { type: Boolean, default: false },
   isBanned: { type: Boolean, default: false },
   isDeactivated: { type: Boolean, default: false }, // Hesap Dondurma
-  isPremium: { type: Boolean, default: false }, // 100 TL / Yıldız karşılığı Premium
+  isPremium: { type: Boolean, default: false }, // 100 TL / Yıldız karşılığı Premium (Gold & Mor özel arayüz)
   godModeUsage: {
     date: String,
     count: { type: Number, default: 0 }
@@ -182,6 +182,18 @@ if (bot) {
       Markup.inlineKeyboard([Markup.button.webApp("🔥 GoldenMatch'i Aç", WEBAPP_URL)])
     );
   });
+
+  // Telegram Stars Ödeme Ön Onay (Pre-checkout) ve Başarılı Ödeme Entegrasyonu
+  bot.on('pre_checkout_query', (ctx) => ctx.answerPreCheckoutQuery(true));
+  bot.on('successful_payment', async (ctx) => {
+    const payload = ctx.message.successful_payment.invoice_payload;
+    const userId = ctx.from.id.toString();
+    if (payload === 'golden_match_premium') {
+      await UserModel.findOneAndUpdate({ telegramId: userId }, { isPremium: true });
+      await ctx.reply('🌟 Tebrikler! 100 TL değerindeki Telegram Yıldızları ile Premium Üyeliğiniz aktifleştirildi.');
+    }
+  });
+
   bot.launch({ dropPendingUpdates: true }).catch(err => console.warn('Bot uyarısı:', err.message));
 }
 
@@ -204,7 +216,6 @@ app.get('/api/profile/:id', async (req, res) => {
   
   if (profile) {
     if (profile.isDeactivated) {
-      // Dondurulan hesabı otomatik aktif et
       profile.isDeactivated = false;
       await profile.save();
     }
@@ -256,7 +267,7 @@ app.post('/api/profile', async (req, res) => {
 app.post('/api/profile/deactivate', async (req, res) => {
   const { telegramId } = req.body;
   await UserModel.findOneAndUpdate({ telegramId: String(telegramId) }, { isDeactivated: true });
-  res.json({ success: true, message: 'Hesabınız donduruldu. Tekrar giriş yaparak açabilirsiniz.' });
+  res.json({ success: true, message: 'Hesabınız donduruldu.' });
 });
 
 // Hesap Silme Portu
@@ -268,7 +279,7 @@ app.delete('/api/profile/:id', async (req, res) => {
   res.json({ success: true, message: 'Hesap silindi.' });
 });
 
-// Günlük 3 Ücretsiz Filtre Hakkı Kontrolü
+// Günlük 3 Ücretsiz Filtre Hakkı ve Koordinat Entegrasyonu
 app.post('/api/filter/check-limit', async (req, res) => {
   const { userId } = req.body;
   const user = await UserModel.findOne({ telegramId: String(userId) });
@@ -288,39 +299,47 @@ app.post('/api/filter/check-limit', async (req, res) => {
     return res.json({ success: true, allowed: true, remaining: 3 - user.filterUsage.count });
   }
 
-  return res.json({ success: false, message: 'Ücretsiz filtre hakkınız bitti. Yıldız ⭐ veya Premium ile devam edin.' });
+  return res.json({ success: false, message: 'Ücretsiz filtre hakkınız bitti. Telegram Yıldızları ⭐ ile devam edin.' });
 });
 
-// Golden God Mode Durumu (Haftada 1 Rastgele Gün Otomasyonu)
+// Golden God Mode Haftalık Otomasyonu (Rastgele gün mantığı)
 app.get('/api/godmode/status', async (req, res) => {
-  const activeGodDay = 3; // Örn: Çarşamba aktif gün
+  const activeGodDay = 3; // Çarşamba aktif gün
   const currentDay = new Date().getDay();
   const isActive = (currentDay === activeGodDay);
 
   res.json({
     success: true,
     activeGodMode: isActive,
-    message: isActive ? '🔥 Golden God Mode Aktif! 3 Ücretsiz Hakkınız Tanımlandı.' : '⏳ God Mode için haftalık kutsal gün bekleniyor.'
+    message: isActive ? '🔥 Golden God Mode Aktif! 3 Ücretsiz Hak Tanımlandı.' : '⏳ God Mode için haftalık kutsal gün bekleniyor.'
   });
 });
 
-// Telegram Yıldızları / Premium Satın Alma Simülasyonu (Stars Entegrasyonu)
-app.post('/api/billing/purchase', async (req, res) => {
-  const { userId, productType } = req.body; // productType: 'premium' veya 'filter_pack' veya 'godmode_pack'
-  const user = await UserModel.findOne({ telegramId: String(userId) });
-  if (!user) return res.status(404).json({ success: false });
+// Telegram Stars Fatura (Invoice) Oluşturma Endopointi
+app.post('/api/billing/create-invoice', async (req, res) => {
+  const { userId, productType } = req.body; // 'premium' (100 TL / Stars karşılığı)
+  if (!bot) return res.status(400).json({ success: false, message: 'Bot aktif değil.' });
 
-  if (productType === 'premium') {
-    user.isPremium = true;
-    await user.save();
-    return res.json({ success: true, message: '🌟 Premium üyelik Telegram Yıldızları ile aktifleştirildi!' });
-  } else if (productType === 'filter_pack') {
-    user.filterUsage = { date: new Date().toISOString().slice(0, 10), count: 0 }; // Hakları sıfırla
-    await user.save();
-    return res.json({ success: true, message: '✨ Ek filtre hakları yüklendi!' });
+  try {
+    const title = '🌟 GoldenMatch Premium Üyelik';
+    const description = 'Sınırsız kaydırma, okundu bilgisi, animasyonlu rozet ve sınırsız filtreleme.';
+    const payload = 'golden_match_premium';
+    const currency = 'XTR'; // Telegram Stars para birimi
+    const prices = [{ label: 'Premium Üyelik', amount: 100 }]; // 100 Yıldız / TL dengesi
+
+    const invoiceLink = await bot.telegram.createInvoiceLink({
+      title,
+      description,
+      payload,
+      provider_token: '', // Stars için boş bırakılır
+      currency,
+      prices
+    });
+
+    res.json({ success: true, invoiceLink });
+  } catch (e) {
+    res.status(500).json({ success: false, message: 'Fatura oluşturulamadı.' });
   }
-
-  res.json({ success: false, message: 'Bilinmeyen ürün.' });
 });
 
 app.get('/api/cards', async (req, res) => {
