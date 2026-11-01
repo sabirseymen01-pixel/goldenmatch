@@ -91,7 +91,7 @@ const UserSchema = new mongoose.Schema({
   bio: String,
   photos: [String],
   isVerified: { type: Boolean, default: false },
-  restrictionLevel: { type: Number, default: 0 }, // 0: Serbest, 1: Uyarı, 2: Kısıt, 3: Tam Ban
+  restrictionLevel: { type: Number, default: 0 },
   isBanned: { type: Boolean, default: false },
   isDeactivated: { type: Boolean, default: false },
   isPremium: { type: Boolean, default: false },
@@ -189,7 +189,6 @@ function isFounder(telegramId, username) {
   return tid === FOUNDER_ID || uname === FOUNDER_USERNAME;
 }
 
-// Detaylı Loglama Motoru (Tarih, Saat, Admin ID/Username, Match Üyesi Telegram ID/Username/Hesap Adı)
 async function logSystemAction(adminId, adminName, action, targetInfo, matchData = {}) {
   try {
     await SystemLogModel.create({
@@ -310,7 +309,6 @@ app.post('/api/profile', async (req, res) => {
   }
 });
 
-// Dinamik Fiyatlandırma ve Yıldız Ödeme Portu
 app.post('/api/billing/create-invoice', async (req, res) => {
   const { userId, productType } = req.body;
   if (!bot) return res.status(400).json({ success: false, message: 'Bot aktif değil.' });
@@ -336,7 +334,6 @@ app.post('/api/billing/create-invoice', async (req, res) => {
   }
 });
 
-// Keşfet: Yakın Konum Öncelikli Sıralama
 app.get('/api/cards', async (req, res) => {
   const currentUserId = String(req.query.userId);
   const filterCity = req.query.city;
@@ -398,40 +395,51 @@ app.post('/api/like', async (req, res) => {
   res.json({ success: true, isMatch: false });
 });
 
+// --- OPTİMİZE EDİLMİŞ TEK SORGULU CHATS ROUTE (N+1 Darboğazı Çözüldü) ---
 app.get('/api/chats', async (req, res) => {
-  const userId = String(req.query.userId);
-  const matches = await MatchModel.find({ $or: [{ user1: userId }, { user2: userId }] }).sort({ updatedAt: -1 }).lean();
-  const userChats = [];
+  try {
+    const userId = String(req.query.userId);
+    const matches = await MatchModel.find({ $or: [{ user1: userId }, { user2: userId }] }).sort({ updatedAt: -1 }).lean();
+    if (!matches.length) return res.json({ success: true, chats: [], totalUnread: 0 });
 
-  for (const match of matches) {
-    const partnerId = match.user1 === userId ? match.user2 : match.user1;
-    const partner = await UserModel.findOne({ telegramId: partnerId }).lean();
-    const bothRevealed = match.paravan1 && match.paravan2;
-    const lastMsg = match.messages[match.messages.length - 1];
+    const partnerIds = matches.map(m => m.user1 === userId ? m.user2 : m.user1);
+    const partners = await UserModel.find({ telegramId: { $in: partnerIds } }).lean();
+    const partnerMap = new Map();
+    partners.forEach(p => partnerMap.set(String(p.telegramId), p));
 
-    let snippetText = 'Yeni eşleşme! Selam ver ✨';
-    if (lastMsg) {
-      if (lastMsg.type === 'image') snippetText = '📷 Fotoğraf';
-      else if (lastMsg.type === 'audio') snippetText = '🎤 Sesli Mesaj';
-      else snippetText = lastMsg.text;
+    const userChats = [];
+    for (const match of matches) {
+      const partnerId = match.user1 === userId ? match.user2 : match.user1;
+      const partner = partnerMap.get(String(partnerId));
+      const bothRevealed = match.paravan1 && match.paravan2;
+      const lastMsg = match.messages[match.messages.length - 1];
+
+      let snippetText = 'Yeni eşleşme! Selam ver ✨';
+      if (lastMsg) {
+        if (lastMsg.type === 'image') snippetText = '📷 Fotoğraf';
+        else if (lastMsg.type === 'audio') snippetText = '🎤 Sesli Mesaj';
+        else snippetText = lastMsg.text;
+      }
+
+      userChats.push({
+        matchId: match.matchId,
+        partner: {
+          telegramId: partnerId,
+          nickname: partner?.nickname || 'Kullanıcı',
+          avatar: partner?.photos?.[0] || '',
+          username: bothRevealed ? (partner?.username ? `@${partner.username}` : `ID:${partnerId}`) : null,
+          isPremium: partner?.isPremium || false
+        },
+        bothRevealed,
+        lastMessage: snippetText,
+        lastMessageTime: lastMsg ? lastMsg.time : '',
+        unread: lastMsg ? (lastMsg.senderId !== userId && !lastMsg.read) : true
+      });
     }
-
-    userChats.push({
-      matchId: match.matchId,
-      partner: {
-        telegramId: partnerId,
-        nickname: partner?.nickname || 'Kullanıcı',
-        avatar: partner?.photos?.[0] || '',
-        username: bothRevealed ? (partner?.username ? `@${partner.username}` : `ID:${partnerId}`) : null,
-        isPremium: partner?.isPremium || false
-      },
-      bothRevealed,
-      lastMessage: snippetText,
-      lastMessageTime: lastMsg ? lastMsg.time : '',
-      unread: lastMsg ? (lastMsg.senderId !== userId && !lastMsg.read) : true
-    });
+    res.json({ success: true, chats: userChats, totalUnread: userChats.filter(c => c.unread).length });
+  } catch (e) {
+    res.json({ success: true, chats: [], totalUnread: 0 });
   }
-  res.json({ success: true, chats: userChats, totalUnread: userChats.filter(c => c.unread).length });
 });
 
 app.get('/api/chats/:matchId', async (req, res) => {
@@ -535,7 +543,6 @@ app.get('/api/admin/dashboard-data', checkAdminAuth, async (req, res) => {
   adminIdsSet.add(FOUNDER_ID);
   adminIdsSet.add(FOUNDER_USERNAME);
 
-  // Üyeleri ve Adminleri birbirinden kesin olarak ayır
   const adminsList = [];
   const regularUsersList = [];
 
@@ -558,8 +565,8 @@ app.get('/api/admin/dashboard-data', checkAdminAuth, async (req, res) => {
       active: userList.filter(u => !u.isBanned && u.restrictionLevel === 0).length,
       reportsCount: reportsList.length
     },
-    users: regularUsersList, // Normal Üyeler
-    adminsList: adminsList,  // Adminler (Ayrı Port)
+    users: regularUsersList,
+    adminsList: adminsList,
     reports: reportsList,
     logs: systemLogs,
     pricing: pricingConfigs,
@@ -567,7 +574,6 @@ app.get('/api/admin/dashboard-data', checkAdminAuth, async (req, res) => {
   });
 });
 
-// Kutsal Gün Seçimi
 app.post('/api/admin/set-godmode-day', checkAdminAuth, async (req, res) => {
   const { dayOfWeek, adminId, adminName } = req.body;
   await PricingConfigModel.findOneAndUpdate(
@@ -593,7 +599,6 @@ app.get('/api/godmode/status', async (req, res) => {
   });
 });
 
-// Üye Düzenleme & Kısıtlama Portu (Log Kayıtlı)
 app.post('/api/admin/restrict-user', checkAdminAuth, async (req, res) => {
   const { targetTelegramId, level, adminId, adminName } = req.body;
   const user = await UserModel.findOne({ telegramId: String(targetTelegramId) });
@@ -605,7 +610,6 @@ app.post('/api/admin/restrict-user', checkAdminAuth, async (req, res) => {
 
   await user.save();
 
-  // Match / Üye detaylı log kaydı
   await logSystemAction(adminId, adminName, `Kullanıcı Kısıtlama Seviyesi Değiştirildi (Seviye ${level})`, `${user.nickname} (ID: ${targetTelegramId})`, {
     telegramId: user.telegramId,
     username: user.username,
@@ -615,7 +619,6 @@ app.post('/api/admin/restrict-user', checkAdminAuth, async (req, res) => {
   res.json({ success: true, restrictionLevel: user.restrictionLevel });
 });
 
-// Haftalık Premium Süresi Tanımlama (Log Kayıtlı)
 app.post('/api/admin/set-premium-duration', checkAdminAuth, async (req, res) => {
   const { targetTelegramId, weeks, adminId, adminName } = req.body;
   const user = await UserModel.findOne({ telegramId: String(targetTelegramId) });
@@ -637,7 +640,6 @@ app.post('/api/admin/set-premium-duration', checkAdminAuth, async (req, res) => 
   res.json({ success: true, message: `${weeks} hafta premium tanımlandı.` });
 });
 
-// Genel Logları Sıfırlama / Silme Portu
 app.post('/api/admin/clear-logs', checkAdminAuth, async (req, res) => {
   const { adminId, adminName } = req.body;
   await SystemLogModel.deleteMany({});
@@ -645,7 +647,6 @@ app.post('/api/admin/clear-logs', checkAdminAuth, async (req, res) => {
   res.json({ success: true, message: 'Loglar temizlendi.' });
 });
 
-// Yıldız Fiyatlandırma
 app.post('/api/admin/update-pricing', async (req, res) => {
   const { userId, username, key, priceStars } = req.body;
   if (!isFounder(userId, username)) {
@@ -662,7 +663,6 @@ app.post('/api/admin/update-pricing', async (req, res) => {
   res.json({ success: true, message: 'Fiyat güncellendi.' });
 });
 
-// Kurucunun YT Ekleme/Çıkarma Portu
 app.post('/api/admin/toggle-admin', async (req, res) => {
   const { userId, username, targetId } = req.body;
   if (!isFounder(userId, username)) {
@@ -684,5 +684,5 @@ app.post('/api/admin/toggle-admin', async (req, res) => {
 
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`GoldenMatch Sunucusu ${PORT} portunda ayrıştırılmış log ve admin portuyla aktif.`);
+  console.log(`GoldenMatch Sunucusu ${PORT} portunda performans optimizasyonuyla aktif.`);
 });
