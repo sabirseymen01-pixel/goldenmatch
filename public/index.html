@@ -6,7 +6,7 @@
   <title>GoldenMatch ✨</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="/socket.io/socket.io.js"></script>
-  <link rel="stylesheet" href="style.css?v=2026.5">
+  <link rel="stylesheet" href="style.css?v=2026.6">
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -17,7 +17,7 @@
       <div class="gold-sparkle-curtain"></div>
       <div style="z-index: 20; text-align: center; padding: 20px; width:100%;">
         <h2 class="gold-text" style="font-family:'Cinzel',serif; font-size:24px; margin-bottom:4px;">🔥 GOD MODE & TAROT KADER Çarkı</h2>
-        <p style="color:#d4af37; font-size:12px; margin-bottom:16px;">Kutsal Günler İlahi Eşleşme Motoru Aktif</p>
+        <p style="color:#f3e5ab; font-size:12px; margin-bottom:16px;">Kutsal Günler İlahi Eşleşme Motoru Aktif</p>
         
         <div id="tarotCardsContainer" style="display:flex; justify-content:center; gap:8px; margin-bottom:20px; flex-wrap:wrap;"></div>
 
@@ -25,23 +25,13 @@
       </div>
     </div>
 
+    <!-- ÜST BAŞLIK (Sadece Logo ve Sağ Üstte @breskavica İmzası) -->
     <header id="appNav" class="app-nav hidden">
       <div class="brand-logo" onclick="switchTab('explore')">
         <span class="gold-text">GOLDEN</span>MATCH
       </div>
       <div class="nav-actions">
-        <button id="godModeToggleBtn" class="nav-btn hidden" onclick="triggerGodModeTarot()" title="God Mode & Tarot Kartları" style="border-color:#d4af37; color:#d4af37;">⚡</button>
-        <button id="ytNavBtn" class="nav-btn yt-badge hidden" onclick="switchTab('adminPanel')" title="YT Paneli">👑 YT</button>
-        <button class="nav-btn" onclick="openFilterModal()" aria-label="Filtrele">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
-        </button>
-        <button class="nav-btn dm-btn" onclick="switchTab('inbox')" aria-label="Mesajlar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          <span id="unreadBadge" class="badge-dot hidden"></span>
-        </button>
-        <button class="nav-btn" onclick="openProfileEdit()" aria-label="Profil">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/></svg>
-        </button>
+        <span class="founder-signature">@breskavica</span>
       </div>
     </header>
 
@@ -52,9 +42,9 @@
         <p class="subtitle">Kutsal profilini ve konumunu mühürle.</p>
       </div>
 
-      <div id="premiumBanner" style="background:rgba(212,175,55,0.08); border:1px solid rgba(212,175,55,0.4); padding:16px; border-radius:18px; margin-bottom:16px; text-align:center;">
+      <div id="premiumBanner" style="background:rgba(212,175,55,0.08); border:1px solid rgba(255,215,0,0.3); padding:16px; border-radius:18px; margin-bottom:16px; text-align:center; backdrop-filter:blur(10px);">
         <h3 class="gold-text" style="font-family:'Cinzel',serif; font-size:16px; margin-bottom:6px;">🌟 Haftalık Premium Üyelik</h3>
-        <p style="font-size:12px; color:#ccc; margin-bottom:12px;">Sınırsız keşif ve konum önceliği için hemen yükseltin.</p>
+        <p style="font-size:12px; color:#bfaed6; margin-bottom:12px;">Sınırsız keşif ve konum önceliği için hemen yükseltin.</p>
         <button type="button" class="primary-btn gold-glow" onclick="buyPremiumOrStars('premium_weekly')" style="width:100%; padding:12px; font-size:13px;">⭐ Haftalık Premium Al (100 Yıldız)</button>
       </div>
 
@@ -197,22 +187,22 @@
     </main>
 
     <!-- 5. YT YÖNETİM MASASI -->
-    <main id="adminPanelView" class="view-screen hidden" style="background: #13121d; border: 1px solid rgba(212,175,55,0.3);">
+    <main id="adminPanelView" class="view-screen hidden" style="background: rgba(30,24,48,0.7); backdrop-filter:blur(15px); border: 1.5px solid rgba(255,215,0,0.3); border-radius:20px;">
       <div class="sub-header">
         <h2 class="gold-text">👑 YT Yönetim Masası</h2>
         <button class="ghost-btn" onclick="switchTab('explore')">Çıkış</button>
       </div>
 
       <div class="stats-cards" style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px;">
-        <div class="stat-pill" style="background:rgba(212,175,55,0.08); padding:10px; border-radius:12px; text-align:center;"><span>Toplam Üye</span><br><strong id="ytStatTotal" style="color:#d4af37;">0</strong></div>
-        <div class="stat-pill" style="background:rgba(212,175,55,0.08); padding:10px; border-radius:12px; text-align:center;"><span>Aktif Üye</span><br><strong id="ytStatActive" style="color:#2ed573;">0</strong></div>
+        <div class="stat-pill" style="background:rgba(255,215,0,0.06); border:1px solid rgba(255,215,0,0.2); padding:10px; border-radius:12px; text-align:center;"><span>Toplam Üye</span><br><strong id="ytStatTotal" style="color:#f3e5ab;">0</strong></div>
+        <div class="stat-pill" style="background:rgba(255,215,0,0.06); border:1px solid rgba(255,215,0,0.2); padding:10px; border-radius:12px; text-align:center;"><span>Aktif Üye</span><br><strong id="ytStatActive" style="color:#2ed573;">0</strong></div>
       </div>
 
-      <div style="background:rgba(212,175,55,0.06); border:1px solid rgba(212,175,55,0.3); padding:12px; border-radius:14px; margin-bottom:14px;">
-        <h3 style="color:#d4af37; font-size:13px; margin-bottom:6px;">⚡ Kutsal Gün Seçimi</h3>
-        <p style="font-size:11px; color:#aaa; margin-bottom:8px;">Haftanın dilediğiniz gününü Kutsal Gün / Otomasyon günü olarak sabitleyin.</p>
+      <div style="background:rgba(255,215,0,0.04); border:1.5px solid rgba(255,215,0,0.3); padding:12px; border-radius:14px; margin-bottom:14px; backdrop-filter:blur(10px);">
+        <h3 style="color:#f3e5ab; font-size:13px; margin-bottom:6px;">⚡ Kutsal Gün Seçimi</h3>
+        <p style="font-size:11px; color:#bfaed6; margin-bottom:8px;">Haftanın dilediğiniz gününü Kutsal Gün / Otomasyon günü olarak sabitleyin.</p>
         <div style="display:flex; gap:8px;">
-          <select id="godModeDaySelect" style="flex:1; background:#1b1926; color:#fff; border:1px solid #d4af37; padding:8px; border-radius:8px; font-size:11px;">
+          <select id="godModeDaySelect" style="flex:1; background:#1b1926; color:#fff; border:1.5px solid rgba(255,215,0,0.4); padding:8px; border-radius:8px; font-size:11px;">
             <option value="1">Pazartesi</option>
             <option value="2">Salı</option>
             <option value="3">Çarşamba</option>
@@ -221,19 +211,19 @@
             <option value="6">Cumartesi</option>
             <option value="0">Pazar</option>
           </select>
-          <button onclick="saveGodModeAutomation()" style="background:#d4af37; color:#000; border:none; padding:8px 12px; border-radius:8px; font-weight:700; cursor:pointer; font-size:11px;">Günü Mühürle</button>
+          <button onclick="saveGodModeAutomation()" style="background:linear-gradient(135deg, #f3e5ab, #c5a059); color:#0b0a10; border:none; padding:8px 12px; border-radius:8px; font-weight:700; cursor:pointer; font-size:11px;">Günü Mühürle</button>
         </div>
       </div>
 
-      <div id="founderPricingSection" class="hidden" style="background:rgba(212,175,55,0.08); border:1px solid rgba(212,175,55,0.4); padding:12px; border-radius:14px; margin-bottom:14px;">
-        <h3 style="color:#d4af37; font-size:13px; margin-bottom:8px;">⭐ Telegram Yıldız Fiyatlandırma (Kurucu)</h3>
+      <div id="founderPricingSection" class="hidden" style="background:rgba(255,215,0,0.06); border:1.5px solid rgba(255,215,0,0.4); padding:12px; border-radius:14px; margin-bottom:14px; backdrop-filter:blur(10px);">
+        <h3 style="color:#f3e5ab; font-size:13px; margin-bottom:8px;">⭐ Telegram Yıldız Fiyatlandırma (Kurucu)</h3>
         <div style="display:flex; gap:8px; margin-bottom:6px;">
-          <input type="number" id="priceWeeklyInput" placeholder="Haftalık Premium Yıldız" style="flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.2); padding:8px; border-radius:8px; color:#fff; font-size:12px;">
-          <button onclick="updatePricing('premium_weekly')" style="background:#d4af37; color:#000; border:none; padding:8px 12px; border-radius:8px; font-weight:700; cursor:pointer;">Ayarla</button>
+          <input type="number" id="priceWeeklyInput" placeholder="Haftalık Premium Yıldız" style="flex:1; background:rgba(255,255,255,0.05); border:1.5px solid rgba(255,215,0,0.3); padding:8px; border-radius:8px; color:#fff; font-size:12px;">
+          <button onclick="updatePricing('premium_weekly')" style="background:linear-gradient(135deg, #f3e5ab, #c5a059); color:#0b0a10; border:none; padding:8px 12px; border-radius:8px; font-weight:700; cursor:pointer;">Ayarla</button>
         </div>
         <div style="display:flex; gap:8px;">
-          <input type="number" id="priceFiltersInput" placeholder="3'lü Filtre Paketi Yıldız" style="flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.2); padding:8px; border-radius:8px; color:#fff; font-size:12px;">
-          <button onclick="updatePricing('filter_pack')" style="background:#d4af37; color:#000; border:none; padding:8px 12px; border-radius:8px; font-weight:700; cursor:pointer;">Ayarla</button>
+          <input type="number" id="priceFiltersInput" placeholder="3'lü Filtre Paketi Yıldız" style="flex:1; background:rgba(255,255,255,0.05); border:1.5px solid rgba(255,215,0,0.3); padding:8px; border-radius:8px; color:#fff; font-size:12px;">
+          <button onclick="updatePricing('filter_pack')" style="background:linear-gradient(135deg, #f3e5ab, #c5a059); color:#0b0a10; border:none; padding:8px 12px; border-radius:8px; font-weight:700; cursor:pointer;">Ayarla</button>
         </div>
       </div>
 
@@ -241,10 +231,10 @@
 
       <div style="margin-bottom:14px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-          <h3 style="color:#d4af37; font-size:13px;">📜 Sistem İşlem Logları</h3>
+          <h3 style="color:#f3e5ab; font-size:13px;">📜 Sistem İşlem Logları</h3>
           <button onclick="clearSystemLogs()" style="background:#ff4757; color:#fff; border:none; padding:4px 8px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700;">Logları Temizle</button>
         </div>
-        <div id="adminLogsList" style="max-height:160px; overflow-y:auto; background:rgba(0,0,0,0.3); border:1px solid rgba(212,175,55,0.2); border-radius:12px; padding:8px; font-size:11px; color:#aaa;"></div>
+        <div id="adminLogsList" style="max-height:160px; overflow-y:auto; background:rgba(0,0,0,0.4); border:1.5px solid rgba(255,215,0,0.2); border-radius:12px; padding:8px; font-size:11px; color:#bfaed6;"></div>
       </div>
 
       <div id="adminUserCards" class="admin-scroll-list" style="max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; margin-bottom:14px;"></div>
@@ -259,7 +249,7 @@
           <button class="icon-close" onclick="closeSelectionModal()">✕</button>
         </div>
         <div id="modalSearchWrapper" style="margin-bottom:12px;">
-          <input type="text" id="modalSearchInput" onkeyup="filterModalItems()" placeholder="🔍 Ara..." style="width:100%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:12px; color:#fff; font-size:13px; outline:none;">
+          <input type="text" id="modalSearchInput" onkeyup="filterModalItems()" placeholder="🔍 Ara..." style="width:100%; background:rgba(255,255,255,0.06); border:1.5px solid rgba(255,215,0,0.3); border-radius:12px; padding:12px; color:#fff; font-size:13px; outline:none;">
         </div>
         <div class="selection-chip-grid" id="modalChipContainer"></div>
       </div>
@@ -270,9 +260,9 @@
       <div class="modal-sheet">
         <div class="sheet-header"><h3>Gelişmiş Filtreler</h3><button class="icon-close" onclick="closeFilterModal()">✕</button></div>
         
-        <div style="background:rgba(212,175,55,0.1); border:1px solid rgba(212,175,55,0.3); padding:10px; border-radius:10px; margin-bottom:12px; font-size:12px; color:#d4af37; text-align:center;">
+        <div style="background:rgba(255,215,0,0.08); border:1.5px solid rgba(255,215,0,0.35); padding:10px; border-radius:10px; margin-bottom:12px; font-size:12px; color:#f3e5ab; text-align:center;">
           ✨ Günlük Ücretsiz Filtre Hakkı: <strong id="filterRemainingBadge">3 / 3</strong> <br>
-          <button onclick="buyPremiumOrStars('filter_pack')" style="background:transparent; border:none; color:#d4af37; text-decoration:underline; cursor:pointer; margin-top:4px; font-size:11px;">⭐ 25 Yıldız ile Ek 3 Filtre Hakkı Al</button>
+          <button onclick="buyPremiumOrStars('filter_pack')" style="background:transparent; border:none; color:#f3e5ab; text-decoration:underline; cursor:pointer; margin-top:4px; font-size:11px;">⭐ 25 Yıldız ile Ek 3 Filtre Hakkı Al</button>
         </div>
 
         <!-- Filtre Şehir Tetikleyicisi -->
@@ -290,10 +280,10 @@
         </div>
 
         <div class="form-group" style="margin-bottom:12px;">
-          <label>Yaş Aralığı: <span id="ageRangeLabel" style="color:#d4af37;">18 - 99</span></label>
+          <label>Yaş Aralığı: <span id="ageRangeLabel" style="color:#f3e5ab;">18 - 99</span></label>
           <div style="display:flex; gap:10px; align-items:center;">
-            <input type="number" id="filterMinAge" value="18" min="18" max="99" style="width:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:10px; color:#fff;" placeholder="Min Yaş">
-            <input type="number" id="filterMaxAge" value="99" min="18" max="99" style="width:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:10px; color:#fff;" placeholder="Max Yaş">
+            <input type="number" id="filterMinAge" value="18" min="18" max="99" style="width:50%; background:rgba(255,255,255,0.06); border:1.5px solid rgba(255,215,0,0.3); border-radius:10px; padding:10px; color:#fff;" placeholder="Min Yaş">
+            <input type="number" id="filterMaxAge" value="99" min="18" max="99" style="width:50%; background:rgba(255,255,255,0.06); border:1.5px solid rgba(255,215,0,0.3); border-radius:10px; padding:10px; color:#fff;" placeholder="Max Yaş">
           </div>
         </div>
 
@@ -308,8 +298,27 @@
       </div>
     </div>
 
+    <!-- 🌟 AKILLI ŞEFFAF CAM LEVHA GÖREV ÇUĞUĞU (ALT DOCK) -->
+    <nav id="glassDock" class="glass-dock hidden">
+      <button id="godModeToggleBtn" class="dock-btn hidden" onclick="triggerGodModeTarot()" title="God Mode & Tarot">⚡</button>
+      <button id="ytNavBtn" class="dock-btn yt-badge hidden" onclick="switchTab('adminPanel')" title="YT Paneli">👑 YT</button>
+      <button class="dock-btn" onclick="openFilterModal()" aria-label="Filtrele">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+      </button>
+      <button class="dock-btn" onclick="switchTab('explore')" aria-label="Keşfet">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+      </button>
+      <button class="dock-btn dm-btn" onclick="switchTab('inbox')" aria-label="Mesajlar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span id="unreadBadge" class="badge-dot hidden"></span>
+      </button>
+      <button class="dock-btn" onclick="openProfileEdit()" aria-label="Profil">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/></svg>
+      </button>
+    </nav>
+
   </div>
 
-  <script src="app.js?v=2026.5"></script>
+  <script src="app.js?v=2026.6"></script>
 </body>
 </html>
