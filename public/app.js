@@ -669,6 +669,7 @@ async function loadInboxChats() {
         return;
       }
       list.innerHTML = '';
+      const fragment = document.createDocumentFragment();
       data.chats.forEach(chat => {
         const item = document.createElement('div');
         item.className = 'chat-item';
@@ -679,9 +680,12 @@ async function loadInboxChats() {
           <div class="chat-info"><div class="chat-name">${chat.partner.nickname}${premiumBadge}</div><div class="chat-snippet">${chat.lastMessage}</div></div>
           <div class="chat-time">${chat.lastMessageTime || ''}</div>
         `;
-        list.appendChild(item);
+        fragment.appendChild(item);
       });
+      list.appendChild(fragment);
       document.getElementById('unreadBadge')?.classList.add('hidden');
+    } else {
+      list.innerHTML = '<div class="card-loader">Henüz eşleşme yok.</div>';
     }
   } catch (e) {
     list.innerHTML = '<div class="card-loader">Sohbetler yüklenemedi.</div>';
@@ -694,7 +698,6 @@ async function openChatRoom(matchId, partner) {
   activePartnerId = partner.telegramId;
   selectedMessageForReport = null;
   
-  // Şak diye arayüze geç ve ismi yaz
   switchTab('chatRoom');
   document.getElementById('chatPartnerName').innerText = partner.nickname;
   
@@ -926,7 +929,7 @@ async function loadAdminDashboard() {
         }
       }
 
-      // Ayrıştırılmış ve Detaylı Loglar (Tarih, Saat, Admin, Match Üye Detayları)
+      // Ayrıştırılmış ve Detaylı Loglar
       const logsList = document.getElementById('adminLogsList');
       if (logsList && data.logs) {
         logsList.innerHTML = '';
