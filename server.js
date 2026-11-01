@@ -91,11 +91,11 @@ const UserSchema = new mongoose.Schema({
   bio: String,
   photos: [String],
   isVerified: { type: Boolean, default: false },
-  restrictionLevel: { type: Number, default: 0 }, // 0: Serbest, 1: Uyarı/Kısıt, 2: Geçici Ban, 3: Tam Kısıtlama
+  restrictionLevel: { type: Number, default: 0 }, // 0: Serbest, 1: Uyarı, 2: Kısıt, 3: Tam Ban
   isBanned: { type: Boolean, default: false },
   isDeactivated: { type: Boolean, default: false },
   isPremium: { type: Boolean, default: false },
-  premiumExpiresAt: { type: Date, default: null }, // Haftalık Premium Bitiş Tarihi
+  premiumExpiresAt: { type: Date, default: null },
   filterUsage: {
     date: String,
     count: { type: Number, default: 0 }
@@ -147,7 +147,7 @@ const ReportSchema = new mongoose.Schema({
 });
 
 const PricingConfigSchema = new mongoose.Schema({
-  key: { type: String, unique: true }, // 'premium_weekly', 'filter_pack'
+  key: { type: String, unique: true }, // 'premium_weekly', 'filter_pack', 'godmode_active_day'
   priceStars: Number
 });
 
@@ -216,9 +216,9 @@ if (bot) {
     
     if (payload === 'golden_match_premium_weekly') {
       const expires = new Date();
-      expires.setDate(expires.getDate() + 7); // 1 Hafta (7 Gün)
+      expires.setDate(expires.getDate() + 7);
       await UserModel.findOneAndUpdate({ telegramId: userId }, { isPremium: true, premiumExpiresAt: expires });
-      await ctx.reply('🌟 Tebrikler! 1 haftalık Premium Üyeliğiniz ve Pembe Simli Kristal Temanız aktifleştirildi.');
+      await ctx.reply('🌟 Tebrikler! 1 haftalık Premium Üyeliğiniz aktifleştirildi.');
     } else if (payload === 'golden_match_filters') {
       const user = await UserModel.findOne({ telegramId: userId });
       if (user) {
@@ -250,7 +250,6 @@ app.get('/api/profile/:id', async (req, res) => {
   const founder = isFounder(tid, uname);
   
   if (profile) {
-    // Haftalık Premium Süre Bitiş Kontrolü
     if (profile.isPremium && profile.premiumExpiresAt && new Date() > new Date(profile.premiumExpiresAt)) {
       await UserModel.updateOne({ telegramId: tid }, { isPremium: false, premiumExpiresAt: null });
       profile.isPremium = false;
@@ -328,7 +327,7 @@ app.post('/api/billing/create-invoice', async (req, res) => {
   }
 });
 
-// Keşfet: Yakın Konum Öncelikli Sıralama (Tinder Mantığı)
+// Keşfet: Yakın Konum Öncelikli Sıralama
 app.get('/api/cards', async (req, res) => {
   const currentUserId = String(req.query.userId);
   const filterCity = req.query.city;
@@ -365,9 +364,7 @@ app.get('/api/cards', async (req, res) => {
     return { ...user, distanceKm };
   });
 
-  // Yakın konuma göre sıralama (Tinder Mantığı: En yakın öne düşer)
   cards.sort((a, b) => a.distanceKm - b.distanceKm);
-
   res.json({ success: true, cards });
 });
 
@@ -510,7 +507,7 @@ app.post('/api/report', async (req, res) => {
   res.json({ success: true, message: 'Şikayet iletildi ve YT paneline kaydedildi.' });
 });
 
-// ================= YENİ PEMBE SİMLİ KRİSTAL YT PANELİ & HAYALET MOD API =================
+// ================= YÖNETİCİ PANELİ & HAYALET MOD API =================
 async function checkAdminAuth(req, res, next) {
   const requesterId = req.headers['x-user-id'] || req.query.userId;
   const requesterUsername = req.headers['x-user-name'] || req.query.username;
@@ -544,9 +541,35 @@ app.get('/api/admin/dashboard-data', checkAdminAuth, async (req, res) => {
   });
 });
 
+// --- Kutsal Mod (Haftanın Tüm Günleri Seçimi) ---
+app.post('/api/admin/set-godmode-day', checkAdminAuth, async (req, res) => {
+  const { dayOfWeek, adminId, adminName } = req.body;
+  await PricingConfigModel.findOneAndUpdate(
+    { key: 'godmode_active_day' },
+    { key: 'godmode_active_day', priceStars: Number(dayOfWeek) },
+    { upsert: true, new: true }
+  );
+  await logSystemAction(adminId, adminName, 'Kutsal Mod / Hayalet Gün Güncellendi', `Seçilen Gün: ${dayOfWeek}`);
+  res.json({ success: true, message: 'Kutsal Mod günü mühürlendi.' });
+});
+
+app.get('/api/godmode/status', async (req, res) => {
+  const config = await PricingConfigModel.findOne({ key: 'godmode_active_day' });
+  const targetDay = config ? config.priceStars : 3;
+  const currentDay = new Date().getDay();
+  const isActive = (currentDay === targetDay);
+
+  res.json({
+    success: true,
+    activeGodMode: isActive,
+    activeDay: targetDay,
+    message: isActive ? '🔥 Kutsal Mod / Hayalet Mod Aktif!' : '⏳ Kutsal Mod günü bekleniyor.'
+  });
+});
+
 // 3 Adımlı Kademeli Kısıtlama / Ban Portu
 app.post('/api/admin/restrict-user', checkAdminAuth, async (req, res) => {
-  const { targetTelegramId, level, adminId, adminName } = req.body; // level: 0, 1, 2, 3
+  const { targetTelegramId, level, adminId, adminName } = req.body;
   const user = await UserModel.findOne({ telegramId: String(targetTelegramId) });
   if (!user) return res.status(404).json({ success: false });
 
@@ -555,12 +578,12 @@ app.post('/api/admin/restrict-user', checkAdminAuth, async (req, res) => {
   else user.isBanned = false;
 
   await user.save();
-  await logSystemAction(adminId, adminName, `Kullanıcı Kısıtlama Seviyesi Değiştirildi (Seviye ${level})`, `${user.nickname} (ID: ${targetTelegramId})`);
+  await logSystemAction(adminId, adminName, `Kullanıcı Kısıtlama Seviyesi (Seviye ${level})`, `${user.nickname} (ID: ${targetTelegramId})`);
 
   res.json({ success: true, restrictionLevel: user.restrictionLevel });
 });
 
-// Haftalık Premium Süresi Ayarlama (YT Paneli)
+// Haftalık Premium Süresi Ayarlama
 app.post('/api/admin/set-premium-duration', checkAdminAuth, async (req, res) => {
   const { targetTelegramId, weeks, adminId, adminName } = req.body;
   const user = await UserModel.findOne({ telegramId: String(targetTelegramId) });
@@ -616,5 +639,5 @@ app.post('/api/admin/toggle-admin', async (req, res) => {
 
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`GoldenMatch Sunucusu ${PORT} portunda hayalet mod ve log motoruyla aktif.`);
+  console.log(`GoldenMatch Sunucusu ${PORT} portunda tam yetkiyle aktif.`);
 });
