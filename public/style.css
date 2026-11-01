@@ -101,7 +101,10 @@ button:active, .choice-chip:active, .action-circle:active {
   transform: scale(0.92) !important;
 }
 
-/* ÜST BAŞLIK & FOUNDER İMZASI (@breskavica) */
+/* ========================================================================== */
+/* 🌟 ÜST BAŞLIK: ORTADA ELMAS-GOLD LOGO VE SAĞDA @breskavica İMZASI           */
+/* ========================================================================== */
+
 .app-nav {
   height: 65px;
   background: rgba(28, 22, 45, 0.45);
@@ -111,48 +114,55 @@ button:active, .choice-chip:active, .action-circle:active {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 18px;
+  padding: 0 16px;
   z-index: 100;
   flex-shrink: 0;
+  position: relative;
 }
 
-.brand-logo {
-  font-family: 'Cinzel', serif;
-  font-size: 18px;
-  font-weight: 800;
-  letter-spacing: 1.2px;
+.brand-logo-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   cursor: pointer;
+  text-align: center;
 }
 
-.gold-text {
-  background: linear-gradient(135deg, #f3e5ab 0%, #c5a059 100%);
+/* Elmastan ve Altından Yapılmış Parıl Parıl Ortadaki Logo */
+.diamond-gold-text {
+  font-family: 'Cinzel', serif;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  background: linear-gradient(135deg, #ffffff 0%, #f3e5ab 35%, #ffd700 70%, #c5a059 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+  filter: drop-shadow(0 2px 8px rgba(255, 215, 0, 0.6)) drop-shadow(0 0 2px rgba(255, 255, 255, 0.9));
+  text-transform: uppercase;
 }
 
-.nav-actions {
+.nav-actions-right {
+  margin-left: auto;
   display: flex;
-  gap: 8px;
   align-items: center;
 }
 
 .founder-signature {
   font-family: 'Cinzel', serif;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 800;
-  letter-spacing: 1.5px;
+  letter-spacing: 1px;
   background: linear-gradient(135deg, #f3e5ab 0%, #c5a059 50%, #ffd700 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  padding: 4px 10px;
-  border: 1px solid rgba(255, 215, 0, 0.4);
+  padding: 4px 8px;
+  border: 1.5px solid rgba(255, 215, 0, 0.45);
   border-radius: 12px;
   background-color: rgba(255, 215, 0, 0.05);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.2);
-  text-transform: uppercase;
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.25);
+  text-transform: none;
 }
 
 /* ========================================================================== */
@@ -163,17 +173,15 @@ button:active, .choice-chip:active, .action-circle:active {
   position: absolute !important;
   bottom: 14px !important;
   left: 50% !important;
-  transform: translateX(-50%) translateY(75%); /* Boşta iken zarifçe alta çekilir / gizlenir */
+  transform: translateX(-50%) translateY(75%);
   width: calc(100% - 28px) !important;
   max-width: 420px !important;
   height: 60px !important;
   
-  /* 3 Boyutlu Camsı Altın / Mor Levha Dokusu */
   background: linear-gradient(135deg, rgba(45, 35, 70, 0.75) 0%, rgba(20, 15, 35, 0.85) 100%) !important;
   backdrop-filter: blur(25px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(25px) saturate(180%) !important;
   
-  /* 3D Kabartmalı Kristal Gold Çerçeve & Derinlik Gölgesi */
   border: 1.5px solid rgba(255, 215, 0, 0.5) !important;
   border-radius: 22px !important;
   box-shadow: 
@@ -187,13 +195,11 @@ button:active, .choice-chip:active, .action-circle:active {
   padding: 0 8px !important;
   z-index: 5000 !important;
   
-  /* Akıllı Gizlenme / Açılma Geçiş Efekti */
   opacity: 0.55;
   transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
   pointer-events: auto !important;
 }
 
-/* 🌟 Üzerine Dokunulduğunda / Fare Yaklaştığında 3D Öne Fırlama ve Tam Açılma */
 .glass-dock:hover, 
 .glass-dock:active,
 .glass-dock:focus-within {
