@@ -1,5 +1,5 @@
 // ==========================================================================
-// GOLDENMATCH - GELİŞMİŞ SIFIR GECİKME İSTEMCİ MOTORU (APP.JS)
+// GOLDENMATCH - GELİŞMİŞ SIFIR GECİKME & YÖNETİM MOTORU (APP.JS)
 // ==========================================================================
 
 const tg = window.Telegram?.WebApp;
@@ -59,19 +59,13 @@ function initSocketConnection() {
     });
 
     socket.on('connect', () => {
-      if (activeMatchId) {
-        socket.emit('join_chat', activeMatchId);
-      }
+      if (activeMatchId) socket.emit('join_chat', activeMatchId);
     });
 
     socket.on('receive_message', (msg) => {
-      if (activeMatchId && msg) {
-        appendIncomingMessage(msg);
-      }
+      if (activeMatchId && msg) appendIncomingMessage(msg);
     });
-  } catch (e) {
-    console.warn('Socket.io bağlantı hatası.');
-  }
+  } catch (e) {}
 }
 
 async function loadLocations() {
@@ -86,15 +80,85 @@ async function loadLocations() {
   populateFilterCityChips();
 }
 
-function applyPremiumTheme(isPremium) {
-  if (isPremium) {
-    document.body.classList.add('is-premium-theme');
-  } else {
-    document.body.classList.remove('is-premium-theme');
+// ----------------- GOD MODE & TAROT KARTLARI MOTORU -----------------
+async function triggerGodModeTarot() {
+  const curtain = document.getElementById('godModeCurtain');
+  const tarotContainer = document.getElementById('tarotCardsContainer');
+  if (!curtain || !tarotContainer) return;
+
+  curtain.classList.remove('hidden');
+  tarotContainer.innerHTML = '<div style="color:#d4af37; font-size:12px;">🎴 4 adet ilahi tarot cam kartı karıştırılıyor...</div>';
+
+  try {
+    const res = await fetch(`/api/cards?userId=${window.currentUserId}&city=Hepsi&district=Hepsi&role=Hepsi&minAge=18&maxAge=99`);
+    const data = await res.json();
+    
+    setTimeout(() => {
+      tarotContainer.innerHTML = '';
+      if (!data.success || !data.cards.length) {
+        tarotContainer.innerHTML = '<div style="color:#ff4757; font-size:12px;">Eşleşecek kimse bulunamadı.</div>';
+        return;
+      }
+
+      const selectedCards = data.cards.slice(0, 4);
+      selectedCards.forEach((user, idx) => {
+        const card = document.createElement('div');
+        card.style.cssText = `
+          width: 75px; height: 110px; background: linear-gradient(135deg, rgba(212,175,55,0.2), rgba(255,105,180,0.2));
+          border: 1.5px solid #d4af37; border-radius: 12px; display: flex; flex-direction: column; align-items: center;
+          justify-content: center; cursor: pointer; position: relative; overflow: hidden; box-shadow: 0 0 15px rgba(212,175,55,0.4);
+        `;
+        card.innerHTML = `
+          <div style="font-size:16px;">🌷</div>
+          <img src="${user.photos?.[0] || ''}" style="width:40px; height:40px; border-radius:50%; object-fit:cover; border:1px solid #d4af37; margin:4px 0;" alt="">
+          <span style="font-size:10px; color:#fff; font-weight:700;">${user.nickname}</span>
+        `;
+        card.onclick = async () => {
+          await triggerCardSwipeWithUser('like', user.telegramId);
+          alert(`✨ Tarot Kartı Seçildi! ${user.nickname} ile anında eşleştiniz.`);
+          toggleGodMode(false);
+          switchTab('inbox');
+        };
+        tarotContainer.appendChild(card);
+      });
+    }, 800);
+  } catch (e) {
+    tarotContainer.innerHTML = '<div style="color:#ff4757;">Tarot motoru hatası.</div>';
   }
 }
 
-// ----------------- KAYIT & ŞEHİR -----------------
+function toggleGodMode(show) {
+  const curtain = document.getElementById('godModeCurtain');
+  if (show) triggerGodModeTarot();
+  else curtain?.classList.add('hidden');
+}
+
+async function triggerCardSwipeWithUser(action, toUserId) {
+  try {
+    await fetch('/api/like', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fromUserId: window.currentUserId, toUserId, action })
+    });
+  } catch (e) {}
+}
+
+async function saveGodModeAutomation() {
+  let day = document.getElementById('godModeDaySelect')?.value;
+  try {
+    const res = await fetch('/api/admin/set-godmode-day', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dayOfWeek: Number(day), adminId: window.currentUserId, adminName: window.currentUsername })
+    });
+    const data = await res.json();
+    alert(data.message || 'Kutsal Mod günü mühürlendi.');
+  } catch (e) {
+    alert('Gün mühürlenemedi.');
+  }
+}
+
+// ----------------- KAYIT & PROFİL -----------------
 function populateCityChips(filterText = '') {
   const container = document.getElementById('cityChipGrid');
   if (!container) return;
@@ -290,14 +354,15 @@ async function checkUserProfile() {
 
     if (windowIsAdmin) {
       document.getElementById('ytNavBtn')?.classList.remove('hidden');
+      document.getElementById('godModeToggleBtn')?.classList.remove('hidden');
     } else {
       document.getElementById('ytNavBtn')?.classList.add('hidden');
+      document.getElementById('godModeToggleBtn')?.classList.add('hidden');
     }
 
     if (data.exists && data.profile) {
       currentProfile = data.profile;
       fillProfileForm(currentProfile);
-      applyPremiumTheme(currentProfile.isPremium);
       document.getElementById('appNav')?.classList.remove('hidden');
       switchTab('explore');
       loadExploreCards();
@@ -404,7 +469,6 @@ async function handleFormSubmit(event) {
     const data = await res.json();
     if (data.success) {
       currentProfile = data.profile;
-      applyPremiumTheme(currentProfile.isPremium);
       document.getElementById('appNav')?.classList.remove('hidden');
       switchTab('explore');
       loadExploreCards();
@@ -875,7 +939,7 @@ async function loadAdminDashboard() {
         data.logs.forEach(l => {
           const div = document.createElement('div');
           div.style.marginBottom = '3px';
-          div.innerHTML = `<span style="color:#ff69b4;">[${new Date(l.timestamp).toLocaleTimeString()}]</span> <strong>${l.adminName}</strong>: ${l.action} -> <span style="color:#d4af37;">${l.targetInfo}</span>`;
+          div.innerHTML = `<span style="color:#d4af37;">[${new Date(l.timestamp).toLocaleTimeString()}]</span> <strong>${l.adminName}</strong>: ${l.action} -> <span style="color:#fff;">${l.targetInfo}</span>`;
           logsList.appendChild(div);
         });
       }
@@ -887,14 +951,14 @@ async function loadAdminDashboard() {
           const isAdmin = data.admins?.includes(u.telegramId) || data.admins?.includes(u.username);
           const tgTag = u.username ? `@${u.username}` : `ID:${u.telegramId}`;
           const card = document.createElement('div');
-          card.style.cssText = 'background:rgba(255,255,255,0.04); border:1px solid rgba(255,105,180,0.2); padding:10px; border-radius:12px; font-size:12px; margin-bottom:6px;';
+          card.style.cssText = 'background:rgba(255,255,255,0.04); border:1px solid rgba(212,175,55,0.2); padding:10px; border-radius:12px; font-size:12px; margin-bottom:6px;';
           card.innerHTML = `
             <div style="margin-bottom:6px;">
               <strong>${u.nickname}</strong> (${u.role}) - <span style="color:#d4af37;">${u.city}</span> ${isAdmin ? '<span style="color:#2ed573;">[YT]</span>' : ''}<br>
               <span style="font-size:11px; color:#aaa;">Telegram: <strong style="color:#fff;">${tgTag}</strong> | Kısıt Seviyesi: <strong style="color:#ff4757;">${u.restrictionLevel || 0}</strong></span>
             </div>
             <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-              <select onchange="changeRestriction('${u.telegramId}', this.value)" style="background:#13121d; color:#fff; border:1px solid #ff69b4; padding:4px; border-radius:6px; font-size:11px;">
+              <select onchange="changeRestriction('${u.telegramId}', this.value)" style="background:#13121d; color:#fff; border:1px solid #d4af37; padding:4px; border-radius:6px; font-size:11px;">
                 <option value="0" ${u.restrictionLevel===0?'selected':''}>Seviye 0 (Serbest)</option>
                 <option value="1" ${u.restrictionLevel===1?'selected':''}>Seviye 1 (Uyarı)</option>
                 <option value="2" ${u.restrictionLevel===2?'selected':''}>Seviye 2 (Geçici Kısıt)</option>
