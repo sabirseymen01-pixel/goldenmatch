@@ -643,7 +643,7 @@ async function triggerCardSwipe(action) {
   renderCurrentCard();
 }
 
-// ----------------- MESAJLAR & SIFIR GECİKME (ŞAK DİYE YÜKLEME) -----------------
+// ----------------- MESAJLAR & SIFIR GECİKME -----------------
 async function checkUnreadMessages() {
   try {
     const res = await fetch(`/api/chats?userId=${window.currentUserId}`);
@@ -695,10 +695,7 @@ async function openChatRoom(matchId, partner) {
   switchTab('chatRoom');
   document.getElementById('chatPartnerName').innerText = partner.nickname;
 
-  if (socket) {
-    socket.emit('join_chat', matchId);
-  }
-
+  if (socket) socket.emit('join_chat', matchId);
   await fetchMessages();
 }
 
@@ -830,16 +827,12 @@ async function toggleAudioRecording() {
       mediaRecorder = new MediaRecorder(stream);
       audioChunks = [];
 
-      mediaRecorder.ondataavailable = (event) => {
-        audioChunks.push(event.data);
-      };
-
+      mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
         const reader = new FileReader();
         reader.onloadend = async () => {
-          const base64Audio = reader.result;
-          await sendChatMessage(null, 'audio', base64Audio);
+          await sendChatMessage(null, 'audio', reader.result);
         };
         reader.readAsDataURL(audioBlob);
       };
@@ -883,26 +876,19 @@ async function cancelCurrentMatch() {
 async function reportCurrentPartner() {
   let reason = prompt('Şikayet sebebinizi belirtin:');
   if (!reason || !activePartnerId) return;
-  if (selectedMessageForReport) {
-    reason += ` [İlgili Mesaj/İçerik: "${selectedMessageForReport}"]`;
-  }
+  if (selectedMessageForReport) reason += ` [İlgili Mesaj/İçerik: "${selectedMessageForReport}"]`;
   try {
-    const res = await fetch('/api/report', {
+    await fetch('/api/report', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ targetId: activePartnerId, reporterId: window.currentUserId, reason })
     });
-    const data = await res.json();
-    if (data.success) {
-      alert('⚠️ Şikayetiniz loglara iletildi.');
-      selectedMessageForReport = null;
-    }
-  } catch (e) {
-    alert('Şikayet iletilemedi.');
-  }
+    alert('⚠️ Şikayetiniz loglara iletildi.');
+    selectedMessageForReport = null;
+  } catch (e) {}
 }
 
-// ----------------- YT YÖNETİM MASASI -----------------
+// ----------------- YT YÖNETİM MASASI (AYRIŞTIRILMIŞ PORTLAR & DETAYLI LOGLAR) -----------------
 async function loadAdminDashboard() {
   try {
     const res = await fetch(`/api/admin/dashboard-data?userId=${window.currentUserId}&username=${window.currentUsername}`);
@@ -915,6 +901,7 @@ async function loadAdminDashboard() {
         document.getElementById('founderPricingSection')?.classList.remove('hidden');
       }
 
+      // Şikayetler
       const repContainer = document.getElementById('adminReportsContainer');
       if (repContainer && data.reports) {
         repContainer.innerHTML = '';
@@ -933,28 +920,37 @@ async function loadAdminDashboard() {
         }
       }
 
+      // Ayrıştırılmış ve Detaylı Loglar (Tarih, Saat, Admin, Match Üye Detayları)
       const logsList = document.getElementById('adminLogsList');
       if (logsList && data.logs) {
         logsList.innerHTML = '';
         data.logs.forEach(l => {
           const div = document.createElement('div');
-          div.style.marginBottom = '3px';
-          div.innerHTML = `<span style="color:#d4af37;">[${new Date(l.timestamp).toLocaleTimeString()}]</span> <strong>${l.adminName}</strong>: ${l.action} -> <span style="color:#fff;">${l.targetInfo}</span>`;
+          div.style.cssText = 'background:rgba(0,0,0,0.2); padding:6px; border-radius:8px; margin-bottom:4px; font-size:11px;';
+          const timeStr = new Date(l.timestamp).toLocaleString('tr-TR');
+          let matchDetail = '';
+          if (l.targetAccountName || l.targetUserTgId) {
+            matchDetail = `<br><span style="color:#ff69b4;">Target Üye:</span> ${l.targetAccountName || 'Bilinmeyen'} (@${l.targetUsername || 'yok'}, ID: ${l.targetUserTgId || 'yok'})`;
+          }
+          div.innerHTML = `<span style="color:#d4af37;">[${timeStr}]</span> <strong>Admin:</strong> ${l.adminName} <br><strong>İşlem:</strong> <span style="color:#fff;">${l.action}</span> -> ${l.targetInfo}${matchDetail}`;
           logsList.appendChild(div);
         });
       }
 
+      // 1. Port: Normal Üyeler Listesi & Kısıtlama Masası
       const uList = document.getElementById('adminUserCards');
       if (uList && data.users) {
-        uList.innerHTML = '';
+        uList.innerHTML = '<h3 style="color:#d4af37; font-size:13px; margin-bottom:6px;">👥 Üyeler Portu</h3>';
+        if (!data.users.length) {
+          uList.innerHTML += '<div style="font-size:11px; color:#888;">Kayıtlı normal üye bulunmuyor.</div>';
+        }
         data.users.forEach(u => {
-          const isAdmin = data.admins?.includes(u.telegramId) || data.admins?.includes(u.username);
           const tgTag = u.username ? `@${u.username}` : `ID:${u.telegramId}`;
           const card = document.createElement('div');
           card.style.cssText = 'background:rgba(255,255,255,0.04); border:1px solid rgba(212,175,55,0.2); padding:10px; border-radius:12px; font-size:12px; margin-bottom:6px;';
           card.innerHTML = `
             <div style="margin-bottom:6px;">
-              <strong>${u.nickname}</strong> (${u.role}) - <span style="color:#d4af37;">${u.city}</span> ${isAdmin ? '<span style="color:#2ed573;">[YT]</span>' : ''}<br>
+              <strong>${u.nickname}</strong> (${u.role}) - <span style="color:#d4af37;">${u.city}</span><br>
               <span style="font-size:11px; color:#aaa;">Telegram: <strong style="color:#fff;">${tgTag}</strong> | Kısıt Seviyesi: <strong style="color:#ff4757;">${u.restrictionLevel || 0}</strong></span>
             </div>
             <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
@@ -965,10 +961,29 @@ async function loadAdminDashboard() {
                 <option value="3" ${u.restrictionLevel===3?'selected':''}>Seviye 3 (Tam Ban)</option>
               </select>
               <button onclick="setPremiumWeeks('${u.telegramId}')" style="background:#d4af37; color:#000; border:none; padding:5px 8px; border-radius:6px; font-weight:700; font-size:11px; cursor:pointer;">Prem. Ver (Hafta)</button>
-              ${windowIsFounder ? `<button onclick="toggleAdmin('${u.telegramId}')" style="background:${isAdmin ? '#e58e26' : '#3c6382'}; color:#fff; border:none; padding:5px 8px; border-radius:6px; font-weight:700; font-size:11px; cursor:pointer;">${isAdmin ? 'YT Al' : 'YT Yap'}</button>` : ''}
+              ${windowIsFounder ? `<button onclick="toggleAdmin('${u.telegramId}')" style="background:#3c6382; color:#fff; border:none; padding:5px 8px; border-radius:6px; font-weight:700; font-size:11px; cursor:pointer;">YT Yap</button>` : ''}
             </div>
           `;
           uList.appendChild(card);
+        });
+      }
+
+      // 2. Port: Adminler (YT) Listesi
+      const adminListContainer = document.getElementById('adminListContainer');
+      if (adminListContainer && data.adminsList) {
+        adminListContainer.innerHTML = '<h3 style="color:#2ed573; font-size:13px; margin-bottom:6px; margin-top:14px;">👑 Adminler (YT) Portu</h3>';
+        data.adminsList.forEach(a => {
+          const tgTag = a.username ? `@${a.username}` : `ID:${a.telegramId}`;
+          const card = document.createElement('div');
+          card.style.cssText = 'background:rgba(46,213,115,0.05); border:1px solid rgba(46,213,115,0.3); padding:10px; border-radius:12px; font-size:12px; margin-bottom:6px;';
+          card.innerHTML = `
+            <div style="margin-bottom:6px;">
+              <strong>${a.nickname || 'Admin'}</strong> - <span style="color:#2ed573;">[Yönetici]</span><br>
+              <span style="font-size:11px; color:#aaa;">Telegram: <strong style="color:#fff;">${tgTag}</strong></span>
+            </div>
+            ${windowIsFounder && String(a.telegramId) !== window.currentUserId ? `<button onclick="toggleAdmin('${a.telegramId}')" style="background:#ff4757; color:#fff; border:none; padding:5px 8px; border-radius:6px; font-weight:700; font-size:11px; cursor:pointer;">YT Yetkisini Al</button>` : ''}
+          `;
+          adminListContainer.appendChild(card);
         });
       }
     }
@@ -993,6 +1008,17 @@ async function setPremiumWeeks(targetTelegramId) {
     body: JSON.stringify({ targetTelegramId, weeks: Number(weeks), adminId: window.currentUserId, adminName: window.currentUsername })
   });
   alert(`${weeks} hafta premium tanımlandı.`);
+  loadAdminDashboard();
+}
+
+async function clearSystemLogs() {
+  if (!confirm('Tüm sistem loglarını silmek istediğinize emin misiniz?')) return;
+  await fetch('/api/admin/clear-logs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ adminId: window.currentUserId, adminName: window.currentUsername })
+  });
+  alert('Loglar temizlendi.');
   loadAdminDashboard();
 }
 
