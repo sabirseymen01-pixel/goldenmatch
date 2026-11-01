@@ -38,6 +38,7 @@ html, body {
   flex-direction: column;
   position: relative;
   overflow: hidden;
+  transition: background 0.4s ease, box-shadow 0.4s ease;
 }
 
 @media(min-width: 768px) {
@@ -649,6 +650,61 @@ button:active, .choice-chip:active, .action-circle:active {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
+}
+
+/* --- God Mode Su Kümesi & Şeffaf Simli Perde Efekti --- */
+.god-mode-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(circle, rgba(212,175,55,0.25) 0%, rgba(11,10,16,0.92) 80%);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  animation: waterRippleEffect 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes waterRippleEffect {
+  0% { transform: scale(0.1); opacity: 0; border-radius: 50%; }
+  50% { opacity: 0.85; }
+  100% { transform: scale(1); opacity: 1; border-radius: 0%; }
+}
+
+.gold-sparkle-curtain {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  background-image: radial-gradient(#d4af37 1.5px, transparent 1.5px);
+  background-size: 28px 28px;
+  opacity: 0.45;
+  z-index: 10;
+  animation: sparkleMove 8s linear infinite;
+}
+
+@keyframes sparkleMove {
+  0% { background-position: 0 0; }
+  100% { background-position: 56px 56px; }
+}
+
+/* --- Premium Gold & Mor Asalet Teması --- */
+body.is-premium-theme .app-wrapper {
+  background: linear-gradient(135deg, #130f23 0%, #1a1230 100%) !important;
+  border: 1px solid rgba(155, 89, 182, 0.4) !important;
+  box-shadow: 0 0 40px rgba(111, 45, 168, 0.3) !important;
+}
+
+body.is-premium-theme .app-nav {
+  background: rgba(26, 18, 48, 0.9) !important;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.4) !important;
+}
+
+body.is-premium-theme .primary-btn {
+  background: linear-gradient(135deg, #9b59b6, #d4af37) !important;
+  color: #fff !important;
+  box-shadow: 0 6px 25px rgba(155, 89, 182, 0.5) !important;
 }
 
 .modal-backdrop {
