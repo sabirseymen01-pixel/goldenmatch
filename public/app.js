@@ -119,7 +119,7 @@ function selectCity(city, btnElem, preselectedDistrict = null) {
   });
 }
 
-// ----------------- GELİŞMİŞ FİLTRELEME -----------------
+// ----------------- GELİŞMİŞ FİLTRELEME & LİMİT KONTROLÜ -----------------
 function populateFilterCityChips() {
   const container = document.getElementById('filterCityChips');
   if (!container) return;
@@ -186,7 +186,27 @@ function setFilterRole(role, elem) {
   elem.classList.add('selected');
 }
 
-function openFilterModal() {
+async function openFilterModal() {
+  // Günlük filtre hakkı kontrolü
+  try {
+    const res = await fetch('/api/filter/check-limit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: window.currentUserId })
+    });
+    const data = await res.json();
+    const badge = document.getElementById('filterRemainingBadge');
+    if (badge) badge.innerText = data.remaining;
+
+    if (!data.allowed) {
+      if (confirm('Ücretsiz filtre hakkınız bitti! Telegram Yıldızları ⭐ ile devam etmek ister misiniz?')) {
+        buyPremiumOrStars('filter_pack');
+        return;
+      }
+      return;
+    }
+  } catch (e) {}
+
   populateFilterCityChips();
   populateFilterDistrictChips();
   document.getElementById('filterModal')?.classList.remove('hidden');
@@ -201,6 +221,25 @@ function applyFilters() {
   filterMaxAge = Number(document.getElementById('filterMaxAge')?.value) || 99;
   closeFilterModal();
   loadExploreCards();
+}
+
+// Telegram Stars Fatura Satın Alma Tetikleyicisi
+async function buyPremiumOrStars(productType = 'premium') {
+  try {
+    const res = await fetch('/api/billing/create-invoice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: window.currentUserId, productType })
+    });
+    const data = await res.json();
+    if (data.success && data.invoiceLink) {
+      window.location.href = data.invoiceLink;
+    } else {
+      alert(data.message || 'Ödeme faturası oluşturulamadı.');
+    }
+  } catch (e) {
+    alert('Sunucu ödeme hatası.');
+  }
 }
 
 // ----------------- GENEL YETKİ VE PROFİL KONTROLÜ -----------------
@@ -255,6 +294,10 @@ function fillProfileForm(p) {
       }
     });
   }
+
+  // Hesap dondurma / silme butonlarını görünür yap
+  document.getElementById('deactivateAccountBtn')?.classList.remove('hidden');
+  document.getElementById('deleteAccountBtn')?.classList.remove('hidden');
 }
 
 function findButtonByText(targetName, text) {
@@ -338,6 +381,30 @@ async function handleFormSubmit(event) {
   }
 }
 
+// Hesap Dondurma Portu
+async function deactivateMyAccount() {
+  if (!confirm('Hesabınızı dondurmak istediğinize emin misiniz? Tekrar giriş yaparak açabilirsiniz.')) return;
+  try {
+    await fetch('/api/profile/deactivate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ telegramId: window.currentUserId })
+    });
+    alert('Hesabınız donduruldu.');
+    location.reload();
+  } catch (e) {}
+}
+
+// Hesap Silme Portu
+async function deleteMyAccount() {
+  if (!confirm('Hesabınızı kalıcı olarak silmek istediğinize emin misiniz?')) return;
+  try {
+    await fetch(`/api/profile/${window.currentUserId}`, { method: 'DELETE' });
+    alert('Hesabınız silindi.');
+    location.reload();
+  } catch (e) {}
+}
+
 function switchTab(tabId) {
   if (chatPollingInterval) {
     clearInterval(chatPollingInterval);
@@ -378,7 +445,7 @@ function openProfileEdit() {
   switchTab('register');
 }
 
-// ----------------- KEŞFET & KARTLAR (iOS Kaydırma, Matlaşma & Mesafe km) -----------------
+// ----------------- KEŞFET & KARTLAR -----------------
 async function loadExploreCards() {
   const stage = document.getElementById('activeCard');
   if (!stage) return;
@@ -406,11 +473,12 @@ function renderCurrentCard() {
   const user = cardsList[currentCardIndex];
   const photo = user.photos?.[0] || '';
   const distanceText = user.distanceKm !== null ? ` • 📍 ${user.distanceKm} km uzakta` : '';
+  const premiumBadge = user.isPremium ? ' <span class="royal-badge">🌟</span>' : '';
   
   cardElem.innerHTML = `
     <img src="${photo}" style="width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0; pointer-events:none;" alt="">
     <div style="position:absolute; bottom:0; left:0; right:0; padding:20px; background:linear-gradient(to top, rgba(0,0,0,0.9), transparent);">
-      <h3 style="color:#fff; font-size:22px; margin:0 0 4px 0;">${user.nickname}, ${user.age}</h3>
+      <h3 style="color:#fff; font-size:22px; margin:0 0 4px 0;">${user.nickname}, ${user.age}${premiumBadge}</h3>
       <p style="color:#d4af37; font-size:13px; margin:0;">${user.role} • 📍 ${user.city} / ${user.district || 'Merkez'}${distanceText}</p>
     </div>
   `;
@@ -508,11 +576,12 @@ async function loadInboxChats() {
       list.innerHTML = '';
       data.chats.forEach(chat => {
         const item = document.createElement('div');
-        item.className = 'chat-item';
+        item.className = 'chat-item' + (chat.partner.isPremium ? ' premium-partner' : '');
         item.onclick = () => openChatRoom(chat.matchId, chat.partner);
+        const premiumBadge = chat.partner.isPremium ? ' <span class="royal-badge">🌟</span>' : '';
         item.innerHTML = `
           <div class="chat-avatar-wrap"><img src="${chat.partner.avatar || ''}" class="chat-avatar" alt=""></div>
-          <div class="chat-info"><div class="chat-name">${chat.partner.nickname}</div><div class="chat-snippet">${chat.lastMessage}</div></div>
+          <div class="chat-info"><div class="chat-name">${chat.partner.nickname}${premiumBadge}</div><div class="chat-snippet">${chat.lastMessage}</div></div>
           <div class="chat-time">${chat.lastMessageTime || ''}</div>
         `;
         list.appendChild(item);
@@ -576,7 +645,8 @@ function renderMessages(messages) {
       contentHtml = `<audio controls src="${msg.mediaUrl}" style="max-width:200px; height:32px;"></audio>`;
     }
 
-    bubble.innerHTML = `${contentHtml}<span class="bubble-time">${msg.time}</span>`;
+    const readCheck = isMe && msg.read ? ' <span style="font-size:10px; color:#d4af37;">✓✓</span>' : '';
+    bubble.innerHTML = `${contentHtml}<span class="bubble-time">${msg.time}${readCheck}</span>`;
     stream.appendChild(bubble);
   });
   stream.scrollTop = stream.scrollHeight;
