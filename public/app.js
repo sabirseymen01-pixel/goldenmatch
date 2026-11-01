@@ -1,5 +1,5 @@
 // ==========================================================================
-// GOLDENMATCH - GELİŞMİŞ İSTEMCİ UYGULAMA MOTORU (APP.JS)
+// GOLDENMATCH - GELİŞMİŞ SIFIR GECİKME İSTEMCİ MOTORU (APP.JS)
 // ==========================================================================
 
 const tg = window.Telegram?.WebApp;
@@ -48,16 +48,29 @@ window.addEventListener('DOMContentLoaded', async () => {
   await checkUserProfile();
 });
 
+// --- SIFIR GECİKME İÇİN OPTİMİZE EDİLMİŞ SOCKET.IO BAĞLANTISI ---
 function initSocketConnection() {
   try {
-    socket = io();
-    socket.on('receive_message', (msg) => {
+    socket = io({
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 500
+    });
+
+    socket.on('connect', () => {
       if (activeMatchId) {
+        socket.emit('join_chat', activeMatchId);
+      }
+    });
+
+    socket.on('receive_message', (msg) => {
+      if (activeMatchId && msg) {
         appendIncomingMessage(msg);
       }
     });
   } catch (e) {
-    console.warn('Socket.io yüklenemedi.');
+    console.warn('Socket.io bağlantı hatası.');
   }
 }
 
@@ -73,16 +86,6 @@ async function loadLocations() {
   populateFilterCityChips();
 }
 
-// ----------------- GOD MODE / HAYALET MOD & TEMA -----------------
-function toggleGodMode(show) {
-  const curtain = document.getElementById('godModeCurtain');
-  if (show) {
-    curtain?.classList.remove('hidden');
-  } else {
-    curtain?.classList.add('hidden');
-  }
-}
-
 function applyPremiumTheme(isPremium) {
   if (isPremium) {
     document.body.classList.add('is-premium-theme');
@@ -91,7 +94,7 @@ function applyPremiumTheme(isPremium) {
   }
 }
 
-// ----------------- KAYIT / PROFİL -----------------
+// ----------------- KAYIT & ŞEHİR -----------------
 function populateCityChips(filterText = '') {
   const container = document.getElementById('cityChipGrid');
   if (!container) return;
@@ -217,7 +220,6 @@ function setFilterRole(role, elem) {
 }
 
 async function openFilterModal() {
-  // Hayalet Modda ödemeden muaf test
   if (windowIsAdmin) {
     document.getElementById('filterModal')?.classList.remove('hidden');
     populateFilterCityChips();
@@ -288,16 +290,14 @@ async function checkUserProfile() {
 
     if (windowIsAdmin) {
       document.getElementById('ytNavBtn')?.classList.remove('hidden');
-      document.getElementById('godModeToggleBtn')?.classList.remove('hidden');
     } else {
       document.getElementById('ytNavBtn')?.classList.add('hidden');
-      document.getElementById('godModeToggleBtn')?.classList.add('hidden');
     }
 
     if (data.exists && data.profile) {
       currentProfile = data.profile;
       fillProfileForm(currentProfile);
-      applyPremiumTheme(currentProfile.isPremium || windowIsAdmin); // YTler test için pembe simli temadan muaf/dahil
+      applyPremiumTheme(currentProfile.isPremium);
       document.getElementById('appNav')?.classList.remove('hidden');
       switchTab('explore');
       loadExploreCards();
@@ -404,7 +404,7 @@ async function handleFormSubmit(event) {
     const data = await res.json();
     if (data.success) {
       currentProfile = data.profile;
-      applyPremiumTheme(currentProfile.isPremium || windowIsAdmin);
+      applyPremiumTheme(currentProfile.isPremium);
       document.getElementById('appNav')?.classList.remove('hidden');
       switchTab('explore');
       loadExploreCards();
@@ -476,7 +476,7 @@ function openProfileEdit() {
   switchTab('register');
 }
 
-// ----------------- KEŞFET (YAKIN KONUM ÖNCELİKLİ) -----------------
+// ----------------- KEŞFET -----------------
 async function loadExploreCards() {
   const stage = document.getElementById('activeCard');
   if (!stage) return;
@@ -579,7 +579,7 @@ async function triggerCardSwipe(action) {
   renderCurrentCard();
 }
 
-// ----------------- MESAJLAR & SIFIR GECİKME -----------------
+// ----------------- MESAJLAR & SIFIR GECİKME (ŞAK DİYE YÜKLEME) -----------------
 async function checkUnreadMessages() {
   try {
     const res = await fetch(`/api/chats?userId=${window.currentUserId}`);
@@ -681,6 +681,8 @@ function renderMessages(messages) {
   const stream = document.getElementById('messageStream');
   if (!stream) return;
   stream.innerHTML = '';
+  const fragment = document.createDocumentFragment();
+
   messages.forEach(msg => {
     const isMe = msg.senderId === window.currentUserId;
     const bubble = document.createElement('div');
@@ -702,8 +704,10 @@ function renderMessages(messages) {
 
     const readCheck = isMe && msg.read ? ' <span style="font-size:10px; color:#d4af37;">✓✓</span>' : '';
     bubble.innerHTML = `${contentHtml}<span class="bubble-time">${msg.time}${readCheck}</span>`;
-    stream.appendChild(bubble);
+    fragment.appendChild(bubble);
   });
+
+  stream.appendChild(fragment);
   stream.scrollTop = stream.scrollHeight;
 }
 
@@ -715,6 +719,17 @@ async function sendChatMessage(e, customType = 'text', customMediaUrl = '') {
 
   if (customType === 'text' && !text) return;
   if (input) input.value = '';
+
+  const tempMsg = {
+    id: 'temp_' + Date.now(),
+    senderId: String(window.currentUserId),
+    text: text,
+    type: customType,
+    mediaUrl: customMediaUrl,
+    time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+    read: false
+  };
+  appendIncomingMessage(tempMsg);
 
   const res = await fetch(`/api/chats/${activeMatchId}/message`, {
     method: 'POST',
@@ -729,7 +744,6 @@ async function sendChatMessage(e, customType = 'text', customMediaUrl = '') {
   const data = await res.json();
   if (data.success && socket) {
     socket.emit('send_message', { matchId: activeMatchId, message: data.message });
-    appendIncomingMessage(data.message);
   }
 }
 
@@ -816,7 +830,7 @@ async function reportCurrentPartner() {
     });
     const data = await res.json();
     if (data.success) {
-      alert('⚠️ Şikayetiniz YT ekibine ve loglara iletildi.');
+      alert('⚠️ Şikayetiniz loglara iletildi.');
       selectedMessageForReport = null;
     }
   } catch (e) {
@@ -824,7 +838,7 @@ async function reportCurrentPartner() {
   }
 }
 
-// ----------------- YENİ PEMBE SİMLİ KRİSTAL YT PANELİ & YÖNETİM -----------------
+// ----------------- YT YÖNETİM MASASI -----------------
 async function loadAdminDashboard() {
   try {
     const res = await fetch(`/api/admin/dashboard-data?userId=${window.currentUserId}&username=${window.currentUsername}`);
@@ -837,7 +851,6 @@ async function loadAdminDashboard() {
         document.getElementById('founderPricingSection')?.classList.remove('hidden');
       }
 
-      // Şikayet Bildirimleri
       const repContainer = document.getElementById('adminReportsContainer');
       if (repContainer && data.reports) {
         repContainer.innerHTML = '';
@@ -856,7 +869,6 @@ async function loadAdminDashboard() {
         }
       }
 
-      // Sistem İşlem Logları
       const logsList = document.getElementById('adminLogsList');
       if (logsList && data.logs) {
         logsList.innerHTML = '';
@@ -868,7 +880,6 @@ async function loadAdminDashboard() {
         });
       }
 
-      // Üye Listesi & 3 Adımlı Kısıtlama Masası
       const uList = document.getElementById('adminUserCards');
       if (uList && data.users) {
         uList.innerHTML = '';
