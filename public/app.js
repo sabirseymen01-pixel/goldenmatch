@@ -225,7 +225,7 @@ async function triggerGodModeTarot() {
   if (!curtain || !tarotContainer) return;
 
   curtain.classList.remove('hidden');
-  tarotContainer.innerHTML = '<div style="color:#d4af37; font-size:12px;">🎴 4 adet ilahi tarot cam kartı karıştırılıyor...</div>';
+  tarotContainer.innerHTML = '<div style="color:#f3e5ab; font-size:12px;">🎴 4 adet ilahi tarot cam kartı karıştırılıyor...</div>';
 
   try {
     const res = await fetch(`/api/cards?userId=${window.currentUserId}&city=Hepsi&district=Hepsi&role=Hepsi&minAge=18&maxAge=99`);
@@ -242,13 +242,13 @@ async function triggerGodModeTarot() {
       selectedCards.forEach((user, idx) => {
         const card = document.createElement('div');
         card.style.cssText = `
-          width: 75px; height: 110px; background: linear-gradient(135deg, rgba(212,175,55,0.2), rgba(255,105,180,0.2));
-          border: 1.5px solid #d4af37; border-radius: 12px; display: flex; flex-direction: column; align-items: center;
-          justify-content: center; cursor: pointer; position: relative; overflow: hidden; box-shadow: 0 0 15px rgba(212,175,55,0.4);
+          width: 75px; height: 110px; background: linear-gradient(135deg, rgba(255,215,0,0.2), rgba(155,89,182,0.2));
+          border: 1.5px solid #f3e5ab; border-radius: 12px; display: flex; flex-direction: column; align-items: center;
+          justify-content: center; cursor: pointer; position: relative; overflow: hidden; box-shadow: 0 0 15px rgba(255,215,0,0.4);
         `;
         card.innerHTML = `
           <div style="font-size:16px;">🌷</div>
-          <img src="${user.photos?.[0] || ''}" style="width:40px; height:40px; border-radius:50%; object-fit:cover; border:1px solid #d4af37; margin:4px 0;" alt="">
+          <img src="${user.photos?.[0] || ''}" style="width:40px; height:40px; border-radius:50%; object-fit:cover; border:1px solid #f3e5ab; margin:4px 0;" alt="">
           <span style="font-size:10px; color:#fff; font-weight:700;">${user.nickname}</span>
         `;
         card.onclick = async () => {
@@ -373,6 +373,7 @@ async function checkUserProfile() {
     if (data.exists && data.profile) {
       currentProfile = data.profile;
       fillProfileForm(currentProfile);
+      document.getElementById('glassDock')?.classList.remove('hidden');
       document.getElementById('appNav')?.classList.remove('hidden');
       switchTab('explore');
       loadExploreCards();
@@ -488,6 +489,7 @@ async function handleFormSubmit(event) {
     const data = await res.json();
     if (data.success) {
       currentProfile = data.profile;
+      document.getElementById('glassDock')?.classList.remove('hidden');
       document.getElementById('appNav')?.classList.remove('hidden');
       switchTab('explore');
       loadExploreCards();
@@ -533,9 +535,12 @@ function switchTab(tabId) {
 
   document.querySelectorAll('.view-screen').forEach(s => s.classList.add('hidden'));
 
-  const navBar = document.getElementById('appNav');
+  const glassDock = document.getElementById('glassDock');
+  const appNav = document.getElementById('appNav');
+
   if (tabId !== 'register' || currentProfile) {
-    navBar?.classList.remove('hidden');
+    glassDock?.classList.remove('hidden');
+    appNav?.classList.remove('hidden');
   }
 
   if (tabId === 'register') {
@@ -581,7 +586,7 @@ function renderCurrentCard() {
   const cardElem = document.getElementById('activeCard');
   if (!cardElem) return;
   if (!cardsList.length || currentCardIndex >= cardsList.length) {
-    cardElem.innerHTML = `<div class="card-loader"><h3 style="color:#e5a93c;">Şimdilik Kimse Kalmadı ✨</h3></div>`;
+    cardElem.innerHTML = `<div class="card-loader"><h3 style="color:#f3e5ab;">Şimdilik Kimse Kalmadı ✨</h3></div>`;
     return;
   }
   const user = cardsList[currentCardIndex];
@@ -593,7 +598,7 @@ function renderCurrentCard() {
     <img src="${photo}" style="width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0; pointer-events:none;" alt="">
     <div style="position:absolute; bottom:0; left:0; right:0; padding:20px; background:linear-gradient(to top, rgba(0,0,0,0.9), transparent);">
       <h3 style="color:#fff; font-size:22px; margin:0 0 4px 0;">${user.nickname}, ${user.age}${premiumBadge}</h3>
-      <p style="color:#d4af37; font-size:13px; margin:0;">${user.role} • 📍 ${user.city} / ${user.district || 'Merkez'}${distanceText}</p>
+      <p style="color:#f3e5ab; font-size:13px; margin:0;">${user.role} • 📍 ${user.city} / ${user.district || 'Merkez'}${distanceText}</p>
     </div>
   `;
   initCardSwipePhysics(cardElem);
@@ -760,7 +765,7 @@ function appendIncomingMessage(msg) {
     contentHtml = `<audio controls src="${msg.mediaUrl}" style="max-width:200px; height:32px;"></audio>`;
   }
 
-  const readCheck = isMe && msg.read ? ' <span style="font-size:10px; color:#d4af37;">✓✓</span>' : '';
+  const readCheck = isMe && msg.read ? ' <span style="font-size:10px; color:#f3e5ab;">✓✓</span>' : '';
   bubble.innerHTML = `${contentHtml}<span class="bubble-time">${msg.time}${readCheck}</span>`;
   stream.appendChild(bubble);
   stream.scrollTop = stream.scrollHeight;
@@ -791,7 +796,7 @@ function renderMessages(messages) {
       contentHtml = `<audio controls src="${msg.mediaUrl}" style="max-width:200px; height:32px;"></audio>`;
     }
 
-    const readCheck = isMe && msg.read ? ' <span style="font-size:10px; color:#d4af37;">✓✓</span>' : '';
+    const readCheck = isMe && msg.read ? ' <span style="font-size:10px; color:#f3e5ab;">✓✓</span>' : '';
     bubble.innerHTML = `${contentHtml}<span class="bubble-time">${msg.time}${readCheck}</span>`;
     fragment.appendChild(bubble);
   });
@@ -916,7 +921,7 @@ async function reportCurrentPartner() {
   } catch (e) {}
 }
 
-// ----------------- YT YÖNETİM MASASI (AYRIŞTIRILMIŞ PORTLAR & DETAYLI LOGLAR) -----------------
+// ----------------- YT YÖNETİM MASASI -----------------
 async function loadAdminDashboard() {
   try {
     const res = await fetch(`/api/admin/dashboard-data?userId=${window.currentUserId}&username=${window.currentUsername}`);
@@ -929,7 +934,6 @@ async function loadAdminDashboard() {
         document.getElementById('founderPricingSection')?.classList.remove('hidden');
       }
 
-      // Şikayetler
       const repContainer = document.getElementById('adminReportsContainer');
       if (repContainer && data.reports) {
         repContainer.innerHTML = '';
@@ -948,7 +952,6 @@ async function loadAdminDashboard() {
         }
       }
 
-      // Ayrıştırılmış ve Detaylı Loglar
       const logsList = document.getElementById('adminLogsList');
       if (logsList && data.logs) {
         logsList.innerHTML = '';
@@ -960,35 +963,34 @@ async function loadAdminDashboard() {
           if (l.targetAccountName || l.targetUserTgId) {
             matchDetail = `<br><span style="color:#ff69b4;">Target Üye:</span> ${l.targetAccountName || 'Bilinmeyen'} (@${l.targetUsername || 'yok'}, ID: ${l.targetUserTgId || 'yok'})`;
           }
-          div.innerHTML = `<span style="color:#d4af37;">[${timeStr}]</span> <strong>Admin:</strong> ${l.adminName} <br><strong>İşlem:</strong> <span style="color:#fff;">${l.action}</span> -> ${l.targetInfo}${matchDetail}`;
+          div.innerHTML = `<span style="color:#f3e5ab;">[${timeStr}]</span> <strong>Admin:</strong> ${l.adminName} <br><strong>İşlem:</strong> <span style="color:#fff;">${l.action}</span> -> ${l.targetInfo}${matchDetail}`;
           logsList.appendChild(div);
         });
       }
 
-      // 1. Port: Normal Üyeler Listesi & Kısıtlama Masası
       const uList = document.getElementById('adminUserCards');
       if (uList && data.users) {
-        uList.innerHTML = '<h3 style="color:#d4af37; font-size:13px; margin-bottom:6px;">👥 Üyeler Portu</h3>';
+        uList.innerHTML = '<h3 style="color:#f3e5ab; font-size:13px; margin-bottom:6px;">👥 Üyeler Portu</h3>';
         if (!data.users.length) {
           uList.innerHTML += '<div style="font-size:11px; color:#888;">Kayıtlı normal üye bulunmuyor.</div>';
         }
         data.users.forEach(u => {
           const tgTag = u.username ? `@${u.username}` : `ID:${u.telegramId}`;
           const card = document.createElement('div');
-          card.style.cssText = 'background:rgba(255,255,255,0.04); border:1px solid rgba(212,175,55,0.2); padding:10px; border-radius:12px; font-size:12px; margin-bottom:6px;';
+          card.style.cssText = 'background:rgba(255,255,255,0.04); border:1px solid rgba(255,215,0,0.2); padding:10px; border-radius:12px; font-size:12px; margin-bottom:6px;';
           card.innerHTML = `
             <div style="margin-bottom:6px;">
-              <strong>${u.nickname}</strong> (${u.role}) - <span style="color:#d4af37;">${u.city}</span><br>
+              <strong>${u.nickname}</strong> (${u.role}) - <span style="color:#f3e5ab;">${u.city}</span><br>
               <span style="font-size:11px; color:#aaa;">Telegram: <strong style="color:#fff;">${tgTag}</strong> | Kısıt Seviyesi: <strong style="color:#ff4757;">${u.restrictionLevel || 0}</strong></span>
             </div>
             <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-              <select onchange="changeRestriction('${u.telegramId}', this.value)" style="background:#13121d; color:#fff; border:1px solid #d4af37; padding:4px; border-radius:6px; font-size:11px;">
+              <select onchange="changeRestriction('${u.telegramId}', this.value)" style="background:#13121d; color:#fff; border:1px solid #f3e5ab; padding:4px; border-radius:6px; font-size:11px;">
                 <option value="0" ${u.restrictionLevel===0?'selected':''}>Seviye 0 (Serbest)</option>
                 <option value="1" ${u.restrictionLevel===1?'selected':''}>Seviye 1 (Uyarı)</option>
                 <option value="2" ${u.restrictionLevel===2?'selected':''}>Seviye 2 (Geçici Kısıt)</option>
                 <option value="3" ${u.restrictionLevel===3?'selected':''}>Seviye 3 (Tam Ban)</option>
               </select>
-              <button onclick="setPremiumWeeks('${u.telegramId}')" style="background:#d4af37; color:#000; border:none; padding:5px 8px; border-radius:6px; font-weight:700; font-size:11px; cursor:pointer;">Prem. Ver (Hafta)</button>
+              <button onclick="setPremiumWeeks('${u.telegramId}')" style="background:#f3e5ab; color:#000; border:none; padding:5px 8px; border-radius:6px; font-weight:700; font-size:11px; cursor:pointer;">Prem. Ver (Hafta)</button>
               ${windowIsFounder ? `<button onclick="toggleAdmin('${u.telegramId}')" style="background:#3c6382; color:#fff; border:none; padding:5px 8px; border-radius:6px; font-weight:700; font-size:11px; cursor:pointer;">YT Yap</button>` : ''}
             </div>
           `;
@@ -996,7 +998,6 @@ async function loadAdminDashboard() {
         });
       }
 
-      // 2. Port: Adminler (YT) Listesi
       const adminListContainer = document.getElementById('adminListContainer');
       if (adminListContainer && data.adminsList) {
         adminListContainer.innerHTML = '<h3 style="color:#2ed573; font-size:13px; margin-bottom:6px; margin-top:14px;">👑 Adminler (YT) Portu</h3>';
