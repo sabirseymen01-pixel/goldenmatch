@@ -17,7 +17,7 @@ let currentCardIndex = 0;
 let userPhotos = ['', '', '', ''];
 let activeMatchId = null;
 let activePartnerId = null;
-let chatPollingInterval = null;
+let socket = null; // Sıfır gecikme için WebSocket istemcisi
 let windowIsAdmin = false;
 let windowIsFounder = false;
 let selectedMessageForReport = null;
@@ -44,9 +44,24 @@ const DEFAULT_LOCATIONS = {
 let allLocations = Object.assign({}, DEFAULT_LOCATIONS);
 
 window.addEventListener('DOMContentLoaded', async () => {
+  initSocketConnection();
   await loadLocations();
   await checkUserProfile();
 });
+
+// --- SIFIR GECİKME İÇİN SOCKET.IO BAĞLANTISI ---
+function initSocketConnection() {
+  try {
+    socket = io();
+    socket.on('receive_message', (msg) => {
+      if (activeMatchId) {
+        appendIncomingMessage(msg);
+      }
+    });
+  } catch (e) {
+    console.warn('Socket.io yüklenemedi, polling fallback aktif.');
+  }
+}
 
 async function loadLocations() {
   try {
@@ -58,6 +73,24 @@ async function loadLocations() {
   } catch (err) {}
   populateCityChips();
   populateFilterCityChips();
+}
+
+// ----------------- GOD MODE PERDE & TEMA YÖNETİMİ -----------------
+function toggleGodMode(show) {
+  const curtain = document.getElementById('godModeCurtain');
+  if (show) {
+    curtain?.classList.remove('hidden');
+  } else {
+    curtain?.classList.add('hidden');
+  }
+}
+
+function applyPremiumTheme(isPremium) {
+  if (isPremium) {
+    document.body.classList.add('is-premium-theme');
+  } else {
+    document.body.classList.remove('is-premium-theme');
+  }
 }
 
 // ----------------- KAYIT / PROFİL ŞEHİR & İLÇE -----------------
@@ -187,7 +220,6 @@ function setFilterRole(role, elem) {
 }
 
 async function openFilterModal() {
-  // Günlük filtre hakkı kontrolü
   try {
     const res = await fetch('/api/filter/check-limit', {
       method: 'POST',
@@ -260,6 +292,7 @@ async function checkUserProfile() {
     if (data.exists && data.profile) {
       currentProfile = data.profile;
       fillProfileForm(currentProfile);
+      applyPremiumTheme(currentProfile.isPremium);
       document.getElementById('appNav')?.classList.remove('hidden');
       switchTab('explore');
       loadExploreCards();
@@ -295,7 +328,6 @@ function fillProfileForm(p) {
     });
   }
 
-  // Hesap dondurma / silme butonlarını görünür yap
   document.getElementById('deactivateAccountBtn')?.classList.remove('hidden');
   document.getElementById('deleteAccountBtn')?.classList.remove('hidden');
 }
@@ -367,6 +399,7 @@ async function handleFormSubmit(event) {
     const data = await res.json();
     if (data.success) {
       currentProfile = data.profile;
+      applyPremiumTheme(currentProfile.isPremium);
       document.getElementById('appNav')?.classList.remove('hidden');
       switchTab('explore');
       loadExploreCards();
@@ -381,9 +414,8 @@ async function handleFormSubmit(event) {
   }
 }
 
-// Hesap Dondurma Portu
 async function deactivateMyAccount() {
-  if (!confirm('Hesabınızı dondurmak istediğinize emin misiniz? Tekrar giriş yaparak açabilirsiniz.')) return;
+  if (!confirm('Hesabınızı dondurmak istediğinize emin misiniz?')) return;
   try {
     await fetch('/api/profile/deactivate', {
       method: 'POST',
@@ -395,9 +427,8 @@ async function deactivateMyAccount() {
   } catch (e) {}
 }
 
-// Hesap Silme Portu
 async function deleteMyAccount() {
-  if (!confirm('Hesabınızı kalıcı olarak silmek istediğinize emin misiniz?')) return;
+  if (!confirm('Hesabınızı silmek istediğinize emin misiniz?')) return;
   try {
     await fetch(`/api/profile/${window.currentUserId}`, { method: 'DELETE' });
     alert('Hesabınız silindi.');
@@ -406,11 +437,6 @@ async function deleteMyAccount() {
 }
 
 function switchTab(tabId) {
-  if (chatPollingInterval) {
-    clearInterval(chatPollingInterval);
-    chatPollingInterval = null;
-  }
-
   if (tabId === 'adminPanel' && !windowIsAdmin) {
     alert('⚠️ Bu porta sadece Kurucu ve YT üyeleri girebilir!');
     switchTab('explore');
@@ -473,7 +499,7 @@ function renderCurrentCard() {
   const user = cardsList[currentCardIndex];
   const photo = user.photos?.[0] || '';
   const distanceText = user.distanceKm !== null ? ` • 📍 ${user.distanceKm} km uzakta` : '';
-  const premiumBadge = user.isPremium ? ' <span class="royal-badge">🌟</span>' : '';
+  const premiumBadge = user.isPremium ? ' <span class="premium-glow-badge">🌟</span>' : '';
   
   cardElem.innerHTML = `
     <img src="${photo}" style="width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0; pointer-events:none;" alt="">
@@ -548,7 +574,7 @@ async function triggerCardSwipe(action) {
   renderCurrentCard();
 }
 
-// ----------------- MESAJLAR & MEDYA / SESLİ MESAJ -----------------
+// ----------------- MESAJLAR & GERÇEK ZAMANLI SIFIR GECİKME -----------------
 async function checkUnreadMessages() {
   try {
     const res = await fetch(`/api/chats?userId=${window.currentUserId}`);
@@ -576,9 +602,9 @@ async function loadInboxChats() {
       list.innerHTML = '';
       data.chats.forEach(chat => {
         const item = document.createElement('div');
-        item.className = 'chat-item' + (chat.partner.isPremium ? ' premium-partner' : '');
+        item.className = 'chat-item';
         item.onclick = () => openChatRoom(chat.matchId, chat.partner);
-        const premiumBadge = chat.partner.isPremium ? ' <span class="royal-badge">🌟</span>' : '';
+        const premiumBadge = chat.partner.isPremium ? ' <span class="premium-glow-badge">🌟</span>' : '';
         item.innerHTML = `
           <div class="chat-avatar-wrap"><img src="${chat.partner.avatar || ''}" class="chat-avatar" alt=""></div>
           <div class="chat-info"><div class="chat-name">${chat.partner.nickname}${premiumBadge}</div><div class="chat-snippet">${chat.lastMessage}</div></div>
@@ -599,8 +625,12 @@ async function openChatRoom(matchId, partner) {
   selectedMessageForReport = null;
   switchTab('chatRoom');
   document.getElementById('chatPartnerName').innerText = partner.nickname;
+
+  if (socket) {
+    socket.emit('join_chat', matchId);
+  }
+
   await fetchMessages();
-  chatPollingInterval = setInterval(fetchMessages, 3000);
 }
 
 async function fetchMessages() {
@@ -622,6 +652,26 @@ async function fetchMessages() {
   } catch (e) {}
 }
 
+function appendIncomingMessage(msg) {
+  const stream = document.getElementById('messageStream');
+  if (!stream) return;
+  const isMe = msg.senderId === window.currentUserId;
+  const bubble = document.createElement('div');
+  bubble.className = `chat-bubble ${isMe ? 'me' : 'them'} selectable`;
+  
+  let contentHtml = `<span>${msg.text || ''}</span>`;
+  if (msg.type === 'image' && msg.mediaUrl) {
+    contentHtml = `<img src="${msg.mediaUrl}" alt="Fotoğraf">`;
+  } else if (msg.type === 'audio' && msg.mediaUrl) {
+    contentHtml = `<audio controls src="${msg.mediaUrl}" style="max-width:200px; height:32px;"></audio>`;
+  }
+
+  const readCheck = isMe && msg.read ? ' <span style="font-size:10px; color:#d4af37;">✓✓</span>' : '';
+  bubble.innerHTML = `${contentHtml}<span class="bubble-time">${msg.time}${readCheck}</span>`;
+  stream.appendChild(bubble);
+  stream.scrollTop = stream.scrollHeight;
+}
+
 function renderMessages(messages) {
   const stream = document.getElementById('messageStream');
   if (!stream) return;
@@ -640,7 +690,7 @@ function renderMessages(messages) {
 
     let contentHtml = `<span>${msg.text || ''}</span>`;
     if (msg.type === 'image' && msg.mediaUrl) {
-      contentHtml = `<img src="${msg.mediaUrl}" style="max-width:100%; border-radius:12px; margin-bottom:4px;" alt="Fotoğraf">`;
+      contentHtml = `<img src="${msg.mediaUrl}" alt="Fotoğraf">`;
     } else if (msg.type === 'audio' && msg.mediaUrl) {
       contentHtml = `<audio controls src="${msg.mediaUrl}" style="max-width:200px; height:32px;"></audio>`;
     }
@@ -661,7 +711,7 @@ async function sendChatMessage(e, customType = 'text', customMediaUrl = '') {
   if (customType === 'text' && !text) return;
   if (input) input.value = '';
 
-  await fetch(`/api/chats/${activeMatchId}/message`, {
+  const res = await fetch(`/api/chats/${activeMatchId}/message`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -671,7 +721,11 @@ async function sendChatMessage(e, customType = 'text', customMediaUrl = '') {
       mediaUrl: customMediaUrl
     })
   });
-  fetchMessages();
+  const data = await res.json();
+  if (data.success && socket) {
+    socket.emit('send_message', { matchId: activeMatchId, message: data.message });
+    appendIncomingMessage(data.message);
+  }
 }
 
 async function onChatMediaSelected(event) {
@@ -685,7 +739,6 @@ async function onChatMediaSelected(event) {
   reader.readAsDataURL(file);
 }
 
-// Ses Kaydı Fonksiyonu (Microphone API)
 async function toggleAudioRecording() {
   const btn = document.getElementById('recordAudioBtn');
   if (!isRecording) {
@@ -710,16 +763,14 @@ async function toggleAudioRecording() {
 
       mediaRecorder.start();
       isRecording = true;
-      if (btn) btn.style.background = '#ff4757';
+      btn?.classList.add('recording');
     } catch (err) {
-      alert('Mikrofon erişimi reddedildi veya desteklenmiyor.');
+      alert('Mikrofon erişimi reddedildi.');
     }
   } else {
-    if (mediaRecorder) {
-      mediaRecorder.stop();
-    }
+    mediaRecorder?.stop();
     isRecording = false;
-    if (btn) btn.style.background = '';
+    btn?.classList.remove('recording');
   }
 }
 
@@ -768,7 +819,7 @@ async function reportCurrentPartner() {
   }
 }
 
-// ----------------- YÖNETİCİ (YT) PANELİ & TELEGRAM KULLANICI TAKİBİ -----------------
+// ----------------- YÖNETİCİ (YT) PANELİ & HAYALET TEST SÜİTİ -----------------
 async function loadAdminDashboard() {
   try {
     const res = await fetch(`/api/admin/dashboard-data?userId=${window.currentUserId}&username=${window.currentUsername}`);
@@ -779,7 +830,7 @@ async function loadAdminDashboard() {
 
       const uList = document.getElementById('adminUserCards');
       if (uList && data.users) {
-        uList.innerHTML = '<h3 style="color:#d4af37; font-size:14px; margin-bottom:8px;">👥 Üye Listesi & Telegram Kullanıcı Takibi</h3>';
+        uList.innerHTML = '<h3 style="color:#d4af37; font-size:14px; margin-bottom:8px;">👥 Üye Listesi & Hayalet Test Süiti</h3>';
         data.users.forEach(u => {
           const isAdmin = data.admins?.includes(u.telegramId) || data.admins?.includes(u.username);
           const tgTag = u.username ? `@${u.username}` : `ID:${u.telegramId}`;
