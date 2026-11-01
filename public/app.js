@@ -87,7 +87,6 @@ async function loadLocations() {
       allLocations = Object.assign({}, DEFAULT_LOCATIONS, data.locations);
     }
   } catch (err) {}
-  populateFilterCityChips();
 }
 
 // ----------------- DİNAMİK SEÇİM MODALI (SHEET) MOTORU -----------------
@@ -100,7 +99,7 @@ function openSelectionModal(fieldType) {
   
   if (!modal) return;
   modal.classList.remove('hidden');
-  searchInput.value = '';
+  if (searchInput) searchInput.value = '';
 
   if (fieldType === 'city') {
     title.innerText = 'Şehir Seçin';
@@ -128,6 +127,18 @@ function openSelectionModal(fieldType) {
     title.innerText = 'Olimpos Arketipi Seçin';
     searchWrapper.style.display = 'none';
     currentModalOptions = ARCHETYPE_OPTIONS;
+  } else if (fieldType === 'filterCity') {
+    title.innerText = 'Şehir Filtrele';
+    searchWrapper.style.display = 'block';
+    currentModalOptions = ['Hepsi', ...Object.keys(allLocations)];
+  } else if (fieldType === 'filterDistrict') {
+    title.innerText = 'İlçe Filtrele';
+    searchWrapper.style.display = 'none';
+    currentModalOptions = ['Hepsi', ...(allLocations[filterCity] || [])];
+  } else if (fieldType === 'filterRole') {
+    title.innerText = 'Rol Filtrele';
+    searchWrapper.style.display = 'none';
+    currentModalOptions = ['Hepsi', ...ROLE_OPTIONS];
   }
 
   renderModalChips(currentModalOptions);
@@ -138,7 +149,13 @@ function renderModalChips(options) {
   if (!container) return;
   container.innerHTML = '';
 
-  const currentValue = document.getElementById(currentActiveField)?.value || '';
+  let currentValue = '';
+  if (currentActiveField.startsWith('filter')) {
+    const map = { 'filterCity': filterCity, 'filterDistrict': filterDistrict, 'filterRole': filterRole };
+    currentValue = map[currentActiveField] || '';
+  } else {
+    currentValue = document.getElementById(currentActiveField)?.value || '';
+  }
 
   options.forEach(opt => {
     const btn = document.createElement('button');
@@ -158,6 +175,22 @@ function filterModalItems() {
 }
 
 function selectModalOption(value) {
+  if (currentActiveField.startsWith('filter')) {
+    const filterMap = {
+      'filterCity': { input: 'filterCityInput', btn: 'filterSelectedCityBtn', setter: (v) => { filterCity = v; filterDistrict = 'Hepsi'; document.getElementById('filterSelectedDistrictBtn').innerText = 'Tüm İlçeler'; } },
+      'filterDistrict': { input: 'filterDistrictInput', btn: 'filterSelectedDistrictBtn', setter: (v) => { filterDistrict = v; } },
+      'filterRole': { input: 'filterRoleInput', btn: 'filterSelectedRoleBtn', setter: (v) => { filterRole = v; } }
+    };
+    const conf = filterMap[currentActiveField];
+    if (conf) {
+      document.getElementById(conf.input).value = value;
+      document.getElementById(conf.btn).innerText = value;
+      conf.setter(value);
+    }
+    closeSelectionModal();
+    return;
+  }
+
   const input = document.getElementById(currentActiveField);
   if (input) input.value = value;
 
@@ -264,77 +297,9 @@ async function saveGodModeAutomation() {
 }
 
 // ----------------- FİLTRE MOTORU -----------------
-function populateFilterCityChips() {
-  const container = document.getElementById('filterCityChips');
-  if (!container) return;
-  container.innerHTML = '';
-
-  const allBtn = document.createElement('button');
-  allBtn.type = 'button';
-  allBtn.className = 'choice-chip' + (filterCity === 'Hepsi' ? ' selected' : '');
-  allBtn.innerText = 'Tüm Şehirler';
-  allBtn.onclick = () => setFilterCity('Hepsi', allBtn);
-  container.appendChild(allBtn);
-
-  Object.keys(allLocations).forEach(city => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'choice-chip' + (city === filterCity ? ' selected' : '');
-    btn.innerText = city;
-    btn.onclick = () => setFilterCity(city, btn);
-    container.appendChild(btn);
-  });
-}
-
-function setFilterCity(city, elem) {
-  filterCity = city;
-  filterDistrict = 'Hepsi';
-  document.querySelectorAll('#filterCityChips .choice-chip').forEach(b => b.classList.remove('selected'));
-  elem.classList.add('selected');
-  populateFilterDistrictChips();
-}
-
-function populateFilterDistrictChips() {
-  const container = document.getElementById('filterDistrictChips');
-  if (!container) return;
-  container.innerHTML = '';
-
-  const allBtn = document.createElement('button');
-  allBtn.type = 'button';
-  allBtn.className = 'choice-chip selected';
-  allBtn.innerText = 'Tüm İlçeler';
-  allBtn.onclick = () => setFilterDistrict('Hepsi', allBtn);
-  container.appendChild(allBtn);
-
-  if (filterCity !== 'Hepsi' && allLocations[filterCity]) {
-    allLocations[filterCity].forEach(d => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'choice-chip' + (d === filterDistrict ? ' selected' : '');
-      btn.innerText = d;
-      btn.onclick = () => setFilterDistrict(d, btn);
-      container.appendChild(btn);
-    });
-  }
-}
-
-function setFilterDistrict(district, elem) {
-  filterDistrict = district;
-  document.querySelectorAll('#filterDistrictChips .choice-chip').forEach(b => b.classList.remove('selected'));
-  elem.classList.add('selected');
-}
-
-function setFilterRole(role, elem) {
-  filterRole = role;
-  document.querySelectorAll('#filterRoleChips .choice-chip').forEach(b => b.classList.remove('selected'));
-  elem.classList.add('selected');
-}
-
 async function openFilterModal() {
   if (windowIsAdmin) {
     document.getElementById('filterModal')?.classList.remove('hidden');
-    populateFilterCityChips();
-    populateFilterDistrictChips();
     return;
   }
 
@@ -357,8 +322,6 @@ async function openFilterModal() {
     }
   } catch (e) {}
 
-  populateFilterCityChips();
-  populateFilterDistrictChips();
   document.getElementById('filterModal')?.classList.remove('hidden');
 }
 
@@ -431,23 +394,28 @@ function fillProfileForm(p) {
 
   if (p.city) {
     document.getElementById('city').value = p.city;
-    document.getElementById('selectedCityBtn').innerText = p.city;
+    const btn = document.getElementById('selectedCityBtn');
+    if (btn) btn.innerText = p.city;
   }
   if (p.district) {
     document.getElementById('district').value = p.district;
-    document.getElementById('selectedDistrictBtn').innerText = p.district;
+    const btn = document.getElementById('selectedDistrictBtn');
+    if (btn) btn.innerText = p.district;
   }
   if (p.role) {
     document.getElementById('role').value = p.role;
-    document.getElementById('selectedRoleBtn').innerText = p.role;
+    const btn = document.getElementById('selectedRoleBtn');
+    if (btn) btn.innerText = p.role;
   }
   if (p.interestedRole) {
     document.getElementById('interestedRole').value = p.interestedRole;
-    document.getElementById('selectedInterestedRoleBtn').innerText = p.interestedRole;
+    const btn = document.getElementById('selectedInterestedRoleBtn');
+    if (btn) btn.innerText = p.interestedRole;
   }
   if (p.archetype) {
     document.getElementById('archetype').value = p.archetype;
-    document.getElementById('selectedArchetypeBtn').innerText = p.archetype;
+    const btn = document.getElementById('selectedArchetypeBtn');
+    if (btn) btn.innerText = p.archetype;
   }
 
   if (p.photos && p.photos.length) {
