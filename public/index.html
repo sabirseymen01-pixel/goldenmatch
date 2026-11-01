@@ -17,7 +17,7 @@
       <div class="gold-sparkle-curtain"></div>
       <div style="z-index: 20; text-align: center; padding: 20px; width:100%;">
         <h2 class="gold-text" style="font-family:'Cinzel',serif; font-size:24px; margin-bottom:4px;">🔥 GOD MODE & TAROT KADER Çarkı</h2>
-        <p style="color:#d4af37; font-size:12px; margin-bottom:16px;">Kutsal Çarşamba / Aziz Cuma İlahi Eşleşme Motoru Aktif</p>
+        <p style="color:#d4af37; font-size:12px; margin-bottom:16px;">Kutsal Günler İlahi Eşleşme Motoru Aktif</p>
         
         <!-- 4 Adet Gold-Pembe Cam Tarot Kartı Alanı -->
         <div id="tarotCardsContainer" style="display:flex; justify-content:center; gap:8px; margin-bottom:20px; flex-wrap:wrap;">
@@ -112,6 +112,9 @@
             <button type="button" class="choice-chip" onclick="selectChip('role', 'Side', this)">Side</button>
             <button type="button" class="choice-chip" onclick="selectChip('role', 'Trans', this)">Trans</button>
             <button type="button" class="choice-chip" onclick="selectChip('role', 'Biseksüel', this)">Biseksüel</button>
+            <button type="button" class="choice-chip" onclick="selectChip('role', 'Panseksüel', this)">Panseksüel</button>
+            <button type="button" class="choice-chip" onclick="selectChip('role', 'Non-Binary', this)">Non-Binary</button>
+            <button type="button" class="choice-chip" onclick="selectChip('role', 'Queer / Akışkan', this)">Queer / Akışkan</button>
           </div>
           <input type="hidden" id="role" required>
         </div>
@@ -123,6 +126,11 @@
             <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Top', this)">Top</button>
             <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Bottom', this)">Bottom</button>
             <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Verse', this)">Verse</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Verse Top', this)">Verse Top</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Verse Bottom', this)">Verse Bottom</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Side', this)">Side</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Trans', this)">Trans</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Biseksüel', this)">Biseksüel</button>
           </div>
           <input type="hidden" id="interestedRole" value="Hepsi" required>
         </div>
@@ -215,7 +223,7 @@
       </form>
     </main>
 
-    <!-- 5. YT YÖNETİM MASASI & HAYALET MOD / OTOMASYON -->
+    <!-- 5. YT YÖNETİM MASASI & HAYALET MOD / KUTSAL GÜN SEÇİMİ -->
     <main id="adminPanelView" class="view-screen hidden" style="background: #13121d; border: 1px solid rgba(212,175,55,0.3);">
       <div class="sub-header">
         <h2 class="gold-text">👑 YT Yönetim Masası & Hayalet Mod</h2>
@@ -227,16 +235,21 @@
         <div class="stat-pill" style="background:rgba(212,175,55,0.08); padding:10px; border-radius:12px; text-align:center;"><span>Aktif Üye</span><br><strong id="ytStatActive" style="color:#2ed573;">0</strong></div>
       </div>
 
-      <!-- Kutsal Çarşamba ve Aziz Cuma Otomasyon Ayarları -->
+      <!-- Kutsal Mod Haftanın Tüm Günleri Seçim Paneli -->
       <div style="background:rgba(212,175,55,0.06); border:1px solid rgba(212,175,55,0.3); padding:12px; border-radius:14px; margin-bottom:14px;">
-        <h3 style="color:#d4af37; font-size:13px; margin-bottom:6px;">⚡ God Mode & Kutsal Günler Otomasyonu</h3>
-        <p style="font-size:11px; color:#aaa; margin-bottom:8px;">Kutsal Çarşamba ve Aziz Cuma akşamları için otomatik tetikleme ve saat ayarları.</p>
+        <h3 style="color:#d4af37; font-size:13px; margin-bottom:6px;">⚡ Kutsal Mod / Hayalet Gün Seçimi</h3>
+        <p style="font-size:11px; color:#aaa; margin-bottom:8px;">Haftanın dilediğiniz gününü Kutsal Gün / Otomasyon günü olarak sabitleyin.</p>
         <div style="display:flex; gap:8px;">
           <select id="godModeDaySelect" style="flex:1; background:#1b1926; color:#fff; border:1px solid #d4af37; padding:8px; border-radius:8px; font-size:11px;">
-            <option value="3">Çarşamba (Kutsal Çarşamba)</option>
-            <option value="5">Cuma (Aziz Cuma)</option>
+            <option value="1">Pazartesi</option>
+            <option value="2">Salı</option>
+            <option value="3">Çarşamba</option>
+            <option value="4">Perşembe</option>
+            <option value="5">Cuma</option>
+            <option value="6">Cumartesi</option>
+            <option value="0">Pazar</option>
           </select>
-          <button onclick="saveGodModeAutomation()" style="background:#d4af37; color:#000; border:none; padding:8px 12px; border-radius:8px; font-weight:700; cursor:pointer; font-size:11px;">Ayarla</button>
+          <button onclick="saveGodModeAutomation()" style="background:#d4af37; color:#000; border:none; padding:8px 12px; border-radius:8px; font-weight:700; cursor:pointer; font-size:11px;">Günü Mühürle</button>
         </div>
       </div>
 
@@ -267,7 +280,7 @@
       <div id="adminUserCards" class="admin-scroll-list" style="max-height:350px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
     </main>
 
-    <!-- GELİŞMİŞ FİLTRE MODALI -->
+    <!-- GELİŞMİŞ FİLTRE MODALI (TÜM YÖNELİMLERLE) -->
     <div id="filterModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeFilterModal()">
       <div class="modal-sheet">
         <div class="sheet-header"><h3>Gelişmiş Filtreler</h3><button class="icon-close" onclick="closeFilterModal()">✕</button></div>
@@ -292,6 +305,24 @@
           <div style="display:flex; gap:10px; align-items:center;">
             <input type="number" id="filterMinAge" value="18" min="18" max="99" style="width:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:10px; color:#fff;" placeholder="Min Yaş">
             <input type="number" id="filterMaxAge" value="99" min="18" max="99" style="width:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:10px; color:#fff;" placeholder="Max Yaş">
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:16px;">
+          <label>Rol / Yönelim Filtresi</label>
+          <div class="chip-grid" id="filterRoleChips">
+            <button type="button" class="choice-chip selected" onclick="setFilterRole('Hepsi', this)">Hepsi</button>
+            <button type="button" class="choice-chip" onclick="setFilterRole('Top', this)">Top</button>
+            <button type="button" class="choice-chip" onclick="setFilterRole('Bottom', this)">Bottom</button>
+            <button type="button" class="choice-chip" onclick="setFilterRole('Verse', this)">Verse</button>
+            <button type="button" class="choice-chip" onclick="setFilterRole('Verse Top', this)">Verse Top</button>
+            <button type="button" class="choice-chip" onclick="setFilterRole('Verse Bottom', this)">Verse Bottom</button>
+            <button type="button" class="choice-chip" onclick="setFilterRole('Side', this)">Side</button>
+            <button type="button" class="choice-chip" onclick="setFilterRole('Trans', this)">Trans</button>
+            <button type="button" class="choice-chip" onclick="setFilterRole('Biseksüel', this)">Biseksüel</button>
+            <button type="button" class="choice-chip" onclick="setFilterRole('Panseksüel', this)">Panseksüel</button>
+            <button type="button" class="choice-chip" onclick="setFilterRole('Non-Binary', this)">Non-Binary</button>
+            <button type="button" class="choice-chip" onclick="setFilterRole('Queer / Akışkan', this)">Queer / Akışkan</button>
           </div>
         </div>
 
