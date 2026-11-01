@@ -688,12 +688,18 @@ async function loadInboxChats() {
   }
 }
 
+// --- OPTİMİZE EDİLMİŞ ANINDA AÇILAN CHAT ODASI (Optimistic UI) ---
 async function openChatRoom(matchId, partner) {
   activeMatchId = matchId;
   activePartnerId = partner.telegramId;
   selectedMessageForReport = null;
+  
+  // Şak diye arayüze geç ve ismi yaz
   switchTab('chatRoom');
   document.getElementById('chatPartnerName').innerText = partner.nickname;
+  
+  const stream = document.getElementById('messageStream');
+  if (stream) stream.innerHTML = '<div style="text-align:center; color:#777; font-size:11px; padding:10px;">Bağlantı kuruluyor...</div>';
 
   if (socket) socket.emit('join_chat', matchId);
   await fetchMessages();
@@ -709,10 +715,10 @@ async function fetchMessages() {
       const paravanStatus = document.getElementById('chatParavanStatus');
       const paravanBtn = document.getElementById('paravanBtn');
       if (data.bothRevealed) {
-        paravanStatus.innerText = `🔓 Açık Kimlik (@${data.partner.username || 'Kullanıcı'})`;
-        paravanBtn.style.display = 'none';
+        if (paravanStatus) paravanStatus.innerText = `🔓 Açık Kimlik (@${data.partner.username || 'Kullanıcı'})`;
+        if (paravanBtn) paravanBtn.style.display = 'none';
       } else {
-        paravanStatus.innerText = '🎭 Anonim Paravan Sohbeti';
+        if (paravanStatus) paravanStatus.innerText = '🎭 Anonim Paravan Sohbeti';
       }
     }
   } catch (e) {}
