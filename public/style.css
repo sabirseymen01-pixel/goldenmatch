@@ -460,6 +460,7 @@ button:active, .choice-chip:active, .action-circle:active {
   border-color: rgba(255, 71, 87, 0.3);
 }
 
+/* --- Chat Akışı ve Medya Titreme / Atlama Önleme Optimizasyonu --- */
 .chat-stream {
   flex: 1;
   overflow-y: auto;
@@ -470,6 +471,8 @@ button:active, .choice-chip:active, .action-circle:active {
   max-height: calc(100vh - 240px);
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
+  will-change: scroll-position;
+  scroll-behavior: smooth;
 }
 
 .chat-bubble {
@@ -479,8 +482,29 @@ button:active, .choice-chip:active, .action-circle:active {
   font-size: 13px;
   position: relative;
   word-break: break-word;
-  animation: bubblePop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  animation: fadeInBubble 0.2s ease forwards;
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
   cursor: pointer;
+}
+
+@keyframes fadeInBubble {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Çat içinde atılan görsellerin boyut atlamasını ve titremesini engelleyen sabit yapı */
+.chat-bubble img, .chat-bubble video {
+  max-width: 100%;
+  border-radius: 12px;
+  display: block;
+  margin-top: 4px;
+  object-fit: cover;
+  min-height: 160px;
+  max-height: 260px;
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateZ(0);
 }
 
 .chat-bubble.selectable:hover {
@@ -490,11 +514,6 @@ button:active, .choice-chip:active, .action-circle:active {
 .chat-bubble.selected-for-report {
   border: 2px solid #ff4757 !important;
   box-shadow: 0 0 10px rgba(255, 71, 87, 0.5);
-}
-
-@keyframes bubblePop {
-  from { opacity: 0; transform: scale(0.8) translateY(10px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 .chat-bubble.me {
@@ -582,7 +601,6 @@ button:active, .choice-chip:active, .action-circle:active {
   transform: scale(1.08);
 }
 
-/* Doğrudan SVG İkon Optimizasyonu (Arka plan beyazlığı veya maske hatası yok) */
 .chat-action-btn svg {
   width: 22px;
   height: 22px;
@@ -592,7 +610,6 @@ button:active, .choice-chip:active, .action-circle:active {
   shape-rendering: geometricPrecision;
 }
 
-/* Kayıt esnasında sesli mesaj aktiflik efekti (Pulse) */
 .chat-voice-btn.recording {
   background: rgba(255, 71, 87, 0.2) !important;
   animation: goldPulse 1.5s infinite;
