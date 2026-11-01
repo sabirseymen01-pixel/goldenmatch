@@ -133,6 +133,10 @@ const SystemLogSchema = new mongoose.Schema({
   adminName: String,
   action: String,
   targetInfo: String,
+  targetMatchId: String,
+  targetUserTgId: String,
+  targetUsername: String,
+  targetAccountName: String,
   timestamp: { type: Date, default: Date.now }
 });
 
@@ -147,7 +151,7 @@ const ReportSchema = new mongoose.Schema({
 });
 
 const PricingConfigSchema = new mongoose.Schema({
-  key: { type: String, unique: true }, // 'premium_weekly', 'filter_pack', 'godmode_active_day'
+  key: { type: String, unique: true }, 
   priceStars: Number
 });
 
@@ -185,14 +189,19 @@ function isFounder(telegramId, username) {
   return tid === FOUNDER_ID || uname === FOUNDER_USERNAME;
 }
 
-async function logSystemAction(adminId, adminName, action, targetInfo) {
+// Detaylı Loglama Motoru (Tarih, Saat, Admin ID/Username, Match Üyesi Telegram ID/Username/Hesap Adı)
+async function logSystemAction(adminId, adminName, action, targetInfo, matchData = {}) {
   try {
     await SystemLogModel.create({
       id: Date.now().toString(),
-      adminId: String(adminId),
+      adminId: String(adminId || 'Sistem'),
       adminName: String(adminName || 'YT'),
       action,
-      targetInfo
+      targetInfo,
+      targetMatchId: matchData.matchId || '',
+      targetUserTgId: matchData.telegramId || '',
+      targetUsername: matchData.username || '',
+      targetAccountName: matchData.nickname || ''
     });
   } catch (e) {}
 }
@@ -507,13 +516,13 @@ app.post('/api/report', async (req, res) => {
   res.json({ success: true, message: 'Şikayet iletildi ve YT paneline kaydedildi.' });
 });
 
-// ================= YÖNETİCİ PANELİ & HAYALET MOD API =================
+// ================= YÖNETİCİ PANELİ & AYRIŞTIRILMIŞ LOG API =================
 async function checkAdminAuth(req, res, next) {
   const requesterId = req.headers['x-user-id'] || req.query.userId;
   const requesterUsername = req.headers['x-user-name'] || req.query.username;
   const isAdmin = await isUserAdmin(requesterId, requesterUsername);
   if (isAdmin) return next();
-  return res.status(403).json({ success: false, message: 'Yetki reddedildi. Üyeler YT paneline giremez!' });
+  return res.status(403).json({ success: false, message: 'Yetki reddedildi.' });
 }
 
 app.get('/api/admin/dashboard-data', checkAdminAuth, async (req, res) => {
@@ -522,6 +531,22 @@ app.get('/api/admin/dashboard-data', checkAdminAuth, async (req, res) => {
   const systemLogs = await SystemLogModel.find().sort({ timestamp: -1 }).limit(100).lean();
   const pricingConfigs = await PricingConfigModel.find().lean();
   const allAdmins = await AdminModel.find().lean();
+  const adminIdsSet = new Set(allAdmins.map(a => String(a.target)));
+  adminIdsSet.add(FOUNDER_ID);
+  adminIdsSet.add(FOUNDER_USERNAME);
+
+  // Üyeleri ve Adminleri birbirinden kesin olarak ayır
+  const adminsList = [];
+  const regularUsersList = [];
+
+  userList.forEach(u => {
+    if (adminIdsSet.has(String(u.telegramId)) || adminIdsSet.has(String(u.username))) {
+      adminsList.push(u);
+    } else {
+      regularUsersList.push(u);
+    }
+  });
+
   const requesterId = req.headers['x-user-id'] || req.query.userId;
   const requesterUsername = req.headers['x-user-name'] || req.query.username;
 
@@ -533,15 +558,16 @@ app.get('/api/admin/dashboard-data', checkAdminAuth, async (req, res) => {
       active: userList.filter(u => !u.isBanned && u.restrictionLevel === 0).length,
       reportsCount: reportsList.length
     },
-    users: userList,
+    users: regularUsersList, // Normal Üyeler
+    adminsList: adminsList,  // Adminler (Ayrı Port)
     reports: reportsList,
     logs: systemLogs,
     pricing: pricingConfigs,
-    admins: allAdmins.map(a => a.target)
+    admins: Array.from(adminIdsSet)
   });
 });
 
-// --- Kutsal Mod (Haftanın Tüm Günleri Seçimi) ---
+// Kutsal Gün Seçimi
 app.post('/api/admin/set-godmode-day', checkAdminAuth, async (req, res) => {
   const { dayOfWeek, adminId, adminName } = req.body;
   await PricingConfigModel.findOneAndUpdate(
@@ -549,7 +575,7 @@ app.post('/api/admin/set-godmode-day', checkAdminAuth, async (req, res) => {
     { key: 'godmode_active_day', priceStars: Number(dayOfWeek) },
     { upsert: true, new: true }
   );
-  await logSystemAction(adminId, adminName, 'Kutsal Mod / Hayalet Gün Güncellendi', `Seçilen Gün: ${dayOfWeek}`);
+  await logSystemAction(adminId, adminName, 'Kutsal Mod Günü Güncellendi', `Seçilen Gün: ${dayOfWeek}`);
   res.json({ success: true, message: 'Kutsal Mod günü mühürlendi.' });
 });
 
@@ -563,11 +589,11 @@ app.get('/api/godmode/status', async (req, res) => {
     success: true,
     activeGodMode: isActive,
     activeDay: targetDay,
-    message: isActive ? '🔥 Kutsal Mod / Hayalet Mod Aktif!' : '⏳ Kutsal Mod günü bekleniyor.'
+    message: isActive ? '🔥 Kutsal Mod Aktif!' : '⏳ Kutsal Mod bekleniyor.'
   });
 });
 
-// 3 Adımlı Kademeli Kısıtlama / Ban Portu
+// Üye Düzenleme & Kısıtlama Portu (Log Kayıtlı)
 app.post('/api/admin/restrict-user', checkAdminAuth, async (req, res) => {
   const { targetTelegramId, level, adminId, adminName } = req.body;
   const user = await UserModel.findOne({ telegramId: String(targetTelegramId) });
@@ -578,12 +604,18 @@ app.post('/api/admin/restrict-user', checkAdminAuth, async (req, res) => {
   else user.isBanned = false;
 
   await user.save();
-  await logSystemAction(adminId, adminName, `Kullanıcı Kısıtlama Seviyesi (Seviye ${level})`, `${user.nickname} (ID: ${targetTelegramId})`);
+
+  // Match / Üye detaylı log kaydı
+  await logSystemAction(adminId, adminName, `Kullanıcı Kısıtlama Seviyesi Değiştirildi (Seviye ${level})`, `${user.nickname} (ID: ${targetTelegramId})`, {
+    telegramId: user.telegramId,
+    username: user.username,
+    nickname: user.nickname
+  });
 
   res.json({ success: true, restrictionLevel: user.restrictionLevel });
 });
 
-// Haftalık Premium Süresi Ayarlama
+// Haftalık Premium Süresi Tanımlama (Log Kayıtlı)
 app.post('/api/admin/set-premium-duration', checkAdminAuth, async (req, res) => {
   const { targetTelegramId, weeks, adminId, adminName } = req.body;
   const user = await UserModel.findOne({ telegramId: String(targetTelegramId) });
@@ -596,15 +628,28 @@ app.post('/api/admin/set-premium-duration', checkAdminAuth, async (req, res) => 
   user.premiumExpiresAt = expires;
   await user.save();
 
-  await logSystemAction(adminId, adminName, `Premium Süresi Tanımlandı (${weeks} Hafta)`, `${user.nickname}`);
+  await logSystemAction(adminId, adminName, `Haftalık Premium Tanımlandı (${weeks} Hafta)`, `${user.nickname}`, {
+    telegramId: user.telegramId,
+    username: user.username,
+    nickname: user.nickname
+  });
+
   res.json({ success: true, message: `${weeks} hafta premium tanımlandı.` });
 });
 
-// Sadece Kurucunun Yıldız Fiyatlarını Belirlemesi
+// Genel Logları Sıfırlama / Silme Portu
+app.post('/api/admin/clear-logs', checkAdminAuth, async (req, res) => {
+  const { adminId, adminName } = req.body;
+  await SystemLogModel.deleteMany({});
+  await logSystemAction(adminId, adminName, 'Sistem Logları Temizlendi', 'Tüm geçmiş loglar silindi.');
+  res.json({ success: true, message: 'Loglar temizlendi.' });
+});
+
+// Yıldız Fiyatlandırma
 app.post('/api/admin/update-pricing', async (req, res) => {
   const { userId, username, key, priceStars } = req.body;
   if (!isFounder(userId, username)) {
-    return res.status(403).json({ success: false, message: 'Fiyatlandırmayı sadece Kurucu belirleyebilir!' });
+    return res.status(403).json({ success: false, message: 'Sadece Kurucu belirleyebilir!' });
   }
 
   await PricingConfigModel.findOneAndUpdate(
@@ -621,7 +666,7 @@ app.post('/api/admin/update-pricing', async (req, res) => {
 app.post('/api/admin/toggle-admin', async (req, res) => {
   const { userId, username, targetId } = req.body;
   if (!isFounder(userId, username)) {
-    return res.status(403).json({ success: false, message: 'Bu işlem sadece Kurucuya özeldir.' });
+    return res.status(403).json({ success: false, message: 'Sadece Kurucuya özeldir.' });
   }
 
   const tid = String(targetId).trim();
@@ -639,5 +684,5 @@ app.post('/api/admin/toggle-admin', async (req, res) => {
 
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`GoldenMatch Sunucusu ${PORT} portunda tam yetkiyle aktif.`);
+  console.log(`GoldenMatch Sunucusu ${PORT} portunda ayrıştırılmış log ve admin portuyla aktif.`);
 });
