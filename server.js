@@ -26,11 +26,11 @@ let io = null;
 if (Server) {
   io = new Server(server, {
     cors: { origin: '*', methods: ['GET', 'POST'] },
-    maxHttpBufferSize: 1e8 // Büyük görsel ve sesli mesajlar için buffer (100MB)
+    maxHttpBufferSize: 1e8 
   });
 }
 
-// Socket.io Gerçek Zamanlı Mesajlaşma Optimizasyonu (Sıfır Gecikme)
+// --- SIFIR GECİKME GERÇEK ZAMANLI MESAJ SOKETLERİ ---
 if (io) {
   io.on('connection', (socket) => {
     socket.on('join_chat', (matchId) => {
@@ -49,7 +49,7 @@ if (io) {
 
 const limiter = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: 600, // Yüksek trafik için limit artırıldı
+  max: 600,
   validate: { xForwardedForHeader: false },
   message: { success: false, message: 'İstek limiti aşıldı.' }
 });
@@ -71,10 +71,10 @@ app.use(express.static(path.join(__dirname, 'public'), {
 const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://breskavica:05527330103Ss@cluster0.z1oe54g.mongodb.net/goldenmatch?retryWrites=true&w=majority&appName=Cluster0';
 
 mongoose.connect(MONGO_URI)
-  .then(() => console.log('✅ MongoDB Atlas Bağlantısı ve Yüksek Performans İndeksleri Aktif!'))
+  .then(() => console.log('✅ MongoDB Atlas & Yüksek Performans İndeksleri Aktif!'))
   .catch(err => console.error('❌ MongoDB Bağlantı Hatası:', err));
 
-// --- ŞEMA VE YÜKSEK PERFORMANS İNDEKSLERİ ---
+// --- ŞEMALAR VE İNDEKSLEME ---
 const UserSchema = new mongoose.Schema({
   telegramId: { type: String, required: true, unique: true, index: true },
   username: { type: String, index: true },
@@ -91,13 +91,11 @@ const UserSchema = new mongoose.Schema({
   bio: String,
   photos: [String],
   isVerified: { type: Boolean, default: false },
+  restrictionLevel: { type: Number, default: 0 }, // 0: Serbest, 1: Uyarı/Kısıt, 2: Geçici Ban, 3: Tam Kısıtlama
   isBanned: { type: Boolean, default: false },
   isDeactivated: { type: Boolean, default: false },
   isPremium: { type: Boolean, default: false },
-  godModeUsage: {
-    date: String,
-    count: { type: Number, default: 0 }
-  },
+  premiumExpiresAt: { type: Date, default: null }, // Haftalık Premium Bitiş Tarihi
   filterUsage: {
     date: String,
     count: { type: Number, default: 0 }
@@ -126,8 +124,16 @@ const MatchSchema = new mongoose.Schema({
     time: String,
     read: { type: Boolean, default: false }
   }],
-  source: { type: String, default: 'explore' },
   updatedAt: { type: Date, default: Date.now, index: true }
+});
+
+const SystemLogSchema = new mongoose.Schema({
+  id: String,
+  adminId: String,
+  adminName: String,
+  action: String,
+  targetInfo: String,
+  timestamp: { type: Date, default: Date.now }
 });
 
 const ReportSchema = new mongoose.Schema({
@@ -140,6 +146,11 @@ const ReportSchema = new mongoose.Schema({
   date: String
 });
 
+const PricingConfigSchema = new mongoose.Schema({
+  key: { type: String, unique: true }, // 'premium_weekly', 'filter_pack'
+  priceStars: Number
+});
+
 const AdminSchema = new mongoose.Schema({
   target: { type: String, unique: true, index: true },
   type: String
@@ -148,7 +159,9 @@ const AdminSchema = new mongoose.Schema({
 const UserModel = mongoose.model('User', UserSchema);
 const LikeModel = mongoose.model('Like', LikeSchema);
 const MatchModel = mongoose.model('Match', MatchSchema);
+const SystemLogModel = mongoose.model('SystemLog', SystemLogSchema);
 const ReportModel = mongoose.model('Report', ReportSchema);
+const PricingConfigModel = mongoose.model('PricingConfig', PricingConfigSchema);
 const AdminModel = mongoose.model('Admin', AdminSchema);
 
 const FOUNDER_ID = String(process.env.FOUNDER_ID || '8245373459').trim().toLowerCase();
@@ -172,6 +185,18 @@ function isFounder(telegramId, username) {
   return tid === FOUNDER_ID || uname === FOUNDER_USERNAME;
 }
 
+async function logSystemAction(adminId, adminName, action, targetInfo) {
+  try {
+    await SystemLogModel.create({
+      id: Date.now().toString(),
+      adminId: String(adminId),
+      adminName: String(adminName || 'YT'),
+      action,
+      targetInfo
+    });
+  } catch (e) {}
+}
+
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const WEBAPP_URL = 'https://goldenmatch.onrender.com';
 const bot = BOT_TOKEN ? new Telegraf(BOT_TOKEN) : null;
@@ -188,9 +213,19 @@ if (bot) {
   bot.on('successful_payment', async (ctx) => {
     const payload = ctx.message.successful_payment.invoice_payload;
     const userId = ctx.from.id.toString();
-    if (payload === 'golden_match_premium') {
-      await UserModel.findOneAndUpdate({ telegramId: userId }, { isPremium: true });
-      await ctx.reply('🌟 Tebrikler! Telegram Yıldızları ile Premium Üyeliğiniz ve Gold-Mor Asalet Temanız aktifleştirildi.');
+    
+    if (payload === 'golden_match_premium_weekly') {
+      const expires = new Date();
+      expires.setDate(expires.getDate() + 7); // 1 Hafta (7 Gün)
+      await UserModel.findOneAndUpdate({ telegramId: userId }, { isPremium: true, premiumExpiresAt: expires });
+      await ctx.reply('🌟 Tebrikler! 1 haftalık Premium Üyeliğiniz ve Pembe Simli Kristal Temanız aktifleştirildi.');
+    } else if (payload === 'golden_match_filters') {
+      const user = await UserModel.findOne({ telegramId: userId });
+      if (user) {
+        user.filterUsage.count = Math.max(0, (user.filterUsage.count || 0) - 3);
+        await user.save();
+      }
+      await ctx.reply('✨ 25 Yıldız karşılığı ek 3 filtre hakkınız yüklendi!');
     }
   });
 
@@ -215,9 +250,10 @@ app.get('/api/profile/:id', async (req, res) => {
   const founder = isFounder(tid, uname);
   
   if (profile) {
-    if (profile.isDeactivated) {
-      await UserModel.updateOne({ telegramId: tid }, { isDeactivated: false });
-      profile.isDeactivated = false;
+    // Haftalık Premium Süre Bitiş Kontrolü
+    if (profile.isPremium && profile.premiumExpiresAt && new Date() > new Date(profile.premiumExpiresAt)) {
+      await UserModel.updateOne({ telegramId: tid }, { isPremium: false, premiumExpiresAt: null });
+      profile.isPremium = false;
     }
     return res.json({ exists: true, profile, isAdmin, isFounder: founder });
   }
@@ -228,6 +264,11 @@ app.post('/api/profile', async (req, res) => {
   try {
     const { telegramId, username, nickname, age, height, weight, role, interestedRole, city, district, archetype, expression, bio, photos } = req.body;
     if (!telegramId || !city || !role) return res.status(400).json({ success: false, message: 'Eksik bilgi.' });
+
+    const existingUser = await UserModel.findOne({ telegramId: String(telegramId) });
+    if (existingUser && existingUser.isBanned) {
+      return res.status(403).json({ success: false, message: 'Hesabınız kısıtlanmış/banlanmıştır.' });
+    }
 
     if (photos && photos.length > 0) {
       for (const photo of photos) {
@@ -251,9 +292,7 @@ app.post('/api/profile', async (req, res) => {
       expression: expression || 'Maskülen',
       bio,
       photos: photos || [],
-      isVerified: false,
-      isBanned: false,
-      isDeactivated: false
+      isVerified: false
     };
 
     const saved = await UserModel.findOneAndUpdate({ telegramId: String(telegramId) }, profileData, { upsert: true, new: true });
@@ -263,72 +302,24 @@ app.post('/api/profile', async (req, res) => {
   }
 });
 
-app.post('/api/profile/deactivate', async (req, res) => {
-  const { telegramId } = req.body;
-  await UserModel.updateOne({ telegramId: String(telegramId) }, { isDeactivated: true });
-  res.json({ success: true, message: 'Hesabınız donduruldu.' });
-});
-
-app.delete('/api/profile/:id', async (req, res) => {
-  const tid = String(req.params.id);
-  await UserModel.deleteOne({ telegramId: tid });
-  await LikeModel.deleteMany({ $or: [{ fromUserId: tid }, { toUserId: tid }] });
-  await MatchModel.deleteMany({ $or: [{ user1: tid }, { user2: tid }] });
-  res.json({ success: true, message: 'Hesap silindi.' });
-});
-
-app.post('/api/filter/check-limit', async (req, res) => {
-  const { userId } = req.body;
-  const user = await UserModel.findOne({ telegramId: String(userId) });
-  if (!user) return res.status(404).json({ success: false });
-
-  if (user.isPremium) return res.json({ success: true, allowed: true, remaining: 'Sınırsız (Premium)' });
-
-  const todayStr = new Date().toISOString().slice(0, 10);
-  if (!user.filterUsage || user.filterUsage.date !== todayStr) {
-    user.filterUsage = { date: todayStr, count: 0 };
-    await user.save();
-  }
-
-  if (user.filterUsage.count < 3) {
-    user.filterUsage.count += 1;
-    await user.save();
-    return res.json({ success: true, allowed: true, remaining: 3 - user.filterUsage.count });
-  }
-
-  return res.json({ success: false, message: 'Ücretsiz filtre hakkınız bitti. Telegram Yıldızları ⭐ ile devam edin.' });
-});
-
-app.get('/api/godmode/status', async (req, res) => {
-  const activeGodDay = 3; // Çarşamba aktif gün
-  const currentDay = new Date().getDay();
-  const isActive = (currentDay === activeGodDay);
-
-  res.json({
-    success: true,
-    activeGodMode: isActive,
-    message: isActive ? '🔥 Golden God Mode Aktif! Şeffaf Simli Perde Yayında.' : '⏳ God Mode için haftalık kutsal gün bekleniyor.'
-  });
-});
-
+// Dinamik Fiyatlandırma ve Yıldız Ödeme Portu
 app.post('/api/billing/create-invoice', async (req, res) => {
   const { userId, productType } = req.body;
   if (!bot) return res.status(400).json({ success: false, message: 'Bot aktif değil.' });
 
   try {
-    const title = '🌟 GoldenMatch Premium Üyelik (Gold-Mor Tema)';
-    const description = 'Sınırsız keşif, okundu bilgisi, animasyonlu rozet ve özel asalet teması.';
-    const payload = 'golden_match_premium';
-    const currency = 'XTR';
-    const prices = [{ label: 'Premium Üyelik', amount: 100 }];
+    let config = await PricingConfigModel.findOne({ key: productType });
+    let starsAmount = productType === 'premium_weekly' ? (config?.priceStars || 100) : (config?.priceStars || 25);
+    let title = productType === 'premium_weekly' ? '🌟 GoldenMatch Haftalık Premium' : '✨ Ek 3 Filtre Hakkı';
+    let payload = productType === 'premium_weekly' ? 'golden_match_premium_weekly' : 'golden_match_filters';
 
     const invoiceLink = await bot.telegram.createInvoiceLink({
       title,
-      description,
+      description: 'GoldenMatch ilahi ayrıcalıklar paketi.',
       payload,
       provider_token: '',
-      currency,
-      prices
+      currency: 'XTR',
+      prices: [{ label: title, amount: starsAmount }]
     });
 
     res.json({ success: true, invoiceLink });
@@ -337,6 +328,7 @@ app.post('/api/billing/create-invoice', async (req, res) => {
   }
 });
 
+// Keşfet: Yakın Konum Öncelikli Sıralama (Tinder Mantığı)
 app.get('/api/cards', async (req, res) => {
   const currentUserId = String(req.query.userId);
   const filterCity = req.query.city;
@@ -352,6 +344,7 @@ app.get('/api/cards', async (req, res) => {
   let query = { 
     telegramId: { $ne: currentUserId, $nin: Array.from(likedUserIds) }, 
     isBanned: false,
+    restrictionLevel: { $lt: 3 },
     isDeactivated: false,
     age: { $gte: minAge, $lte: maxAge }
   };
@@ -359,17 +352,21 @@ app.get('/api/cards', async (req, res) => {
   if (filterDistrict && filterDistrict !== 'Hepsi') query.district = filterDistrict;
   if (filterRole && filterRole !== 'Hepsi') query.role = filterRole;
 
-  const users = await UserModel.find(query).limit(50).lean();
-  const cards = users.map(user => {
-    let distanceKm = null;
+  const users = await UserModel.find(query).limit(100).lean();
+  
+  let cards = users.map(user => {
+    let distanceKm = 9999;
     if (currentUser?.city && user.city) {
       distanceKm = calculateExactDistance(
         { city: currentUser.city, district: currentUser.district },
         { city: user.city, district: user.district }
-      );
+      ) || 9999;
     }
     return { ...user, distanceKm };
   });
+
+  // Yakın konuma göre sıralama (Tinder Mantığı: En yakın öne düşer)
+  cards.sort((a, b) => a.distanceKm - b.distanceKm);
 
   res.json({ success: true, cards });
 });
@@ -493,24 +490,6 @@ app.post('/api/chats/:matchId/message', async (req, res) => {
   res.json({ success: true, message: msg });
 });
 
-app.post('/api/chats/:matchId/reveal', async (req, res) => {
-  const { userId } = req.body;
-  const match = await MatchModel.findOne({ matchId: req.params.matchId });
-  if (!match) return res.status(404).json({ success: false });
-
-  if (match.user1 === String(userId)) match.paravan1 = true;
-  if (match.user2 === String(userId)) match.paravan2 = true;
-  await match.save();
-
-  const bothRevealed = match.paravan1 && match.paravan2;
-  res.json({ success: true, bothRevealed });
-});
-
-app.post('/api/chats/:matchId/unmatch', async (req, res) => {
-  await MatchModel.deleteOne({ matchId: req.params.matchId });
-  res.json({ success: true });
-});
-
 app.post('/api/report', async (req, res) => {
   const { targetId, reporterId, reason } = req.body;
   if (!targetId || !reporterId || !reason) return res.status(400).json({ success: false });
@@ -528,21 +507,23 @@ app.post('/api/report', async (req, res) => {
     date: new Date().toLocaleString('tr-TR')
   });
 
-  res.json({ success: true, message: 'Şikayet iletildi.' });
+  res.json({ success: true, message: 'Şikayet iletildi ve YT paneline kaydedildi.' });
 });
 
-// ================= YÖNETİCİ PANELİ (YT) API =================
+// ================= YENİ PEMBE SİMLİ KRİSTAL YT PANELİ & HAYALET MOD API =================
 async function checkAdminAuth(req, res, next) {
   const requesterId = req.headers['x-user-id'] || req.query.userId;
   const requesterUsername = req.headers['x-user-name'] || req.query.username;
   const isAdmin = await isUserAdmin(requesterId, requesterUsername);
   if (isAdmin) return next();
-  return res.status(403).json({ success: false, message: 'Yetki reddedildi.' });
+  return res.status(403).json({ success: false, message: 'Yetki reddedildi. Üyeler YT paneline giremez!' });
 }
 
 app.get('/api/admin/dashboard-data', checkAdminAuth, async (req, res) => {
   const userList = await UserModel.find().lean();
   const reportsList = await ReportModel.find().sort({ _id: -1 }).lean();
+  const systemLogs = await SystemLogModel.find().sort({ timestamp: -1 }).limit(100).lean();
+  const pricingConfigs = await PricingConfigModel.find().lean();
   const allAdmins = await AdminModel.find().lean();
   const requesterId = req.headers['x-user-id'] || req.query.userId;
   const requesterUsername = req.headers['x-user-name'] || req.query.username;
@@ -552,24 +533,68 @@ app.get('/api/admin/dashboard-data', checkAdminAuth, async (req, res) => {
     isFounder: isFounder(requesterId, requesterUsername),
     stats: {
       total: userList.length,
-      active: userList.filter(u => !u.isBanned && !u.isDeactivated).length,
-      banned: userList.filter(u => u.isBanned).length,
+      active: userList.filter(u => !u.isBanned && u.restrictionLevel === 0).length,
       reportsCount: reportsList.length
     },
     users: userList,
     reports: reportsList,
+    logs: systemLogs,
+    pricing: pricingConfigs,
     admins: allAdmins.map(a => a.target)
   });
 });
 
-app.post('/api/admin/toggle-ban', checkAdminAuth, async (req, res) => {
-  const user = await UserModel.findOne({ telegramId: String(req.body.targetTelegramId) });
+// 3 Adımlı Kademeli Kısıtlama / Ban Portu
+app.post('/api/admin/restrict-user', checkAdminAuth, async (req, res) => {
+  const { targetTelegramId, level, adminId, adminName } = req.body; // level: 0, 1, 2, 3
+  const user = await UserModel.findOne({ telegramId: String(targetTelegramId) });
   if (!user) return res.status(404).json({ success: false });
-  user.isBanned = !user.isBanned;
+
+  user.restrictionLevel = Number(level) || 0;
+  if (user.restrictionLevel === 3) user.isBanned = true;
+  else user.isBanned = false;
+
   await user.save();
-  res.json({ success: true, isBanned: user.isBanned });
+  await logSystemAction(adminId, adminName, `Kullanıcı Kısıtlama Seviyesi Değiştirildi (Seviye ${level})`, `${user.nickname} (ID: ${targetTelegramId})`);
+
+  res.json({ success: true, restrictionLevel: user.restrictionLevel });
 });
 
+// Haftalık Premium Süresi Ayarlama (YT Paneli)
+app.post('/api/admin/set-premium-duration', checkAdminAuth, async (req, res) => {
+  const { targetTelegramId, weeks, adminId, adminName } = req.body;
+  const user = await UserModel.findOne({ telegramId: String(targetTelegramId) });
+  if (!user) return res.status(404).json({ success: false });
+
+  const expires = new Date();
+  expires.setDate(expires.getDate() + (Number(weeks) * 7));
+
+  user.isPremium = true;
+  user.premiumExpiresAt = expires;
+  await user.save();
+
+  await logSystemAction(adminId, adminName, `Premium Süresi Tanımlandı (${weeks} Hafta)`, `${user.nickname}`);
+  res.json({ success: true, message: `${weeks} hafta premium tanımlandı.` });
+});
+
+// Sadece Kurucunun Yıldız Fiyatlarını Belirlemesi
+app.post('/api/admin/update-pricing', async (req, res) => {
+  const { userId, username, key, priceStars } = req.body;
+  if (!isFounder(userId, username)) {
+    return res.status(403).json({ success: false, message: 'Fiyatlandırmayı sadece Kurucu belirleyebilir!' });
+  }
+
+  await PricingConfigModel.findOneAndUpdate(
+    { key },
+    { key, priceStars: Number(priceStars) },
+    { upsert: true, new: true }
+  );
+
+  await logSystemAction(userId, username, `Yıldız Fiyatı Güncellendi (${key})`, `${priceStars} XTR`);
+  res.json({ success: true, message: 'Fiyat güncellendi.' });
+});
+
+// Kurucunun YT Ekleme/Çıkarma Portu
 app.post('/api/admin/toggle-admin', async (req, res) => {
   const { userId, username, targetId } = req.body;
   if (!isFounder(userId, username)) {
@@ -580,14 +605,16 @@ app.post('/api/admin/toggle-admin', async (req, res) => {
   const existing = await AdminModel.findOne({ target: tid });
   if (existing) {
     await AdminModel.deleteOne({ target: tid });
+    await logSystemAction(userId, username, 'YT Yetkisi Alındı', tid);
     return res.json({ success: true, isAdmin: false, message: 'YT yetkisi alındı.' });
   } else {
     await AdminModel.create({ target: tid, type: 'id' });
+    await logSystemAction(userId, username, 'YT Yetkisi Verildi', tid);
     return res.json({ success: true, isAdmin: true, message: 'YT yetkisi verildi.' });
   }
 });
 
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`GoldenMatch Sunucusu ${PORT} portunda aktif ve optimize edildi.`);
+  console.log(`GoldenMatch Sunucusu ${PORT} portunda hayalet mod ve log motoruyla aktif.`);
 });
