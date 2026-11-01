@@ -11,17 +11,17 @@
   -webkit-user-select: none;
 }
 
-/* 🌟 ARKA PLAN TEMASI: Siyah Yok! Camsı, Şeffaf, Derin Gold & Mor Gradyan */
+/* 🌟 BELİRGİN CAMSI, DERİN GOLD & KRİSTALİZE MOR ARKA FON */
 html, body {
   width: 100vw;
   height: 100vh;
   margin: 0;
   padding: 0;
   background: 
-    radial-gradient(circle at 30% 20%, rgba(120, 60, 160, 0.45) 0%, transparent 60%),
-    radial-gradient(circle at 80% 80%, rgba(212, 175, 55, 0.35) 0%, transparent 60%),
-    linear-gradient(135deg, #1e152f 0%, #100b1a 100%);
-  color: #f0f0f5;
+    radial-gradient(circle at 15% 25%, rgba(138, 43, 226, 0.55) 0%, transparent 55%),
+    radial-gradient(circle at 85% 75%, rgba(255, 215, 0, 0.45) 0%, transparent 60%),
+    linear-gradient(135deg, #24193d 0%, #0f0a1c 100%);
+  color: #e2dfec;
   overflow: hidden;
   position: fixed;
   top: 0;
@@ -33,26 +33,27 @@ html, body {
   align-items: center;
 }
 
-/* 🌟 ARKA PLANIN ÜZERİNDEKİ HAREKETLİ SİMLİ YILDIZLI PERDE EFEKTİ */
+/* ✨ İSTEDİĞİN PARIL PARIL HAREKETLİ SİMLİ YILDIZLAR VE TOZLAR */
 body::before {
   content: '';
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
   pointer-events: none;
   background-image: 
-    radial-gradient(rgba(255, 215, 0, 0.9) 1.5px, transparent 1.5px),
-    radial-gradient(rgba(255, 255, 255, 0.7) 1px, transparent 1px),
-    radial-gradient(rgba(212, 175, 55, 0.6) 2px, transparent 2px);
-  background-size: 50px 50px, 35px 35px, 80px 80px;
-  background-position: 0 0, 15px 15px, 30px 30px;
+    radial-gradient(rgba(255, 235, 120, 1) 2px, transparent 2px),
+    radial-gradient(rgba(255, 255, 255, 0.9) 1.5px, transparent 1.5px),
+    radial-gradient(rgba(212, 175, 55, 0.8) 2.5px, transparent 2.5px);
+  background-size: 45px 45px, 30px 30px, 70px 70px;
+  background-position: 0 0, 10px 10px, 25px 25px;
   z-index: 0;
-  opacity: 0.85;
-  animation: backgroundSparkleMove 25s linear infinite;
+  opacity: 0.95;
+  animation: sparkleTwinkleAndMove 20s linear infinite;
 }
 
-@keyframes backgroundSparkleMove {
-  0% { background-position: 0 0, 15px 15px, 30px 30px; }
-  100% { background-position: 100px 100px, 70px 70px, 160px 160px; }
+@keyframes sparkleTwinkleAndMove {
+  0% { background-position: 0 0, 10px 10px, 25px 25px; opacity: 0.8; }
+  50% { opacity: 1; transform: scale(1.02); }
+  100% { background-position: 120px 120px, 70px 70px, 150px 150px; opacity: 0.8; }
 }
 
 .app-wrapper {
@@ -63,17 +64,18 @@ body::before {
   border-radius: 0 !important;
   border: none !important;
   box-shadow: none !important;
-  /* Uygulamanın kendi ana paneli de tamamen camsı şeffaf dokulu */
-  background: rgba(22, 19, 34, 0.6) !important;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(212, 175, 55, 0.35) !important;
+  /* Belirgin Camsı (Glassmorphism) Şeffaf Panel */
+  background: rgba(28, 22, 45, 0.5) !important;
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border: 1.5px solid rgba(255, 215, 0, 0.4) !important;
   display: flex;
   flex-direction: column;
   position: relative;
   z-index: 1;
   overflow: hidden;
   flex: 1;
+  box-shadow: inset 0 0 30px rgba(255, 215, 0, 0.15), 0 20px 50px rgba(0,0,0,0.6);
 }
 
 @media(min-width: 768px) {
@@ -81,9 +83,9 @@ body::before {
     max-width: 480px !important;
     height: 100vh !important;
     margin: 0 auto;
-    border-left: 1px solid rgba(212, 175, 55, 0.45) !important;
-    border-right: 1px solid rgba(212, 175, 55, 0.45) !important;
-    box-shadow: 0 0 60px rgba(212, 175, 55, 0.25) !important;
+    border-left: 1.5px solid rgba(255, 215, 0, 0.5) !important;
+    border-right: 1.5px solid rgba(255, 215, 0, 0.5) !important;
+    box-shadow: 0 0 70px rgba(212, 175, 55, 0.3), inset 0 0 30px rgba(255, 215, 0, 0.15) !important;
   }
 }
 
@@ -101,10 +103,10 @@ button:active, .choice-chip:active, .action-circle:active {
 
 .app-nav {
   height: 65px;
-  background: rgba(22, 19, 34, 0.5);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(212, 175, 55, 0.35);
+  background: rgba(28, 22, 45, 0.45);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border-bottom: 1.5px solid rgba(255, 215, 0, 0.35);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -121,11 +123,12 @@ button:active, .choice-chip:active, .action-circle:active {
   cursor: pointer;
 }
 
+/* Yazı rengi: Parlak değil, asil ve mat kristalize gold/platin */
 .gold-text {
-  background: linear-gradient(135deg, #ffffff 0%, #ffd700 50%, #d4af37 100%);
+  background: linear-gradient(135deg, #f3e5ab 0%, #c5a059 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.4));
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
 }
 
 .nav-actions {
@@ -135,9 +138,9 @@ button:active, .choice-chip:active, .action-circle:active {
 }
 
 .nav-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(212, 175, 55, 0.45);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1.5px solid rgba(255, 215, 0, 0.45);
+  color: #f3e5ab;
   width: 38px;
   height: 38px;
   border-radius: 50%;
@@ -146,7 +149,7 @@ button:active, .choice-chip:active, .action-circle:active {
   justify-content: center;
   cursor: pointer;
   position: relative;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(12px);
 }
 
 .badge-dot {
@@ -193,7 +196,7 @@ button:active, .choice-chip:active, .action-circle:active {
 
 .subtitle {
   font-size: 12px;
-  color: #b0b0c0;
+  color: #bfaed6;
   margin-top: 4px;
 }
 
@@ -208,7 +211,7 @@ button:active, .choice-chip:active, .action-circle:active {
 .photo-slot {
   aspect-ratio: 3/4;
   background: rgba(255, 255, 255, 0.04);
-  border: 1px dashed rgba(212, 175, 55, 0.6);
+  border: 1.5px dashed rgba(255, 215, 0, 0.55);
   border-radius: 14px;
   position: relative;
   overflow: hidden;
@@ -216,15 +219,15 @@ button:active, .choice-chip:active, .action-circle:active {
   display: flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(10px);
 }
 
 .photo-slot.main {
   grid-column: span 2;
   grid-row: span 2;
   border-style: solid;
-  border-color: #d4af37;
-  box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+  border-color: #c5a059;
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.35);
 }
 
 .slot-preview {
@@ -247,7 +250,7 @@ button:active, .choice-chip:active, .action-circle:active {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  color: #ffd700;
+  color: #f3e5ab;
   font-size: 11px;
 }
 
@@ -268,14 +271,14 @@ button:active, .choice-chip:active, .action-circle:active {
 .form-group label {
   font-size: 11px;
   font-weight: 700;
-  color: #d4af37;
+  color: #e2c986;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .form-group input, .form-group textarea, .dropdown-trigger-btn {
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(212, 175, 55, 0.3);
+  border: 1.5px solid rgba(255, 215, 0, 0.35);
   border-radius: 14px;
   padding: 14px;
   color: #fff;
@@ -288,8 +291,8 @@ button:active, .choice-chip:active, .action-circle:active {
 }
 
 .form-group input:focus, .form-group textarea:focus {
-  border-color: #ffd700;
-  box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
+  border-color: #f3e5ab;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
 }
 
 .form-row-3 {
@@ -299,7 +302,7 @@ button:active, .choice-chip:active, .action-circle:active {
   width: 100%;
 }
 
-/* --- Açılır Kapanır Seçim Kapsülü ve Camsı Modal Stilleri --- */
+/* --- Açılır Kapanır Seçim Kapsülü ve Camsı Kristalize Modal Stilleri --- */
 .dropdown-trigger-btn {
   text-align: left;
   cursor: pointer;
@@ -311,7 +314,7 @@ button:active, .choice-chip:active, .action-circle:active {
 .dropdown-trigger-btn:after {
   content: '▼';
   font-size: 10px;
-  color: #d4af37;
+  color: #f3e5ab;
 }
 
 .selection-modal-backdrop, .modal-backdrop {
@@ -322,9 +325,9 @@ button:active, .choice-chip:active, .action-circle:active {
   bottom: 0 !important;
   width: 100% !important;
   height: 100% !important;
-  background: rgba(10, 8, 16, 0.75);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  background: rgba(12, 8, 20, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   z-index: 3000 !important;
   display: flex;
   align-items: flex-end;
@@ -338,18 +341,18 @@ button:active, .choice-chip:active, .action-circle:active {
 
 .selection-modal-sheet, .modal-sheet {
   width: 100% !important;
-  background: rgba(26, 22, 40, 0.85) !important;
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
+  background: rgba(30, 24, 48, 0.88) !important;
+  backdrop-filter: blur(35px);
+  -webkit-backdrop-filter: blur(35px);
   border-top-left-radius: 28px;
   border-top-right-radius: 28px;
   padding: 24px 20px max(24px, env(safe-area-inset-bottom));
-  border-top: 1px solid rgba(212, 175, 55, 0.6);
+  border-top: 1.5px solid rgba(255, 215, 0, 0.6);
   max-height: 75vh !important;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  box-shadow: 0 -20px 50px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.15);
+  box-shadow: 0 -25px 60px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.2);
   animation: slideUpSheet 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
@@ -369,25 +372,25 @@ button:active, .choice-chip:active, .action-circle:active {
 
 .choice-chip {
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(212, 175, 55, 0.25);
-  color: #ddd;
+  border: 1.5px solid rgba(255, 215, 0, 0.3);
+  color: #e2dfec;
   padding: 8px 14px;
   border-radius: 20px;
   font-size: 12px;
   cursor: pointer;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(10px);
 }
 
 .choice-chip.selected {
-  background: linear-gradient(135deg, #ffd700, #aa8220);
+  background: linear-gradient(135deg, #f3e5ab, #c5a059);
   color: #0b0a10;
-  border-color: #ffd700;
+  border-color: #f3e5ab;
   font-weight: 700;
-  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+  box-shadow: 0 4px 18px rgba(255, 215, 0, 0.45);
 }
 
 .primary-btn {
-  background: linear-gradient(135deg, #ffd700, #b8972b);
+  background: linear-gradient(135deg, #f3e5ab, #c5a059);
   color: #0b0a10;
   border: none;
   padding: 16px;
@@ -396,33 +399,33 @@ button:active, .choice-chip:active, .action-circle:active {
   font-size: 14px;
   cursor: pointer;
   text-align: center;
-  box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
+  box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
   width: 100%;
 }
 
 .ghost-btn {
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(212, 175, 55, 0.35);
-  color: #fff;
+  border: 1.5px solid rgba(255, 215, 0, 0.4);
+  color: #f3e5ab;
   padding: 8px 14px;
   border-radius: 12px;
   font-size: 12px;
   cursor: pointer;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(10px);
 }
 
-/* Keşfet Kartları (Camsı Derinlik) */
+/* Keşfet Kartları (Camsı Kristalize Derinlik) */
 .card-stage {
   flex: 1;
   position: relative;
-  background: rgba(26, 22, 40, 0.45);
-  backdrop-filter: blur(15px);
+  background: rgba(30, 24, 48, 0.5);
+  backdrop-filter: blur(18px);
   border-radius: 24px;
   overflow: hidden;
-  border: 1px solid rgba(212, 175, 55, 0.3);
+  border: 1.5px solid rgba(255, 215, 0, 0.35);
   min-height: 350px;
   max-height: 460px;
-  box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.65);
   touch-action: none;
   width: 100%;
 }
@@ -451,7 +454,7 @@ button:active, .choice-chip:active, .action-circle:active {
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: #999;
+  color: #bfaed6;
   font-size: 13px;
   text-align: center;
   padding: 20px;
@@ -476,20 +479,20 @@ button:active, .choice-chip:active, .action-circle:active {
   justify-content: center;
   cursor: pointer;
   font-size: 22px;
-  box-shadow: 0 8px 25px rgba(0,0,0,0.5);
-  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.55);
+  backdrop-filter: blur(15px);
 }
 
 .pass-btn {
-  background: rgba(35, 30, 50, 0.7);
+  background: rgba(40, 32, 60, 0.8);
   color: #ff4757;
-  border: 1px solid rgba(255, 71, 87, 0.35);
+  border: 1.5px solid rgba(255, 71, 87, 0.4);
 }
 
 .like-btn {
   background: linear-gradient(135deg, #ff4757, #ff6b81);
   color: #fff;
-  border: 1px solid rgba(255, 71, 87, 0.5);
+  border: 1.5px solid rgba(255, 71, 87, 0.6);
 }
 
 .sub-header {
@@ -511,7 +514,7 @@ button:active, .choice-chip:active, .action-circle:active {
   align-items: center;
   gap: 12px;
   background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(212, 175, 55, 0.2);
+  border: 1.5px solid rgba(255, 215, 0, 0.25);
   padding: 12px;
   border-radius: 16px;
   cursor: pointer;
@@ -524,7 +527,7 @@ button:active, .choice-chip:active, .action-circle:active {
   height: 52px;
   border-radius: 50%;
   overflow: hidden;
-  border: 1.5px solid #d4af37;
+  border: 1.5px solid #c5a059;
   flex-shrink: 0;
 }
 
@@ -548,7 +551,7 @@ button:active, .choice-chip:active, .action-circle:active {
 
 .chat-snippet {
   font-size: 12px;
-  color: #aaa;
+  color: #bfaed6;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -556,7 +559,7 @@ button:active, .choice-chip:active, .action-circle:active {
 
 .chat-time {
   font-size: 10px;
-  color: #777;
+  color: #8c7b9e;
 }
 
 .chat-header {
@@ -564,7 +567,7 @@ button:active, .choice-chip:active, .action-circle:active {
   align-items: center;
   justify-content: space-between;
   padding-bottom: 10px;
-  border-bottom: 1px solid rgba(212, 175, 55, 0.25);
+  border-bottom: 1.5px solid rgba(255, 215, 0, 0.3);
   margin-bottom: 10px;
   gap: 8px;
   flex-shrink: 0;
@@ -577,13 +580,13 @@ button:active, .choice-chip:active, .action-circle:active {
 
 .status-indicator {
   font-size: 10px;
-  color: #d4af37;
+  color: #f3e5ab;
 }
 
 .paravan-pill, .unmatch-pill, .report-pill {
   background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(212, 175, 55, 0.35);
-  color: #d4af37;
+  border: 1.5px solid rgba(255, 215, 0, 0.4);
+  color: #f3e5ab;
   padding: 5px 10px;
   border-radius: 14px;
   font-size: 10px;
@@ -592,7 +595,7 @@ button:active, .choice-chip:active, .action-circle:active {
 
 .unmatch-pill, .report-pill {
   color: #ff4757;
-  border-color: rgba(255, 71, 87, 0.35);
+  border-color: rgba(255, 71, 87, 0.4);
 }
 
 /* --- Chat Akışı Optimizasyonu --- */
@@ -645,10 +648,10 @@ button:active, .choice-chip:active, .action-circle:active {
   display: flex;
   gap: 8px;
   padding: 10px;
-  border-top: 1px solid rgba(212, 175, 55, 0.25);
+  border-top: 1.5px solid rgba(255, 215, 0, 0.3);
   align-items: center;
-  background: rgba(20, 17, 30, 0.75);
-  backdrop-filter: blur(15px);
+  background: rgba(22, 18, 35, 0.85);
+  backdrop-filter: blur(18px);
   flex-shrink: 0;
   width: 100%;
 }
@@ -656,7 +659,7 @@ button:active, .choice-chip:active, .action-circle:active {
 .chat-composer input {
   flex: 1;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(212, 175, 55, 0.3);
+  border: 1.5px solid rgba(255, 215, 0, 0.35);
   padding: 12px 16px;
   border-radius: 24px;
   color: #fff;
@@ -668,7 +671,7 @@ button:active, .choice-chip:active, .action-circle:active {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ffd700, #b8972b);
+  background: linear-gradient(135deg, #f3e5ab, #c5a059);
   color: #0b0a10;
   border: none;
   display: flex;
@@ -676,7 +679,7 @@ button:active, .choice-chip:active, .action-circle:active {
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
-  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
 }
 
 .chat-action-btn {
@@ -695,8 +698,8 @@ button:active, .choice-chip:active, .action-circle:active {
 .chat-action-btn svg {
   width: 22px;
   height: 22px;
-  fill: #d4af37;
-  stroke: #d4af37;
+  fill: #f3e5ab;
+  stroke: #f3e5ab;
 }
 
 .god-mode-overlay {
@@ -704,9 +707,9 @@ button:active, .choice-chip:active, .action-circle:active {
   top: 0; left: 0; right: 0; bottom: 0;
   width: 100vw;
   height: 100vh;
-  background: radial-gradient(circle, rgba(212,175,55,0.3) 0%, rgba(16,11,26,0.95) 80%);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: radial-gradient(circle, rgba(255,215,0,0.35) 0%, rgba(15,10,28,0.95) 80%);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
   z-index: 4000;
   display: flex;
   flex-direction: column;
