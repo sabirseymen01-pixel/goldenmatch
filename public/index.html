@@ -10,13 +10,25 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="app-wrapper">
+  <div class="app-wrapper" id="appWrapper">
+
+    <!-- God Mode Şeffaf Simli Perde Katmanı -->
+    <div id="godModeCurtain" class="god-mode-overlay hidden">
+      <div class="gold-sparkle-curtain"></div>
+      <div style="z-index: 20; text-align: center; padding: 20px;">
+        <h2 class="gold-text" style="font-family:'Cinzel',serif; font-size:26px; margin-bottom:8px;">🔥 GOLDEN GOD MODE</h2>
+        <p style="color:#d4af37; font-size:13px; margin-bottom:20px;">Sınırsız ilahi güç, görünürlük ve yönetim ayrıcalıkları aktif.</p>
+        <button class="primary-btn" onclick="toggleGodMode(false)" style="background:#ff4757; color:#fff; border:none; padding:12px 24px; border-radius:14px; cursor:pointer; font-weight:700;">Perdeyi Kapat</button>
+      </div>
+    </div>
 
     <header id="appNav" class="app-nav hidden">
       <div class="brand-logo" onclick="switchTab('explore')">
         <span class="gold-text">GOLDEN</span>MATCH
       </div>
       <div class="nav-actions">
+        <!-- God Mode Toggle Butonu -->
+        <button id="godModeToggleBtn" class="nav-btn" onclick="toggleGodMode(true)" title="God Mode Aç" style="border-color:#d4af37; color:#d4af37;">⚡</button>
         <button id="ytNavBtn" class="nav-btn yt-badge hidden" onclick="switchTab('adminPanel')" title="Yönetici Paneli">👑 YT</button>
         <button class="nav-btn" onclick="openFilterModal()" aria-label="Filtrele">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
@@ -31,11 +43,18 @@
       </div>
     </header>
 
-    <!-- 1. PROFİL KAYIT / DÜZENLEME -->
+    <!-- 1. PROFİL KAYIT / DÜZENLEME & PREMIUM SATIN ALMA BAŞLANGIÇ MERKEZİ -->
     <main id="registerView" class="view-screen">
       <div class="screen-header">
         <h1 class="gold-text">GOLDENMATCH</h1>
         <p class="subtitle">Kutsal profilini ve konumunu mühürle.</p>
+      </div>
+
+      <!-- Telegram Stars ile Premium Satın Alma Başlangıç Paneli -->
+      <div id="premiumBanner" style="background:linear-gradient(135deg, rgba(111,45,168,0.25), rgba(212,175,55,0.2)); border:1px solid rgba(212,175,55,0.5); padding:16px; border-radius:18px; margin-bottom:16px; text-align:center;">
+        <h3 class="gold-text" style="font-family:'Cinzel',serif; font-size:16px; margin-bottom:6px;">🌟 Gold-Mor Asalet Teması & Premium</h3>
+        <p style="font-size:12px; color:#ccc; margin-bottom:12px;">Sınırsız kaydırma, animasyonlu kraliyet rozeti ve okundu bilgisi için hemen yükseltin.</p>
+        <button type="button" class="primary-btn gold-glow" onclick="buyPremiumOrStars('premium')" style="width:100%; padding:12px; font-size:13px;">⭐ Telegram Yıldızları ile Premium Al (100 XTR)</button>
       </div>
 
       <div class="photo-grid">
@@ -65,7 +84,7 @@
         </div>
 
         <div class="form-group">
-          <label>Şehir Seçimi</label>
+          <label>Şehir Seçimi (30 Büyükşehir)</label>
           <input type="text" id="citySearchInput" onkeyup="filterCityChips()" placeholder="🔍 Şehir ara...">
           <div class="chip-grid" id="cityChipGrid"></div>
           <input type="hidden" id="city" required>
@@ -77,7 +96,7 @@
           <input type="hidden" id="district" required>
         </div>
 
-        <!-- Genişletilmiş Queer Yönelimler / Roller (Kayıt) -->
+        <!-- Genişletilmiş Queer Yönelimler / Roller -->
         <div class="form-group">
           <label>Senin Rolün / Yönelimin</label>
           <div class="chip-grid" data-target="role">
@@ -206,10 +225,10 @@
       </form>
     </main>
 
-    <!-- 5. YÖNETİCİ PANELİ (YT) -->
+    <!-- 5. YÖNETİCİ PANELİ (YT) & HAYALET TEST SÜİTİ -->
     <main id="adminPanelView" class="view-screen hidden">
       <div class="sub-header">
-        <h2 class="gold-text">👑 YT Yönetim Masası</h2>
+        <h2 class="gold-text">👑 YT Yönetim Masası & Test Süiti</h2>
         <button class="ghost-btn" onclick="switchTab('explore')">Çıkış</button>
       </div>
       <div class="stats-cards" style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px;">
@@ -219,7 +238,7 @@
       <div id="adminUserCards" class="admin-scroll-list" style="max-height:400px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
     </main>
 
-    <!-- GELİŞMİŞ FİLTRE MODALI (Günlük 3 Ücretsiz Hak ve Genişletilmiş Roller) -->
+    <!-- GELİŞMİŞ FİLTRE MODALI -->
     <div id="filterModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeFilterModal()">
       <div class="modal-sheet">
         <div class="sheet-header"><h3>Gelişmiş Filtreler</h3><button class="icon-close" onclick="closeFilterModal()">✕</button></div>
@@ -246,7 +265,6 @@
           </div>
         </div>
 
-        <!-- Filtrelerde Genişletilmiş Queer Rol / Yönelim Seçenekleri -->
         <div class="form-group" style="margin-bottom:16px;">
           <label>Rol / Yönelim Filtresi</label>
           <div class="chip-grid" id="filterRoleChips">
