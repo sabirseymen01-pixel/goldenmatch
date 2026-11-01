@@ -1,34 +1,315 @@
-<!-- Şehir Seçim Kapsülü (Modal Tetikleyici) -->
-<div class="form-group">
-  <label>Şehir Seçimi (30 Büyükşehir)</label>
-  <button type="button" class="dropdown-trigger-btn" id="selectedCityBtn" onclick="openSelectionModal('city')">Şehir Seçin...</button>
-  <input type="hidden" id="city" required>
-</div>
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>GoldenMatch ✨</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <link rel="stylesheet" href="style.css?v=2026.4">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-wrapper" id="appWrapper">
 
-<!-- İlçe Seçim Kapsülü (Modal Tetikleyici) -->
-<div class="form-group" id="districtGroup">
-  <label>İlçe / Semt Seçimi</label>
-  <button type="button" class="dropdown-trigger-btn" id="selectedDistrictBtn" onclick="openSelectionModal('district')">Önce Şehir Seçin...</button>
-  <input type="hidden" id="district" required>
-</div>
+    <!-- God Mode & Tarot İlahi Eşleşme Katmanı (Hayalet Yazısı Temizlendi) -->
+    <div id="godModeCurtain" class="god-mode-overlay hidden">
+      <div class="gold-sparkle-curtain"></div>
+      <div style="z-index: 20; text-align: center; padding: 20px; width:100%;">
+        <h2 class="gold-text" style="font-family:'Cinzel',serif; font-size:24px; margin-bottom:4px;">🔥 GOD MODE & TAROT KADER Çarkı</h2>
+        <p style="color:#d4af37; font-size:12px; margin-bottom:16px;">Kutsal Günler İlahi Eşleşme Motoru Aktif</p>
+        
+        <div id="tarotCardsContainer" style="display:flex; justify-content:center; gap:8px; margin-bottom:20px; flex-wrap:wrap;"></div>
 
-<!-- Rol Seçim Kapsülü (Modal Tetikleyici) -->
-<div class="form-group">
-  <label>Senin Rolün / Yönelimin</label>
-  <button type="button" class="dropdown-trigger-btn" id="selectedRoleBtn" onclick="openSelectionModal('role')">Rolünüzü Seçin...</button>
-  <input type="hidden" id="role" required>
-</div>
+        <button class="primary-btn" onclick="toggleGodMode(false)" style="background:#ff4757; color:#fff; border:none; padding:10px 20px; border-radius:12px; cursor:pointer; font-weight:700; font-size:12px;">God Mode'dan Çık</button>
+      </div>
+    </div>
 
-<!-- Aradığın Rol Seçim Kapsülü (Modal Tetikleyici) -->
-<div class="form-group">
-  <label>Aradığın Rol / Yönelim</label>
-  <button type="button" class="dropdown-trigger-btn" id="selectedInterestedRoleBtn" onclick="openSelectionModal('interestedRole')">Hepsi</button>
-  <input type="hidden" id="interestedRole" value="Hepsi" required>
-</div>
+    <header id="appNav" class="app-nav hidden">
+      <div class="brand-logo" onclick="switchTab('explore')">
+        <span class="gold-text">GOLDEN</span>MATCH
+      </div>
+      <div class="nav-actions">
+        <button id="godModeToggleBtn" class="nav-btn hidden" onclick="triggerGodModeTarot()" title="God Mode & Tarot Kartları" style="border-color:#d4af37; color:#d4af37;">⚡</button>
+        <button id="ytNavBtn" class="nav-btn yt-badge hidden" onclick="switchTab('adminPanel')" title="YT Paneli">👑 YT</button>
+        <button class="nav-btn" onclick="openFilterModal()" aria-label="Filtrele">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+        </button>
+        <button class="nav-btn dm-btn" onclick="switchTab('inbox')" aria-label="Mesajlar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span id="unreadBadge" class="badge-dot hidden"></span>
+        </button>
+        <button class="nav-btn" onclick="openProfileEdit()" aria-label="Profil">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/></svg>
+        </button>
+      </div>
+    </header>
 
-<!-- Olimpos Arketipi Seçim Kapsülü (Modal Tetikleyici) -->
-<div class="form-group">
-  <label>Olimpos Arketipi</label>
-  <button type="button" class="dropdown-trigger-btn" id="selectedArchetypeBtn" onclick="openSelectionModal('archetype')">Arketip Seçin...</button>
-  <input type="hidden" id="archetype" required>
-</div>
+    <!-- 1. PROFİL KAYIT -->
+    <main id="registerView" class="view-screen">
+      <div class="screen-header">
+        <h1 class="gold-text">GOLDENMATCH</h1>
+        <p class="subtitle">Kutsal profilini ve konumunu mühürle.</p>
+      </div>
+
+      <div id="premiumBanner" style="background:rgba(212,175,55,0.08); border:1px solid rgba(212,175,55,0.4); padding:16px; border-radius:18px; margin-bottom:16px; text-align:center;">
+        <h3 class="gold-text" style="font-family:'Cinzel',serif; font-size:16px; margin-bottom:6px;">🌟 Haftalık Premium Üyelik</h3>
+        <p style="font-size:12px; color:#ccc; margin-bottom:12px;">Sınırsız keşif ve konum önceliği için hemen yükseltin.</p>
+        <button type="button" class="primary-btn gold-glow" onclick="buyPremiumOrStars('premium_weekly')" style="width:100%; padding:12px; font-size:13px;">⭐ Haftalık Premium Al (100 Yıldız)</button>
+      </div>
+
+      <div class="photo-grid">
+        <div class="photo-slot main" onclick="pickImage(0)" id="slot-0">
+          <div class="slot-placeholder">
+            <span class="plus-icon">⚡</span>
+            <span class="slot-label">BAŞ PROFİL</span>
+          </div>
+          <img class="slot-preview" alt="Ana Fotoğraf">
+        </div>
+        <div class="photo-slot" onclick="pickImage(1)" id="slot-1"><span class="plus-icon">+</span><img class="slot-preview" alt="Foto 2"></div>
+        <div class="photo-slot" onclick="pickImage(2)" id="slot-2"><span class="plus-icon">+</span><img class="slot-preview" alt="Foto 3"></div>
+        <div class="photo-slot" onclick="pickImage(3)" id="slot-3"><span class="plus-icon">+</span><img class="slot-preview" alt="Foto 4"></div>
+      </div>
+      <input type="file" id="fileSelector" accept="image/*" style="display:none" onchange="onFileSelected(event)">
+
+      <form id="regForm" onsubmit="handleFormSubmit(event)" class="gold-form">
+        <div class="form-group">
+          <label>Rumuz / İsim</label>
+          <input type="text" id="nickname" placeholder="Mecliste görünecek adın" required>
+        </div>
+
+        <div class="form-row-3">
+          <div class="form-group"><label>Yaş</label><input type="number" id="age" min="18" max="99" placeholder="18+" required></div>
+          <div class="form-group"><label>Boy (cm)</label><input type="number" id="height" placeholder="180"></div>
+          <div class="form-group"><label>Kilo (kg)</label><input type="number" id="weight" placeholder="75"></div>
+        </div>
+
+        <!-- Şehir Seçim Kapsülü (Modal Tetikleyici) -->
+        <div class="form-group">
+          <label>Şehir Seçimi (30 Büyükşehir)</label>
+          <button type="button" class="dropdown-trigger-btn" id="selectedCityBtn" onclick="openSelectionModal('city')">Şehir Seçin...</button>
+          <input type="hidden" id="city" required>
+        </div>
+
+        <!-- İlçe Seçim Kapsülü (Modal Tetikleyici) -->
+        <div class="form-group" id="districtGroup">
+          <label>İlçe / Semt Seçimi</label>
+          <button type="button" class="dropdown-trigger-btn" id="selectedDistrictBtn" onclick="openSelectionModal('district')">Önce Şehir Seçin...</button>
+          <input type="hidden" id="district" required>
+        </div>
+
+        <!-- Rol Seçim Kapsülü (Modal Tetikleyici) -->
+        <div class="form-group">
+          <label>Senin Rolün / Yönelimin</label>
+          <button type="button" class="dropdown-trigger-btn" id="selectedRoleBtn" onclick="openSelectionModal('role')">Rolünüzü Seçin...</button>
+          <input type="hidden" id="role" required>
+        </div>
+
+        <!-- Aradığın Rol Seçim Kapsülü (Modal Tetikleyici) -->
+        <div class="form-group">
+          <label>Aradığın Rol / Yönelim</label>
+          <button type="button" class="dropdown-trigger-btn" id="selectedInterestedRoleBtn" onclick="openSelectionModal('interestedRole')">Hepsi</button>
+          <input type="hidden" id="interestedRole" value="Hepsi" required>
+        </div>
+
+        <!-- Olimpos Arketipi Seçim Kapsülü (Modal Tetikleyici) -->
+        <div class="form-group">
+          <label>Olimpos Arketipi</label>
+          <button type="button" class="dropdown-trigger-btn" id="selectedArchetypeBtn" onclick="openSelectionModal('archetype')">Arketip Seçin...</button>
+          <input type="hidden" id="archetype" required>
+        </div>
+
+        <div class="form-group">
+          <label>Biyografi</label>
+          <textarea id="bio" rows="3" placeholder="Kendinden bahset..."></textarea>
+        </div>
+
+        <button type="submit" id="saveBtn" class="primary-btn gold-glow"><span>Profili Mühürle & Başla</span></button>
+        
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <button type="button" id="deactivateAccountBtn" class="danger-outline-btn hidden" onclick="deactivateMyAccount()" style="flex:1; background:transparent; border:1px solid #ff4757; color:#ff4757; padding:12px; border-radius:14px; cursor:pointer;">🔒 Hesabı Dondur</button>
+          <button type="button" id="deleteAccountBtn" class="danger-outline-btn hidden" onclick="deleteMyAccount()" style="flex:1; background:transparent; border:1px solid #ff4757; color:#ff4757; padding:12px; border-radius:14px; cursor:pointer;">🗑️ Hesabı Sil</button>
+        </div>
+      </form>
+    </main>
+
+    <!-- 2. KEŞFET -->
+    <main id="exploreView" class="view-screen hidden">
+      <div class="card-stage" id="cardStage">
+        <div class="tinder-card" id="activeCard">
+          <div class="card-loader">Yakındaki kader ağları taranıyor...</div>
+        </div>
+      </div>
+
+      <div class="swipe-actions">
+        <button class="action-circle pass-btn" onclick="triggerCardSwipe('pass')">✕</button>
+        <button class="action-circle like-btn" onclick="triggerCardSwipe('like')">❤️</button>
+      </div>
+    </main>
+
+    <!-- 3. MESAJLAR LİSTESİ -->
+    <main id="inboxView" class="view-screen hidden">
+      <div class="sub-header">
+        <h2>Mesajlar 💬</h2>
+        <button class="ghost-btn" onclick="switchTab('explore')">Keşfet</button>
+      </div>
+      <div id="chatList" class="inbox-list"></div>
+    </main>
+
+    <!-- 4. SOHBET ODASI -->
+    <main id="chatRoomView" class="view-screen hidden">
+      <div class="chat-header">
+        <button class="ghost-btn sm-btn" onclick="switchTab('inbox')">← Geri</button>
+        <div class="partner-meta">
+          <h3 id="chatPartnerName">Kullanıcı</h3>
+          <span id="chatParavanStatus" class="status-indicator">🎭 Anonim Paravan</span>
+        </div>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <button id="paravanBtn" class="paravan-pill" onclick="requestParavanReveal()">🎭 Paravanı Aç</button>
+          <button class="report-pill" onclick="reportCurrentPartner()">🚨 Şikayet</button>
+          <button class="unmatch-pill" onclick="cancelCurrentMatch()">✕</button>
+        </div>
+      </div>
+
+      <div id="messageStream" class="chat-stream"></div>
+
+      <form class="chat-composer" onsubmit="sendChatMessage(event)">
+        <input type="file" id="chatMediaInput" accept="image/*" style="display:none" onchange="onChatMediaSelected(event)">
+        
+        <button type="button" class="chat-action-btn" onclick="document.getElementById('chatMediaInput').click()" title="Fotoğraf Gönder">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <rect x="3" y="3" width="18" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/>
+            <path d="M21 15L16 10L5 21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        <button type="button" id="recordAudioBtn" class="chat-action-btn chat-voice-btn" onclick="toggleAudioRecording()" title="Sesli Mesaj">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21 4H3C1.9 4 1 4.9 1 6V15C1 16.1 1.9 17 3 17H7L11 21V17H21C22.1 17 23 16.1 23 15V6C23 4.9 22.1 4 21 4Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            <rect x="10.5" y="7" width="3" height="5" rx="1.5" fill="currentColor"/>
+          </svg>
+        </button>
+
+        <input type="text" id="chatInput" placeholder="Mesajınızı fısıldayın..." autocomplete="off">
+        <button type="submit" class="composer-btn">➤</button>
+      </form>
+    </main>
+
+    <!-- 5. YT YÖNETİM MASASI -->
+    <main id="adminPanelView" class="view-screen hidden" style="background: #13121d; border: 1px solid rgba(212,175,55,0.3);">
+      <div class="sub-header">
+        <h2 class="gold-text">👑 YT Yönetim Masası</h2>
+        <button class="ghost-btn" onclick="switchTab('explore')">Çıkış</button>
+      </div>
+
+      <div class="stats-cards" style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px;">
+        <div class="stat-pill" style="background:rgba(212,175,55,0.08); padding:10px; border-radius:12px; text-align:center;"><span>Toplam Üye</span><br><strong id="ytStatTotal" style="color:#d4af37;">0</strong></div>
+        <div class="stat-pill" style="background:rgba(212,175,55,0.08); padding:10px; border-radius:12px; text-align:center;"><span>Aktif Üye</span><br><strong id="ytStatActive" style="color:#2ed573;">0</strong></div>
+      </div>
+
+      <div style="background:rgba(212,175,55,0.06); border:1px solid rgba(212,175,55,0.3); padding:12px; border-radius:14px; margin-bottom:14px;">
+        <h3 style="color:#d4af37; font-size:13px; margin-bottom:6px;">⚡ Kutsal Gün Seçimi</h3>
+        <p style="font-size:11px; color:#aaa; margin-bottom:8px;">Haftanın dilediğiniz gününü Kutsal Gün / Otomasyon günü olarak sabitleyin.</p>
+        <div style="display:flex; gap:8px;">
+          <select id="godModeDaySelect" style="flex:1; background:#1b1926; color:#fff; border:1px solid #d4af37; padding:8px; border-radius:8px; font-size:11px;">
+            <option value="1">Pazartesi</option>
+            <option value="2">Salı</option>
+            <option value="3">Çarşamba</option>
+            <option value="4">Perşembe</option>
+            <option value="5">Cuma</option>
+            <option value="6">Cumartesi</option>
+            <option value="0">Pazar</option>
+          </select>
+          <button onclick="saveGodModeAutomation()" style="background:#d4af37; color:#000; border:none; padding:8px 12px; border-radius:8px; font-weight:700; cursor:pointer; font-size:11px;">Günü Mühürle</button>
+        </div>
+      </div>
+
+      <div id="founderPricingSection" class="hidden" style="background:rgba(212,175,55,0.08); border:1px solid rgba(212,175,55,0.4); padding:12px; border-radius:14px; margin-bottom:14px;">
+        <h3 style="color:#d4af37; font-size:13px; margin-bottom:8px;">⭐ Telegram Yıldız Fiyatlandırma (Kurucu)</h3>
+        <div style="display:flex; gap:8px; margin-bottom:6px;">
+          <input type="number" id="priceWeeklyInput" placeholder="Haftalık Premium Yıldız" style="flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.2); padding:8px; border-radius:8px; color:#fff; font-size:12px;">
+          <button onclick="updatePricing('premium_weekly')" style="background:#d4af37; color:#000; border:none; padding:8px 12px; border-radius:8px; font-weight:700; cursor:pointer;">Ayarla</button>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <input type="number" id="priceFiltersInput" placeholder="3'lü Filtre Paketi Yıldız" style="flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.2); padding:8px; border-radius:8px; color:#fff; font-size:12px;">
+          <button onclick="updatePricing('filter_pack')" style="background:#d4af37; color:#000; border:none; padding:8px 12px; border-radius:8px; font-weight:700; cursor:pointer;">Ayarla</button>
+        </div>
+      </div>
+
+      <div id="adminReportsContainer" style="margin-bottom:14px;"></div>
+
+      <div style="margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <h3 style="color:#d4af37; font-size:13px;">📜 Sistem İşlem Logları</h3>
+          <button onclick="clearSystemLogs()" style="background:#ff4757; color:#fff; border:none; padding:4px 8px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700;">Logları Temizle</button>
+        </div>
+        <div id="adminLogsList" style="max-height:160px; overflow-y:auto; background:rgba(0,0,0,0.3); border:1px solid rgba(212,175,55,0.2); border-radius:12px; padding:8px; font-size:11px; color:#aaa;"></div>
+      </div>
+
+      <div id="adminUserCards" class="admin-scroll-list" style="max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; margin-bottom:14px;"></div>
+      <div id="adminListContainer" class="admin-scroll-list" style="max-height:200px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
+    </main>
+
+    <!-- ORTAK DİNAMİK SEÇİM MODALI (Sheet) -->
+    <div id="dynamicSelectionModal" class="selection-modal-backdrop hidden" onclick="if(event.target===this)closeSelectionModal()">
+      <div class="selection-modal-sheet">
+        <div class="sheet-header">
+          <h3 id="modalTitle" class="gold-text" style="font-size:16px;">Seçim Yapın</h3>
+          <button class="icon-close" onclick="closeSelectionModal()">✕</button>
+        </div>
+        <div id="modalSearchWrapper" style="margin-bottom:12px;">
+          <input type="text" id="modalSearchInput" onkeyup="filterModalItems()" placeholder="🔍 Ara..." style="width:100%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:12px; color:#fff; font-size:13px; outline:none;">
+        </div>
+        <div class="selection-chip-grid" id="modalChipContainer"></div>
+      </div>
+    </div>
+
+    <!-- GELİŞMİŞ FİLTRE MODALI -->
+    <div id="filterModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeFilterModal()">
+      <div class="modal-sheet">
+        <div class="sheet-header"><h3>Gelişmiş Filtreler</h3><button class="icon-close" onclick="closeFilterModal()">✕</button></div>
+        
+        <div style="background:rgba(212,175,55,0.1); border:1px solid rgba(212,175,55,0.3); padding:10px; border-radius:10px; margin-bottom:12px; font-size:12px; color:#d4af37; text-align:center;">
+          ✨ Günlük Ücretsiz Filtre Hakkı: <strong id="filterRemainingBadge">3 / 3</strong> <br>
+          <button onclick="buyPremiumOrStars('filter_pack')" style="background:transparent; border:none; color:#d4af37; text-decoration:underline; cursor:pointer; margin-top:4px; font-size:11px;">⭐ 25 Yıldız ile Ek 3 Filtre Hakkı Al</button>
+        </div>
+
+        <!-- Filtre Şehir Tetikleyicisi -->
+        <div class="form-group" style="margin-bottom:12px;">
+          <label>Şehir Filtresi</label>
+          <button type="button" class="dropdown-trigger-btn" id="filterSelectedCityBtn" onclick="openSelectionModal('filterCity')">Tüm Şehirler</button>
+          <input type="hidden" id="filterCityInput" value="Hepsi">
+        </div>
+
+        <!-- Filtre İlçe Tetikleyicisi -->
+        <div class="form-group" style="margin-bottom:12px;">
+          <label>İlçe / Semt Filtresi</label>
+          <button type="button" class="dropdown-trigger-btn" id="filterSelectedDistrictBtn" onclick="openSelectionModal('filterDistrict')">Tüm İlçeler</button>
+          <input type="hidden" id="filterDistrictInput" value="Hepsi">
+        </div>
+
+        <div class="form-group" style="margin-bottom:12px;">
+          <label>Yaş Aralığı: <span id="ageRangeLabel" style="color:#d4af37;">18 - 99</span></label>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <input type="number" id="filterMinAge" value="18" min="18" max="99" style="width:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:10px; color:#fff;" placeholder="Min Yaş">
+            <input type="number" id="filterMaxAge" value="99" min="18" max="99" style="width:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:10px; color:#fff;" placeholder="Max Yaş">
+          </div>
+        </div>
+
+        <!-- Filtre Rol Tetikleyicisi -->
+        <div class="form-group" style="margin-bottom:16px;">
+          <label>Rol / Yönelim Filtresi</label>
+          <button type="button" class="dropdown-trigger-btn" id="filterSelectedRoleBtn" onclick="openSelectionModal('filterRole')">Hepsi</button>
+          <input type="hidden" id="filterRoleInput" value="Hepsi">
+        </div>
+
+        <button class="primary-btn full" onclick="applyFilters()" style="width:100%;">Filtreleri Uygula</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="app.js?v=2026.4"></script>
+</body>
+</html>
