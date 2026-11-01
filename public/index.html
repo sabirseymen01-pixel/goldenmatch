@@ -223,7 +223,7 @@
       </form>
     </main>
 
-    <!-- 5. YT YÖNETİM MASASI & HAYALET MOD / KUTSAL GÜN SEÇİMİ -->
+    <!-- 5. YT YÖNETİM MASASI & HAYALET MOD / PORTLAR -->
     <main id="adminPanelView" class="view-screen hidden" style="background: #13121d; border: 1px solid rgba(212,175,55,0.3);">
       <div class="sub-header">
         <h2 class="gold-text">👑 YT Yönetim Masası & Hayalet Mod</h2>
@@ -269,18 +269,23 @@
       <!-- Şikayet Bildirimleri -->
       <div id="adminReportsContainer" style="margin-bottom:14px;"></div>
 
-      <!-- Sistem İşlem Logları -->
+      <!-- Sistem İşlem Logları & Logları Temizle Butonu -->
       <div style="margin-bottom:14px;">
-        <h3 style="color:#d4af37; font-size:13px; margin-bottom:6px;">📜 Sistem İşlem Logları</h3>
-        <div id="adminLogsList" style="max-height:150px; overflow-y:auto; background:rgba(0,0,0,0.3); border:1px solid rgba(212,175,55,0.2); border-radius:12px; padding:8px; font-size:11px; color:#aaa;"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <h3 style="color:#d4af37; font-size:13px;">📜 Sistem İşlem Logları</h3>
+          <button onclick="clearSystemLogs()" style="background:#ff4757; color:#fff; border:none; padding:4px 8px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700;">Logları Temizle</button>
+        </div>
+        <div id="adminLogsList" style="max-height:160px; overflow-y:auto; background:rgba(0,0,0,0.3); border:1px solid rgba(212,175,55,0.2); border-radius:12px; padding:8px; font-size:11px; color:#aaa;"></div>
       </div>
 
-      <!-- Üye Yönetimi & 3 Adımlı Kısıtlama -->
-      <h3 style="color:#d4af37; font-size:14px; margin-bottom:8px;">👥 Üye Listesi & Kısıtlama Masası</h3>
-      <div id="adminUserCards" class="admin-scroll-list" style="max-height:350px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
+      <!-- 1. Port: Üyeler Listesi & Kısıtlama Masası -->
+      <div id="adminUserCards" class="admin-scroll-list" style="max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; margin-bottom:14px;"></div>
+
+      <!-- 2. Port: Adminler (YT) Listesi -->
+      <div id="adminListContainer" class="admin-scroll-list" style="max-height:200px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
     </main>
 
-    <!-- GELİŞMİŞ FİLTRE MODALI (TÜM YÖNELİMLERLE) -->
+    <!-- GELİŞMİŞ FİLTRE MODALI -->
     <div id="filterModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeFilterModal()">
       <div class="modal-sheet">
         <div class="sheet-header"><h3>Gelişmiş Filtreler</h3><button class="icon-close" onclick="closeFilterModal()">✕</button></div>
