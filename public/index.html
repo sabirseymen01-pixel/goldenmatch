@@ -6,7 +6,7 @@
   <title>GoldenMatch ✨</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="/socket.io/socket.io.js"></script>
-  <link rel="stylesheet" href="style.css?v=2026">
+  <link rel="stylesheet" href="style.css?v=2026.3">
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -88,61 +88,38 @@
           <div class="form-group"><label>Kilo (kg)</label><input type="number" id="weight" placeholder="75"></div>
         </div>
 
+        <!-- Şehir Seçim Kapsülü (Modal Tetikleyici) -->
         <div class="form-group">
           <label>Şehir Seçimi (30 Büyükşehir)</label>
-          <input type="text" id="citySearchInput" onkeyup="filterCityChips()" placeholder="🔍 Şehir ara...">
-          <div class="chip-grid" id="cityChipGrid"></div>
+          <button type="button" class="dropdown-trigger-btn" id="selectedCityBtn" onclick="openSelectionModal('city')">Şehir Seçin...</button>
           <input type="hidden" id="city" required>
         </div>
 
+        <!-- İlçe Seçim Kapsülü (Modal Tetikleyici) -->
         <div class="form-group" id="districtGroup">
           <label>İlçe / Semt Seçimi</label>
-          <div class="chip-grid" id="districtChipGrid"></div>
+          <button type="button" class="dropdown-trigger-btn" id="selectedDistrictBtn" onclick="openSelectionModal('district')">Önce Şehir Seçin...</button>
           <input type="hidden" id="district" required>
         </div>
 
+        <!-- Rol Seçim Kapsülü (Modal Tetikleyici) -->
         <div class="form-group">
           <label>Senin Rolün / Yönelimin</label>
-          <div class="chip-grid" data-target="role">
-            <button type="button" class="choice-chip" onclick="selectChip('role', 'Top', this)">Top</button>
-            <button type="button" class="choice-chip" onclick="selectChip('role', 'Bottom', this)">Bottom</button>
-            <button type="button" class="choice-chip" onclick="selectChip('role', 'Verse', this)">Verse</button>
-            <button type="button" class="choice-chip" onclick="selectChip('role', 'Verse Top', this)">Verse Top</button>
-            <button type="button" class="choice-chip" onclick="selectChip('role', 'Verse Bottom', this)">Verse Bottom</button>
-            <button type="button" class="choice-chip" onclick="selectChip('role', 'Side', this)">Side</button>
-            <button type="button" class="choice-chip" onclick="selectChip('role', 'Trans', this)">Trans</button>
-            <button type="button" class="choice-chip" onclick="selectChip('role', 'Biseksüel', this)">Biseksüel</button>
-            <button type="button" class="choice-chip" onclick="selectChip('role', 'Panseksüel', this)">Panseksüel</button>
-            <button type="button" class="choice-chip" onclick="selectChip('role', 'Non-Binary', this)">Non-Binary</button>
-            <button type="button" class="choice-chip" onclick="selectChip('role', 'Queer / Akışkan', this)">Queer / Akışkan</button>
-          </div>
+          <button type="button" class="dropdown-trigger-btn" id="selectedRoleBtn" onclick="openSelectionModal('role')">Rolünüzü Seçin...</button>
           <input type="hidden" id="role" required>
         </div>
 
+        <!-- Aradığın Rol Seçim Kapsülü (Modal Tetikleyici) -->
         <div class="form-group">
           <label>Aradığın Rol / Yönelim</label>
-          <div class="chip-grid" data-target="interestedRole">
-            <button type="button" class="choice-chip selected" onclick="selectChip('interestedRole', 'Hepsi', this)">Hepsi</button>
-            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Top', this)">Top</button>
-            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Bottom', this)">Bottom</button>
-            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Verse', this)">Verse</button>
-            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Verse Top', this)">Verse Top</button>
-            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Verse Bottom', this)">Verse Bottom</button>
-            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Side', this)">Side</button>
-            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Trans', this)">Trans</button>
-            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Biseksüel', this)">Biseksüel</button>
-          </div>
+          <button type="button" class="dropdown-trigger-btn" id="selectedInterestedRoleBtn" onclick="openSelectionModal('interestedRole')">Hepsi</button>
           <input type="hidden" id="interestedRole" value="Hepsi" required>
         </div>
 
+        <!-- Olimpos Arketipi Seçim Kapsülü (Modal Tetikleyici) -->
         <div class="form-group">
           <label>Olimpos Arketipi</label>
-          <div class="chip-grid vertical-chips" data-target="archetype">
-            <button type="button" class="choice-chip" onclick="selectChip('archetype', 'Apollon', this)">☀️ Apollon</button>
-            <button type="button" class="choice-chip" onclick="selectChip('archetype', 'Afrodit', this)">🕊️ Afrodit</button>
-            <button type="button" class="choice-chip" onclick="selectChip('archetype', 'Ares', this)">⚔️ Ares</button>
-            <button type="button" class="choice-chip" onclick="selectChip('archetype', 'Hermes', this)">🪽 Hermes</button>
-          </div>
+          <button type="button" class="dropdown-trigger-btn" id="selectedArchetypeBtn" onclick="openSelectionModal('archetype')">Arketip Seçin...</button>
           <input type="hidden" id="archetype" required>
         </div>
 
@@ -235,7 +212,6 @@
         <div class="stat-pill" style="background:rgba(212,175,55,0.08); padding:10px; border-radius:12px; text-align:center;"><span>Aktif Üye</span><br><strong id="ytStatActive" style="color:#2ed573;">0</strong></div>
       </div>
 
-      <!-- Kutsal Mod Haftanın Tüm Günleri Seçim Paneli -->
       <div style="background:rgba(212,175,55,0.06); border:1px solid rgba(212,175,55,0.3); padding:12px; border-radius:14px; margin-bottom:14px;">
         <h3 style="color:#d4af37; font-size:13px; margin-bottom:6px;">⚡ Kutsal Mod / Hayalet Gün Seçimi</h3>
         <p style="font-size:11px; color:#aaa; margin-bottom:8px;">Haftanın dilediğiniz gününü Kutsal Gün / Otomasyon günü olarak sabitleyin.</p>
@@ -253,7 +229,6 @@
         </div>
       </div>
 
-      <!-- Kurucuya Özel Yıldız Fiyatlandırma Portu -->
       <div id="founderPricingSection" class="hidden" style="background:rgba(212,175,55,0.08); border:1px solid rgba(212,175,55,0.4); padding:12px; border-radius:14px; margin-bottom:14px;">
         <h3 style="color:#d4af37; font-size:13px; margin-bottom:8px;">⭐ Telegram Yıldız Fiyatlandırma (Kurucu)</h3>
         <div style="display:flex; gap:8px; margin-bottom:6px;">
@@ -266,10 +241,8 @@
         </div>
       </div>
 
-      <!-- Şikayet Bildirimleri -->
       <div id="adminReportsContainer" style="margin-bottom:14px;"></div>
 
-      <!-- Sistem İşlem Logları & Logları Temizle Butonu -->
       <div style="margin-bottom:14px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
           <h3 style="color:#d4af37; font-size:13px;">📜 Sistem İşlem Logları</h3>
@@ -278,12 +251,23 @@
         <div id="adminLogsList" style="max-height:160px; overflow-y:auto; background:rgba(0,0,0,0.3); border:1px solid rgba(212,175,55,0.2); border-radius:12px; padding:8px; font-size:11px; color:#aaa;"></div>
       </div>
 
-      <!-- 1. Port: Üyeler Listesi & Kısıtlama Masası -->
       <div id="adminUserCards" class="admin-scroll-list" style="max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; margin-bottom:14px;"></div>
-
-      <!-- 2. Port: Adminler (YT) Listesi -->
       <div id="adminListContainer" class="admin-scroll-list" style="max-height:200px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
     </main>
+
+    <!-- ORTAK DİNAMİK SEÇİM MODALI (Sheet) -->
+    <div id="dynamicSelectionModal" class="selection-modal-backdrop hidden" onclick="if(event.target===this)closeSelectionModal()">
+      <div class="selection-modal-sheet">
+        <div class="sheet-header">
+          <h3 id="modalTitle" class="gold-text" style="font-size:16px;">Seçim Yapın</h3>
+          <button class="icon-close" onclick="closeSelectionModal()">✕</button>
+        </div>
+        <div id="modalSearchWrapper" style="margin-bottom:12px;">
+          <input type="text" id="modalSearchInput" onkeyup="filterModalItems()" placeholder="🔍 Ara..." style="width:100%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:12px; color:#fff; font-size:13px; outline:none;">
+        </div>
+        <div class="selection-chip-grid" id="modalChipContainer"></div>
+      </div>
+    </div>
 
     <!-- GELİŞMİŞ FİLTRE MODALI -->
     <div id="filterModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeFilterModal()">
@@ -337,6 +321,6 @@
 
   </div>
 
-  <script src="app.js?v=2026"></script>
+  <script src="app.js?v=2026.3"></script>
 </body>
 </html>
