@@ -12,13 +12,19 @@
 <body>
   <div class="app-wrapper" id="appWrapper">
 
-    <!-- God Mode Şeffaf Simli Perde Katmanı -->
+    <!-- God Mode & Tarot İlahi Eşleşme Katmanı -->
     <div id="godModeCurtain" class="god-mode-overlay hidden">
       <div class="gold-sparkle-curtain"></div>
-      <div style="z-index: 20; text-align: center; padding: 20px;">
-        <h2 class="gold-text" style="font-family:'Cinzel',serif; font-size:26px; margin-bottom:8px;">🔥 HAYALET & GOD MODE AKTİF</h2>
-        <p style="color:#d4af37; font-size:13px; margin-bottom:20px;">Ödemelerden muaf test yetkileri ve ilahi yönetim devrede.</p>
-        <button class="primary-btn" onclick="toggleGodMode(false)" style="background:#ff4757; color:#fff; border:none; padding:12px 24px; border-radius:14px; cursor:pointer; font-weight:700;">Hayalet Moddan Çık</button>
+      <div style="z-index: 20; text-align: center; padding: 20px; width:100%;">
+        <h2 class="gold-text" style="font-family:'Cinzel',serif; font-size:24px; margin-bottom:4px;">🔥 GOD MODE & TAROT KADER Çarkı</h2>
+        <p style="color:#d4af37; font-size:12px; margin-bottom:16px;">Kutsal Çarşamba / Aziz Cuma İlahi Eşleşme Motoru Aktif</p>
+        
+        <!-- 4 Adet Gold-Pembe Cam Tarot Kartı Alanı -->
+        <div id="tarotCardsContainer" style="display:flex; justify-content:center; gap:8px; margin-bottom:20px; flex-wrap:wrap;">
+          <!-- JavaScript ile dinamik dolacak -->
+        </div>
+
+        <button class="primary-btn" onclick="toggleGodMode(false)" style="background:#ff4757; color:#fff; border:none; padding:10px 20px; border-radius:12px; cursor:pointer; font-weight:700; font-size:12px;">Hayalet Moddan / God Mode'dan Çık</button>
       </div>
     </div>
 
@@ -27,9 +33,9 @@
         <span class="gold-text">GOLDEN</span>MATCH
       </div>
       <div class="nav-actions">
-        <!-- God Mode / Hayalet Mod Toggle Butonu -->
-        <button id="godModeToggleBtn" class="nav-btn hidden" onclick="toggleGodMode(true)" title="Hayalet Mod (God Mode)" style="border-color:#d4af37; color:#d4af37;">⚡</button>
-        <button id="ytNavBtn" class="nav-btn yt-badge hidden" onclick="switchTab('adminPanel')" title="Pembe Kristal YT Paneli">👑 YT</button>
+        <!-- God Mode / Hayalet Mod Butonu -->
+        <button id="godModeToggleBtn" class="nav-btn hidden" onclick="triggerGodModeTarot()" title="God Mode & Tarot Kartları" style="border-color:#d4af37; color:#d4af37;">⚡</button>
+        <button id="ytNavBtn" class="nav-btn yt-badge hidden" onclick="switchTab('adminPanel')" title="YT Paneli">👑 YT</button>
         <button class="nav-btn" onclick="openFilterModal()" aria-label="Filtrele">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
         </button>
@@ -43,18 +49,17 @@
       </div>
     </header>
 
-    <!-- 1. PROFİL KAYIT & HAFTALIK PREMİUM SATIN ALMA MERKEZİ -->
+    <!-- 1. PROFİL KAYIT -->
     <main id="registerView" class="view-screen">
       <div class="screen-header">
         <h1 class="gold-text">GOLDENMATCH</h1>
         <p class="subtitle">Kutsal profilini ve konumunu mühürle.</p>
       </div>
 
-      <!-- Telegram Stars ile Haftalık Premium Satın Alma Başlangıç Paneli -->
-      <div id="premiumBanner" style="background:linear-gradient(135deg, rgba(255,105,180,0.2), rgba(212,175,55,0.2)); border:1px solid rgba(255,105,180,0.4); padding:16px; border-radius:18px; margin-bottom:16px; text-align:center;">
-        <h3 class="gold-text" style="font-family:'Cinzel',serif; font-size:16px; margin-bottom:6px;">🌟 Pembe Simli Kristal Tema & Haftalık Premium</h3>
-        <p style="font-size:12px; color:#ccc; margin-bottom:12px;">Sınırsız keşif, konum önceliği ve animasyonlu kraliyet rozeti için hemen yükseltin.</p>
-        <button type="button" class="primary-btn gold-glow" onclick="buyPremiumOrStars('premium_weekly')" style="width:100%; padding:12px; font-size:13px; background:linear-gradient(135deg,#ff69b4,#d4af37);">⭐ Haftalık Premium Al (100 Yıldız)</button>
+      <div id="premiumBanner" style="background:rgba(212,175,55,0.08); border:1px solid rgba(212,175,55,0.4); padding:16px; border-radius:18px; margin-bottom:16px; text-align:center;">
+        <h3 class="gold-text" style="font-family:'Cinzel',serif; font-size:16px; margin-bottom:6px;">🌟 Haftalık Premium Üyelik</h3>
+        <p style="font-size:12px; color:#ccc; margin-bottom:12px;">Sınırsız keşif ve konum önceliği için hemen yükseltin.</p>
+        <button type="button" class="primary-btn gold-glow" onclick="buyPremiumOrStars('premium_weekly')" style="width:100%; padding:12px; font-size:13px;">⭐ Haftalık Premium Al (100 Yıldız)</button>
       </div>
 
       <div class="photo-grid">
@@ -107,9 +112,6 @@
             <button type="button" class="choice-chip" onclick="selectChip('role', 'Side', this)">Side</button>
             <button type="button" class="choice-chip" onclick="selectChip('role', 'Trans', this)">Trans</button>
             <button type="button" class="choice-chip" onclick="selectChip('role', 'Biseksüel', this)">Biseksüel</button>
-            <button type="button" class="choice-chip" onclick="selectChip('role', 'Panseksüel', this)">Panseksüel</button>
-            <button type="button" class="choice-chip" onclick="selectChip('role', 'Non-Binary', this)">Non-Binary</button>
-            <button type="button" class="choice-chip" onclick="selectChip('role', 'Queer / Akışkan', this)">Queer / Akışkan</button>
           </div>
           <input type="hidden" id="role" required>
         </div>
@@ -121,11 +123,6 @@
             <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Top', this)">Top</button>
             <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Bottom', this)">Bottom</button>
             <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Verse', this)">Verse</button>
-            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Verse Top', this)">Verse Top</button>
-            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Verse Bottom', this)">Verse Bottom</button>
-            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Side', this)">Side</button>
-            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Trans', this)">Trans</button>
-            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Biseksüel', this)">Biseksüel</button>
           </div>
           <input type="hidden" id="interestedRole" value="Hepsi" required>
         </div>
@@ -155,7 +152,7 @@
       </form>
     </main>
 
-    <!-- 2. KEŞFET (YAKIN KONUM ÖNCELİKLİ TINDER MANTIĞI) -->
+    <!-- 2. KEŞFET -->
     <main id="exploreView" class="view-screen hidden">
       <div class="card-stage" id="cardStage">
         <div class="tinder-card" id="activeCard">
@@ -178,7 +175,7 @@
       <div id="chatList" class="inbox-list"></div>
     </main>
 
-    <!-- 4. SOHBET ODASI & PARAVAN -->
+    <!-- 4. SOHBET ODASI -->
     <main id="chatRoomView" class="view-screen hidden">
       <div class="chat-header">
         <button class="ghost-btn sm-btn" onclick="switchTab('inbox')">← Geri</button>
@@ -206,12 +203,10 @@
           </svg>
         </button>
 
-        <button type="button" id="recordAudioBtn" class="chat-action-btn chat-voice-btn" onclick="toggleAudioRecording()" title="Sesli Mesaj Gönder">
+        <button type="button" id="recordAudioBtn" class="chat-action-btn chat-voice-btn" onclick="toggleAudioRecording()" title="Sesli Mesaj">
           <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path d="M21 4H3C1.9 4 1 4.9 1 6V15C1 16.1 1.9 17 3 17H7L11 21V17H21C22.1 17 23 16.1 23 15V6C23 4.9 22.1 4 21 4Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
             <rect x="10.5" y="7" width="3" height="5" rx="1.5" fill="currentColor"/>
-            <path d="M8 10.5C8 12.2 9.3 13.5 11 13.5H13C14.7 13.5 16 12.2 16 10.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <line x1="12" y1="13.5" x2="12" y2="15.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
         </button>
 
@@ -220,22 +215,34 @@
       </form>
     </main>
 
-    <!-- 5. YENİ PEMBE SİMLİ KRİSTAL YT PANELİ & YÖNETİM MERKEZİ -->
-    <main id="adminPanelView" class="view-screen hidden" style="background: linear-gradient(135deg, #1f1025 0%, #0b0a10 100%) !important; border: 1px solid rgba(255,105,180,0.3);">
+    <!-- 5. YT YÖNETİM MASASI & HAYALET MOD / OTOMASYON -->
+    <main id="adminPanelView" class="view-screen hidden" style="background: #13121d; border: 1px solid rgba(212,175,55,0.3);">
       <div class="sub-header">
-        <h2 class="gold-text" style="color:#ff69b4;">👑 Pembe Kristal YT Paneli</h2>
-        <button class="ghost-btn" onclick="switchTab('explore')" style="border-color:#ff69b4; color:#ff69b4;">Çıkış</button>
+        <h2 class="gold-text">👑 YT Yönetim Masası & Hayalet Mod</h2>
+        <button class="ghost-btn" onclick="switchTab('explore')">Çıkış</button>
       </div>
 
-      <!-- İstatistikler -->
       <div class="stats-cards" style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px;">
-        <div class="stat-pill" style="background:rgba(255,105,180,0.1); border:1px solid rgba(255,105,180,0.3); padding:10px; border-radius:12px; text-align:center;"><span>Toplam Üye</span><br><strong id="ytStatTotal" style="color:#d4af37;">0</strong></div>
-        <div class="stat-pill" style="background:rgba(255,105,180,0.1); border:1px solid rgba(255,105,180,0.3); padding:10px; border-radius:12px; text-align:center;"><span>Aktif Üye</span><br><strong id="ytStatActive" style="color:#2ed573;">0</strong></div>
+        <div class="stat-pill" style="background:rgba(212,175,55,0.08); padding:10px; border-radius:12px; text-align:center;"><span>Toplam Üye</span><br><strong id="ytStatTotal" style="color:#d4af37;">0</strong></div>
+        <div class="stat-pill" style="background:rgba(212,175,55,0.08); padding:10px; border-radius:12px; text-align:center;"><span>Aktif Üye</span><br><strong id="ytStatActive" style="color:#2ed573;">0</strong></div>
+      </div>
+
+      <!-- Kutsal Çarşamba ve Aziz Cuma Otomasyon Ayarları -->
+      <div style="background:rgba(212,175,55,0.06); border:1px solid rgba(212,175,55,0.3); padding:12px; border-radius:14px; margin-bottom:14px;">
+        <h3 style="color:#d4af37; font-size:13px; margin-bottom:6px;">⚡ God Mode & Kutsal Günler Otomasyonu</h3>
+        <p style="font-size:11px; color:#aaa; margin-bottom:8px;">Kutsal Çarşamba ve Aziz Cuma akşamları için otomatik tetikleme ve saat ayarları.</p>
+        <div style="display:flex; gap:8px;">
+          <select id="godModeDaySelect" style="flex:1; background:#1b1926; color:#fff; border:1px solid #d4af37; padding:8px; border-radius:8px; font-size:11px;">
+            <option value="3">Çarşamba (Kutsal Çarşamba)</option>
+            <option value="5">Cuma (Aziz Cuma)</option>
+          </select>
+          <button onclick="saveGodModeAutomation()" style="background:#d4af37; color:#000; border:none; padding:8px 12px; border-radius:8px; font-weight:700; cursor:pointer; font-size:11px;">Ayarla</button>
+        </div>
       </div>
 
       <!-- Kurucuya Özel Yıldız Fiyatlandırma Portu -->
       <div id="founderPricingSection" class="hidden" style="background:rgba(212,175,55,0.08); border:1px solid rgba(212,175,55,0.4); padding:12px; border-radius:14px; margin-bottom:14px;">
-        <h3 style="color:#d4af37; font-size:13px; margin-bottom:8px;">⭐ Telegram Yıldız Fiyatlandırma Yönetimi (Kurucu)</h3>
+        <h3 style="color:#d4af37; font-size:13px; margin-bottom:8px;">⭐ Telegram Yıldız Fiyatlandırma (Kurucu)</h3>
         <div style="display:flex; gap:8px; margin-bottom:6px;">
           <input type="number" id="priceWeeklyInput" placeholder="Haftalık Premium Yıldız" style="flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.2); padding:8px; border-radius:8px; color:#fff; font-size:12px;">
           <button onclick="updatePricing('premium_weekly')" style="background:#d4af37; color:#000; border:none; padding:8px 12px; border-radius:8px; font-weight:700; cursor:pointer;">Ayarla</button>
@@ -251,21 +258,21 @@
 
       <!-- Sistem İşlem Logları -->
       <div style="margin-bottom:14px;">
-        <h3 style="color:#ff69b4; font-size:13px; margin-bottom:6px;">📜 Sistem İşlem Logları</h3>
-        <div id="adminLogsList" style="max-height:150px; overflow-y:auto; background:rgba(0,0,0,0.3); border:1px solid rgba(255,105,180,0.2); border-radius:12px; padding:8px; font-size:11px; color:#aaa;"></div>
+        <h3 style="color:#d4af37; font-size:13px; margin-bottom:6px;">📜 Sistem İşlem Logları</h3>
+        <div id="adminLogsList" style="max-height:150px; overflow-y:auto; background:rgba(0,0,0,0.3); border:1px solid rgba(212,175,55,0.2); border-radius:12px; padding:8px; font-size:11px; color:#aaa;"></div>
       </div>
 
       <!-- Üye Yönetimi & 3 Adımlı Kısıtlama -->
-      <h3 style="color:#d4af37; font-size:14px; margin-bottom:8px;">👥 Üye Listesi & Kademeli Kısıtlama Masası</h3>
+      <h3 style="color:#d4af37; font-size:14px; margin-bottom:8px;">👥 Üye Listesi & Kısıtlama Masası</h3>
       <div id="adminUserCards" class="admin-scroll-list" style="max-height:350px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
     </main>
 
-    <!-- GELİŞMİŞ FİLTRE MODALI (25 Yıldız / 3 Hak Paketi) -->
+    <!-- GELİŞMİŞ FİLTRE MODALI -->
     <div id="filterModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeFilterModal()">
       <div class="modal-sheet">
         <div class="sheet-header"><h3>Gelişmiş Filtreler</h3><button class="icon-close" onclick="closeFilterModal()">✕</button></div>
         
-        <div style="background:rgba(255,105,180,0.1); border:1px solid rgba(255,105,180,0.3); padding:10px; border-radius:10px; margin-bottom:12px; font-size:12px; color:#ff69b4; text-align:center;">
+        <div style="background:rgba(212,175,55,0.1); border:1px solid rgba(212,175,55,0.3); padding:10px; border-radius:10px; margin-bottom:12px; font-size:12px; color:#d4af37; text-align:center;">
           ✨ Günlük Ücretsiz Filtre Hakkı: <strong id="filterRemainingBadge">3 / 3</strong> <br>
           <button onclick="buyPremiumOrStars('filter_pack')" style="background:transparent; border:none; color:#d4af37; text-decoration:underline; cursor:pointer; margin-top:4px; font-size:11px;">⭐ 25 Yıldız ile Ek 3 Filtre Hakkı Al</button>
         </div>
@@ -276,7 +283,7 @@
         </div>
 
         <div class="form-group" style="margin-bottom:12px;">
-          <label>İlçe / Semt (Koordinat Tabanlı) Filtresi</label>
+          <label>İlçe / Semt Filtresi</label>
           <div class="chip-grid" id="filterDistrictChips"></div>
         </div>
 
@@ -285,22 +292,6 @@
           <div style="display:flex; gap:10px; align-items:center;">
             <input type="number" id="filterMinAge" value="18" min="18" max="99" style="width:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:10px; color:#fff;" placeholder="Min Yaş">
             <input type="number" id="filterMaxAge" value="99" min="18" max="99" style="width:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:10px; color:#fff;" placeholder="Max Yaş">
-          </div>
-        </div>
-
-        <div class="form-group" style="margin-bottom:16px;">
-          <label>Rol / Yönelim Filtresi</label>
-          <div class="chip-grid" id="filterRoleChips">
-            <button type="button" class="choice-chip selected" onclick="setFilterRole('Hepsi', this)">Hepsi</button>
-            <button type="button" class="choice-chip" onclick="setFilterRole('Top', this)">Top</button>
-            <button type="button" class="choice-chip" onclick="setFilterRole('Bottom', this)">Bottom</button>
-            <button type="button" class="choice-chip" onclick="setFilterRole('Verse', this)">Verse</button>
-            <button type="button" class="choice-chip" onclick="setFilterRole('Verse Top', this)">Verse Top</button>
-            <button type="button" class="choice-chip" onclick="setFilterRole('Verse Bottom', this)">Verse Bottom</button>
-            <button type="button" class="choice-chip" onclick="setFilterRole('Side', this)">Side</button>
-            <button type="button" class="choice-chip" onclick="setFilterRole('Trans', this)">Trans</button>
-            <button type="button" class="choice-chip" onclick="setFilterRole('Biseksüel', this)">Biseksüel</button>
-            <button type="button" class="choice-chip" onclick="setFilterRole('Panseksüel', this)">Panseksüel</button>
           </div>
         </div>
 
