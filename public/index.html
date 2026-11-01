@@ -77,8 +77,9 @@
           <input type="hidden" id="district" required>
         </div>
 
+        <!-- Genişletilmiş Queer Yönelimler / Roller (Kayıt) -->
         <div class="form-group">
-          <label>Senin Rolün</label>
+          <label>Senin Rolün / Yönelimin</label>
           <div class="chip-grid" data-target="role">
             <button type="button" class="choice-chip" onclick="selectChip('role', 'Top', this)">Top</button>
             <button type="button" class="choice-chip" onclick="selectChip('role', 'Bottom', this)">Bottom</button>
@@ -87,18 +88,26 @@
             <button type="button" class="choice-chip" onclick="selectChip('role', 'Verse Bottom', this)">Verse Bottom</button>
             <button type="button" class="choice-chip" onclick="selectChip('role', 'Side', this)">Side</button>
             <button type="button" class="choice-chip" onclick="selectChip('role', 'Trans', this)">Trans</button>
+            <button type="button" class="choice-chip" onclick="selectChip('role', 'Biseksüel', this)">Biseksüel</button>
+            <button type="button" class="choice-chip" onclick="selectChip('role', 'Panseksüel', this)">Panseksüel</button>
+            <button type="button" class="choice-chip" onclick="selectChip('role', 'Non-Binary', this)">Non-Binary</button>
+            <button type="button" class="choice-chip" onclick="selectChip('role', 'Queer / Akışkan', this)">Queer / Akışkan</button>
           </div>
           <input type="hidden" id="role" required>
         </div>
 
         <div class="form-group">
-          <label>Aradığın Rol</label>
+          <label>Aradığın Rol / Yönelim</label>
           <div class="chip-grid" data-target="interestedRole">
             <button type="button" class="choice-chip selected" onclick="selectChip('interestedRole', 'Hepsi', this)">Hepsi</button>
             <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Top', this)">Top</button>
             <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Bottom', this)">Bottom</button>
             <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Verse', this)">Verse</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Verse Top', this)">Verse Top</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Verse Bottom', this)">Verse Bottom</button>
             <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Side', this)">Side</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Trans', this)">Trans</button>
+            <button type="button" class="choice-chip" onclick="selectChip('interestedRole', 'Biseksüel', this)">Biseksüel</button>
           </div>
           <input type="hidden" id="interestedRole" value="Hepsi" required>
         </div>
@@ -120,7 +129,12 @@
         </div>
 
         <button type="submit" id="saveBtn" class="primary-btn gold-glow"><span>Profili Mühürle & Başla</span></button>
-        <button type="button" id="deleteAccountBtn" class="danger-outline-btn hidden" onclick="deleteMyAccount()" style="margin-top:10px; width:100%; background:transparent; border:1px solid #ff4757; color:#ff4757; padding:12px; border-radius:14px; cursor:pointer;">🗑️ Hesabımı Sil</button>
+        
+        <!-- Hesap Dondurma / Silme Portu -->
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <button type="button" id="deactivateAccountBtn" class="danger-outline-btn hidden" onclick="deactivateMyAccount()" style="flex:1; background:transparent; border:1px solid #ff4757; color:#ff4757; padding:12px; border-radius:14px; cursor:pointer;">🔒 Hesabı Dondur</button>
+          <button type="button" id="deleteAccountBtn" class="danger-outline-btn hidden" onclick="deleteMyAccount()" style="flex:1; background:transparent; border:1px solid #ff4757; color:#ff4757; padding:12px; border-radius:14px; cursor:pointer;">🗑️ Hesabı Sil</button>
+        </div>
       </form>
     </main>
 
@@ -205,18 +219,22 @@
       <div id="adminUserCards" class="admin-scroll-list" style="max-height:400px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
     </main>
 
-    <!-- GELİŞMİŞ FİLTRE MODALI (Yaş Aralığı Dahil) -->
+    <!-- GELİŞMİŞ FİLTRE MODALI (Günlük 3 Ücretsiz Hak ve Genişletilmiş Roller) -->
     <div id="filterModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeFilterModal()">
       <div class="modal-sheet">
         <div class="sheet-header"><h3>Gelişmiş Filtreler</h3><button class="icon-close" onclick="closeFilterModal()">✕</button></div>
         
+        <div style="background:rgba(212,175,55,0.1); border:1px solid rgba(212,175,55,0.3); padding:10px; border-radius:10px; margin-bottom:12px; font-size:12px; color:#d4af37; text-align:center;">
+          ✨ Günlük Ücretsiz Filtre Hakkı: <strong id="filterRemainingBadge">3 / 3</strong> (Sonrasında Yıldız ⭐ / Premium)
+        </div>
+
         <div class="form-group" style="margin-bottom:12px;">
           <label>Şehir Filtresi</label>
           <div class="chip-grid" id="filterCityChips"></div>
         </div>
 
         <div class="form-group" style="margin-bottom:12px;">
-          <label>İlçe / Semt Filtresi</label>
+          <label>İlçe / Semt (Koordinat Tabanlı) Filtresi</label>
           <div class="chip-grid" id="filterDistrictChips"></div>
         </div>
 
@@ -228,14 +246,20 @@
           </div>
         </div>
 
+        <!-- Filtrelerde Genişletilmiş Queer Rol / Yönelim Seçenekleri -->
         <div class="form-group" style="margin-bottom:16px;">
-          <label>Rol Filtresi</label>
+          <label>Rol / Yönelim Filtresi</label>
           <div class="chip-grid" id="filterRoleChips">
             <button type="button" class="choice-chip selected" onclick="setFilterRole('Hepsi', this)">Hepsi</button>
             <button type="button" class="choice-chip" onclick="setFilterRole('Top', this)">Top</button>
             <button type="button" class="choice-chip" onclick="setFilterRole('Bottom', this)">Bottom</button>
             <button type="button" class="choice-chip" onclick="setFilterRole('Verse', this)">Verse</button>
+            <button type="button" class="choice-chip" onclick="setFilterRole('Verse Top', this)">Verse Top</button>
+            <button type="button" class="choice-chip" onclick="setFilterRole('Verse Bottom', this)">Verse Bottom</button>
             <button type="button" class="choice-chip" onclick="setFilterRole('Side', this)">Side</button>
+            <button type="button" class="choice-chip" onclick="setFilterRole('Trans', this)">Trans</button>
+            <button type="button" class="choice-chip" onclick="setFilterRole('Biseksüel', this)">Biseksüel</button>
+            <button type="button" class="choice-chip" onclick="setFilterRole('Panseksüel', this)">Panseksüel</button>
           </div>
         </div>
 
