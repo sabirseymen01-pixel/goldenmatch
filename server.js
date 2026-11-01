@@ -25,7 +25,28 @@ app.get('/health', (req, res) => res.status(200).send('GOLDENMATCH_OK'));
 let io = null;
 if (Server) {
   io = new Server(server, {
-    cors: { origin: '*', methods: ['GET', 'POST'] }
+    cors: { origin: '*', methods: ['GET', 'POST'] },
+    maxHttpBufferSize: 1e8 // Büyük görsel ve sesli mesajlar için buffer artırıldı (100MB)
+  });
+}
+
+// Socket.io Gerçek Zamanlı Mesajlaşma ve Medya Dağıtımı
+if (io) {
+  io.on('connection', (socket) => {
+    socket.on('join_chat', (matchId) => {
+      if (matchId) socket.join(matchId);
+    });
+
+    socket.on('send_message', (data) => {
+      // data: { matchId, message }
+      if (data && data.matchId && data.message) {
+        io.to(data.matchId).emit('receive_message', data.message);
+      }
+    });
+
+    socket.on('disconnect', () => {
+      // Bağlantı kopmalarını sessizce yönet
+    });
   });
 }
 
@@ -361,6 +382,12 @@ app.post('/api/chats/:matchId/message', async (req, res) => {
   match.messages.push(msg);
   match.updatedAt = new Date();
   await match.save();
+
+  // Socket.io üzerinden anlık ilet
+  if (io) {
+    io.to(match.matchId).emit('receive_message', msg);
+  }
+
   res.json({ success: true, message: msg });
 });
 
