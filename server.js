@@ -237,7 +237,9 @@ if (bot) {
     }
   });
 
-  bot.launch({ dropPendingUpdates: true }).catch(err => console.warn('Bot uyarısı:', err.message));
+  bot.launch({ dropPendingUpdates: true }).catch(err => {
+    if (err.code !== 409) console.warn('Bot uyarısı:', err.message);
+  });
 }
 
 // ================= API ROTALARI =================
@@ -395,7 +397,7 @@ app.post('/api/like', async (req, res) => {
   res.json({ success: true, isMatch: false });
 });
 
-// --- OPTİMİZE EDİLMİŞ TEK SORGULU CHATS ROUTE (N+1 Darboğazı Çözüldü) ---
+// --- OPTİMİZE EDİLMİŞ TEK SORGULU CHATS ROUTE ---
 app.get('/api/chats', async (req, res) => {
   try {
     const userId = String(req.query.userId);
