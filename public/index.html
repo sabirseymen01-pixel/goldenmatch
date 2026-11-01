@@ -16,9 +16,9 @@
     <div id="godModeCurtain" class="god-mode-overlay hidden">
       <div class="gold-sparkle-curtain"></div>
       <div style="z-index: 20; text-align: center; padding: 20px;">
-        <h2 class="gold-text" style="font-family:'Cinzel',serif; font-size:26px; margin-bottom:8px;">🔥 GOLDEN GOD MODE</h2>
-        <p style="color:#d4af37; font-size:13px; margin-bottom:20px;">Sınırsız ilahi güç, görünürlük ve yönetim ayrıcalıkları aktif.</p>
-        <button class="primary-btn" onclick="toggleGodMode(false)" style="background:#ff4757; color:#fff; border:none; padding:12px 24px; border-radius:14px; cursor:pointer; font-weight:700;">Perdeyi Kapat</button>
+        <h2 class="gold-text" style="font-family:'Cinzel',serif; font-size:26px; margin-bottom:8px;">🔥 HAYALET & GOD MODE AKTİF</h2>
+        <p style="color:#d4af37; font-size:13px; margin-bottom:20px;">Ödemelerden muaf test yetkileri ve ilahi yönetim devrede.</p>
+        <button class="primary-btn" onclick="toggleGodMode(false)" style="background:#ff4757; color:#fff; border:none; padding:12px 24px; border-radius:14px; cursor:pointer; font-weight:700;">Hayalet Moddan Çık</button>
       </div>
     </div>
 
@@ -27,9 +27,9 @@
         <span class="gold-text">GOLDEN</span>MATCH
       </div>
       <div class="nav-actions">
-        <!-- God Mode Toggle Butonu -->
-        <button id="godModeToggleBtn" class="nav-btn" onclick="toggleGodMode(true)" title="God Mode Aç" style="border-color:#d4af37; color:#d4af37;">⚡</button>
-        <button id="ytNavBtn" class="nav-btn yt-badge hidden" onclick="switchTab('adminPanel')" title="Yönetici Paneli">👑 YT</button>
+        <!-- God Mode / Hayalet Mod Toggle Butonu -->
+        <button id="godModeToggleBtn" class="nav-btn hidden" onclick="toggleGodMode(true)" title="Hayalet Mod (God Mode)" style="border-color:#d4af37; color:#d4af37;">⚡</button>
+        <button id="ytNavBtn" class="nav-btn yt-badge hidden" onclick="switchTab('adminPanel')" title="Pembe Kristal YT Paneli">👑 YT</button>
         <button class="nav-btn" onclick="openFilterModal()" aria-label="Filtrele">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
         </button>
@@ -43,18 +43,18 @@
       </div>
     </header>
 
-    <!-- 1. PROFİL KAYIT / DÜZENLEME & PREMIUM SATIN ALMA BAŞLANGIÇ MERKEZİ -->
+    <!-- 1. PROFİL KAYIT & HAFTALIK PREMİUM SATIN ALMA MERKEZİ -->
     <main id="registerView" class="view-screen">
       <div class="screen-header">
         <h1 class="gold-text">GOLDENMATCH</h1>
         <p class="subtitle">Kutsal profilini ve konumunu mühürle.</p>
       </div>
 
-      <!-- Telegram Stars ile Premium Satın Alma Başlangıç Paneli -->
-      <div id="premiumBanner" style="background:linear-gradient(135deg, rgba(111,45,168,0.25), rgba(212,175,55,0.2)); border:1px solid rgba(212,175,55,0.5); padding:16px; border-radius:18px; margin-bottom:16px; text-align:center;">
-        <h3 class="gold-text" style="font-family:'Cinzel',serif; font-size:16px; margin-bottom:6px;">🌟 Gold-Mor Asalet Teması & Premium</h3>
-        <p style="font-size:12px; color:#ccc; margin-bottom:12px;">Sınırsız kaydırma, animasyonlu kraliyet rozeti ve okundu bilgisi için hemen yükseltin.</p>
-        <button type="button" class="primary-btn gold-glow" onclick="buyPremiumOrStars('premium')" style="width:100%; padding:12px; font-size:13px;">⭐ Telegram Yıldızları ile Premium Al (100 XTR)</button>
+      <!-- Telegram Stars ile Haftalık Premium Satın Alma Başlangıç Paneli -->
+      <div id="premiumBanner" style="background:linear-gradient(135deg, rgba(255,105,180,0.2), rgba(212,175,55,0.2)); border:1px solid rgba(255,105,180,0.4); padding:16px; border-radius:18px; margin-bottom:16px; text-align:center;">
+        <h3 class="gold-text" style="font-family:'Cinzel',serif; font-size:16px; margin-bottom:6px;">🌟 Pembe Simli Kristal Tema & Haftalık Premium</h3>
+        <p style="font-size:12px; color:#ccc; margin-bottom:12px;">Sınırsız keşif, konum önceliği ve animasyonlu kraliyet rozeti için hemen yükseltin.</p>
+        <button type="button" class="primary-btn gold-glow" onclick="buyPremiumOrStars('premium_weekly')" style="width:100%; padding:12px; font-size:13px; background:linear-gradient(135deg,#ff69b4,#d4af37);">⭐ Haftalık Premium Al (100 Yıldız)</button>
       </div>
 
       <div class="photo-grid">
@@ -96,7 +96,6 @@
           <input type="hidden" id="district" required>
         </div>
 
-        <!-- Genişletilmiş Queer Yönelimler / Roller -->
         <div class="form-group">
           <label>Senin Rolün / Yönelimin</label>
           <div class="chip-grid" data-target="role">
@@ -149,7 +148,6 @@
 
         <button type="submit" id="saveBtn" class="primary-btn gold-glow"><span>Profili Mühürle & Başla</span></button>
         
-        <!-- Hesap Dondurma / Silme Portu -->
         <div style="display:flex; gap:8px; margin-top:10px;">
           <button type="button" id="deactivateAccountBtn" class="danger-outline-btn hidden" onclick="deactivateMyAccount()" style="flex:1; background:transparent; border:1px solid #ff4757; color:#ff4757; padding:12px; border-radius:14px; cursor:pointer;">🔒 Hesabı Dondur</button>
           <button type="button" id="deleteAccountBtn" class="danger-outline-btn hidden" onclick="deleteMyAccount()" style="flex:1; background:transparent; border:1px solid #ff4757; color:#ff4757; padding:12px; border-radius:14px; cursor:pointer;">🗑️ Hesabı Sil</button>
@@ -157,11 +155,11 @@
       </form>
     </main>
 
-    <!-- 2. KEŞFET (TINDER KARTLARI) -->
+    <!-- 2. KEŞFET (YAKIN KONUM ÖNCELİKLİ TINDER MANTIĞI) -->
     <main id="exploreView" class="view-screen hidden">
       <div class="card-stage" id="cardStage">
         <div class="tinder-card" id="activeCard">
-          <div class="card-loader">Altın kader ağları taranıyor...</div>
+          <div class="card-loader">Yakındaki kader ağları taranıyor...</div>
         </div>
       </div>
 
@@ -197,11 +195,9 @@
 
       <div id="messageStream" class="chat-stream"></div>
 
-      <!-- Profesyonel Gold Simgeli Medya ve Ses Gönderme Paneli -->
       <form class="chat-composer" onsubmit="sendChatMessage(event)">
         <input type="file" id="chatMediaInput" accept="image/*" style="display:none" onchange="onChatMediaSelected(event)">
         
-        <!-- Galeri / Görsel Simgesi -->
         <button type="button" class="chat-action-btn" onclick="document.getElementById('chatMediaInput').click()" title="Fotoğraf Gönder">
           <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <rect x="3" y="3" width="18" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
@@ -210,7 +206,6 @@
           </svg>
         </button>
 
-        <!-- Sesli Mesaj Simgesi -->
         <button type="button" id="recordAudioBtn" class="chat-action-btn chat-voice-btn" onclick="toggleAudioRecording()" title="Sesli Mesaj Gönder">
           <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path d="M21 4H3C1.9 4 1 4.9 1 6V15C1 16.1 1.9 17 3 17H7L11 21V17H21C22.1 17 23 16.1 23 15V6C23 4.9 22.1 4 21 4Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
@@ -225,26 +220,54 @@
       </form>
     </main>
 
-    <!-- 5. YÖNETİCİ PANELİ (YT) & HAYALET TEST SÜİTİ -->
-    <main id="adminPanelView" class="view-screen hidden">
+    <!-- 5. YENİ PEMBE SİMLİ KRİSTAL YT PANELİ & YÖNETİM MERKEZİ -->
+    <main id="adminPanelView" class="view-screen hidden" style="background: linear-gradient(135deg, #1f1025 0%, #0b0a10 100%) !important; border: 1px solid rgba(255,105,180,0.3);">
       <div class="sub-header">
-        <h2 class="gold-text">👑 YT Yönetim Masası & Test Süiti</h2>
-        <button class="ghost-btn" onclick="switchTab('explore')">Çıkış</button>
+        <h2 class="gold-text" style="color:#ff69b4;">👑 Pembe Kristal YT Paneli</h2>
+        <button class="ghost-btn" onclick="switchTab('explore')" style="border-color:#ff69b4; color:#ff69b4;">Çıkış</button>
       </div>
+
+      <!-- İstatistikler -->
       <div class="stats-cards" style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px;">
-        <div class="stat-pill" style="background:#171622; padding:10px; border-radius:12px; text-align:center;"><span>Toplam Üye</span><br><strong id="ytStatTotal" style="color:#d4af37;">0</strong></div>
-        <div class="stat-pill" style="background:#171622; padding:10px; border-radius:12px; text-align:center;"><span>Aktif</span><br><strong id="ytStatActive" style="color:#2ed573;">0</strong></div>
+        <div class="stat-pill" style="background:rgba(255,105,180,0.1); border:1px solid rgba(255,105,180,0.3); padding:10px; border-radius:12px; text-align:center;"><span>Toplam Üye</span><br><strong id="ytStatTotal" style="color:#d4af37;">0</strong></div>
+        <div class="stat-pill" style="background:rgba(255,105,180,0.1); border:1px solid rgba(255,105,180,0.3); padding:10px; border-radius:12px; text-align:center;"><span>Aktif Üye</span><br><strong id="ytStatActive" style="color:#2ed573;">0</strong></div>
       </div>
-      <div id="adminUserCards" class="admin-scroll-list" style="max-height:400px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
+
+      <!-- Kurucuya Özel Yıldız Fiyatlandırma Portu -->
+      <div id="founderPricingSection" class="hidden" style="background:rgba(212,175,55,0.08); border:1px solid rgba(212,175,55,0.4); padding:12px; border-radius:14px; margin-bottom:14px;">
+        <h3 style="color:#d4af37; font-size:13px; margin-bottom:8px;">⭐ Telegram Yıldız Fiyatlandırma Yönetimi (Kurucu)</h3>
+        <div style="display:flex; gap:8px; margin-bottom:6px;">
+          <input type="number" id="priceWeeklyInput" placeholder="Haftalık Premium Yıldız" style="flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.2); padding:8px; border-radius:8px; color:#fff; font-size:12px;">
+          <button onclick="updatePricing('premium_weekly')" style="background:#d4af37; color:#000; border:none; padding:8px 12px; border-radius:8px; font-weight:700; cursor:pointer;">Ayarla</button>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <input type="number" id="priceFiltersInput" placeholder="3'lü Filtre Paketi Yıldız" style="flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.2); padding:8px; border-radius:8px; color:#fff; font-size:12px;">
+          <button onclick="updatePricing('filter_pack')" style="background:#d4af37; color:#000; border:none; padding:8px 12px; border-radius:8px; font-weight:700; cursor:pointer;">Ayarla</button>
+        </div>
+      </div>
+
+      <!-- Şikayet Bildirimleri -->
+      <div id="adminReportsContainer" style="margin-bottom:14px;"></div>
+
+      <!-- Sistem İşlem Logları -->
+      <div style="margin-bottom:14px;">
+        <h3 style="color:#ff69b4; font-size:13px; margin-bottom:6px;">📜 Sistem İşlem Logları</h3>
+        <div id="adminLogsList" style="max-height:150px; overflow-y:auto; background:rgba(0,0,0,0.3); border:1px solid rgba(255,105,180,0.2); border-radius:12px; padding:8px; font-size:11px; color:#aaa;"></div>
+      </div>
+
+      <!-- Üye Yönetimi & 3 Adımlı Kısıtlama -->
+      <h3 style="color:#d4af37; font-size:14px; margin-bottom:8px;">👥 Üye Listesi & Kademeli Kısıtlama Masası</h3>
+      <div id="adminUserCards" class="admin-scroll-list" style="max-height:350px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
     </main>
 
-    <!-- GELİŞMİŞ FİLTRE MODALI -->
+    <!-- GELİŞMİŞ FİLTRE MODALI (25 Yıldız / 3 Hak Paketi) -->
     <div id="filterModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeFilterModal()">
       <div class="modal-sheet">
         <div class="sheet-header"><h3>Gelişmiş Filtreler</h3><button class="icon-close" onclick="closeFilterModal()">✕</button></div>
         
-        <div style="background:rgba(212,175,55,0.1); border:1px solid rgba(212,175,55,0.3); padding:10px; border-radius:10px; margin-bottom:12px; font-size:12px; color:#d4af37; text-align:center;">
-          ✨ Günlük Ücretsiz Filtre Hakkı: <strong id="filterRemainingBadge">3 / 3</strong> (Sonrasında Yıldız ⭐ / Premium)
+        <div style="background:rgba(255,105,180,0.1); border:1px solid rgba(255,105,180,0.3); padding:10px; border-radius:10px; margin-bottom:12px; font-size:12px; color:#ff69b4; text-align:center;">
+          ✨ Günlük Ücretsiz Filtre Hakkı: <strong id="filterRemainingBadge">3 / 3</strong> <br>
+          <button onclick="buyPremiumOrStars('filter_pack')" style="background:transparent; border:none; color:#d4af37; text-decoration:underline; cursor:pointer; margin-top:4px; font-size:11px;">⭐ 25 Yıldız ile Ek 3 Filtre Hakkı Al</button>
         </div>
 
         <div class="form-group" style="margin-bottom:12px;">
