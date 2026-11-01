@@ -101,6 +101,7 @@ button:active, .choice-chip:active, .action-circle:active {
   transform: scale(0.92) !important;
 }
 
+/* ÜST BAŞLIK & FOUNDER İMZASI (@breskavica) */
 .app-nav {
   height: 65px;
   background: rgba(28, 22, 45, 0.45);
@@ -123,7 +124,6 @@ button:active, .choice-chip:active, .action-circle:active {
   cursor: pointer;
 }
 
-/* Yazı rengi: Parlak değil, asil ve mat kristalize gold/platin */
 .gold-text {
   background: linear-gradient(135deg, #f3e5ab 0%, #c5a059 100%);
   -webkit-background-clip: text;
@@ -137,19 +137,106 @@ button:active, .choice-chip:active, .action-circle:active {
   align-items: center;
 }
 
-.nav-btn {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1.5px solid rgba(255, 215, 0, 0.45);
-  color: #f3e5ab;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  position: relative;
-  backdrop-filter: blur(12px);
+.founder-signature {
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  background: linear-gradient(135deg, #f3e5ab 0%, #c5a059 50%, #ffd700 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  border-radius: 12px;
+  background-color: rgba(255, 215, 0, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.2);
+  text-transform: uppercase;
+}
+
+/* ========================================================================== */
+/* 🌟 3 BOYUTLU KRİSTALİZE GOLD & CAM LEVHA AKILLI GÖREV ÇUĞUĞU (WINDOWS STYLE) */
+/* ========================================================================== */
+
+.glass-dock {
+  position: absolute !important;
+  bottom: 14px !important;
+  left: 50% !important;
+  transform: translateX(-50%) translateY(75%); /* Boşta iken zarifçe alta çekilir / gizlenir */
+  width: calc(100% - 28px) !important;
+  max-width: 420px !important;
+  height: 60px !important;
+  
+  /* 3 Boyutlu Camsı Altın / Mor Levha Dokusu */
+  background: linear-gradient(135deg, rgba(45, 35, 70, 0.75) 0%, rgba(20, 15, 35, 0.85) 100%) !important;
+  backdrop-filter: blur(25px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(25px) saturate(180%) !important;
+  
+  /* 3D Kabartmalı Kristal Gold Çerçeve & Derinlik Gölgesi */
+  border: 1.5px solid rgba(255, 215, 0, 0.5) !important;
+  border-radius: 22px !important;
+  box-shadow: 
+    0 15px 35px rgba(0, 0, 0, 0.8),
+    inset 0 1px 2px rgba(255, 255, 255, 0.4),
+    inset 0 -2px 6px rgba(212, 175, 55, 0.3) !important;
+    
+  display: flex !important;
+  justify-content: space-around !important;
+  align-items: center !important;
+  padding: 0 8px !important;
+  z-index: 5000 !important;
+  
+  /* Akıllı Gizlenme / Açılma Geçiş Efekti */
+  opacity: 0.55;
+  transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+  pointer-events: auto !important;
+}
+
+/* 🌟 Üzerine Dokunulduğunda / Fare Yaklaştığında 3D Öne Fırlama ve Tam Açılma */
+.glass-dock:hover, 
+.glass-dock:active,
+.glass-dock:focus-within {
+  transform: translateX(-50%) translateY(0) scale(1.02) !important;
+  opacity: 1 !important;
+  background: linear-gradient(135deg, rgba(55, 42, 85, 0.9) 0%, rgba(25, 18, 42, 0.95) 100%) !important;
+  border-color: #ffd700 !important;
+  box-shadow: 
+    0 20px 45px rgba(0, 0, 0, 0.9),
+    0 0 20px rgba(255, 215, 0, 0.4),
+    inset 0 1px 3px rgba(255, 255, 255, 0.6),
+    inset 0 -2px 8px rgba(255, 215, 0, 0.5) !important;
+}
+
+.glass-dock .dock-btn {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1.5px solid rgba(255, 215, 0, 0.4) !important;
+  color: #f3e5ab !important;
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  position: relative !important;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.2), 0 4px 10px rgba(0,0,0,0.4) !important;
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+.glass-dock .dock-btn:hover, 
+.glass-dock .dock-btn:active {
+  transform: translateY(-3px) scale(1.1) !important;
+  background: linear-gradient(135deg, #f3e5ab, #c5a059) !important;
+  color: #0b0a10 !important;
+  border-color: #ffd700 !important;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.7), inset 0 1px 2px rgba(255,255,255,0.8) !important;
+}
+
+.glass-dock .dock-btn svg {
+  stroke: currentColor !important;
+  width: 20px !important;
+  height: 20px !important;
 }
 
 .badge-dot {
@@ -302,7 +389,7 @@ button:active, .choice-chip:active, .action-circle:active {
   width: 100%;
 }
 
-/* --- Açılır Kapanır Seçim Kapsülü ve Camsı Kristalize Modal Stilleri --- */
+/* Açılır Kapanır Seçim Kapsülü ve Camsı Kristalize Modal Stilleri */
 .dropdown-trigger-btn {
   text-align: left;
   cursor: pointer;
