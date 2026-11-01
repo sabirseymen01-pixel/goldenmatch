@@ -17,7 +17,7 @@ let currentCardIndex = 0;
 let userPhotos = ['', '', '', ''];
 let activeMatchId = null;
 let activePartnerId = null;
-let socket = null; // Sıfır gecikme için WebSocket istemcisi
+let socket = null;
 let windowIsAdmin = false;
 let windowIsFounder = false;
 let selectedMessageForReport = null;
@@ -28,7 +28,6 @@ let filterRole = 'Hepsi';
 let filterMinAge = 18;
 let filterMaxAge = 99;
 
-// Ses kaydı için değişkenler
 let mediaRecorder = null;
 let audioChunks = [];
 let isRecording = false;
@@ -49,7 +48,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   await checkUserProfile();
 });
 
-// --- SIFIR GECİKME İÇİN SOCKET.IO BAĞLANTISI ---
 function initSocketConnection() {
   try {
     socket = io();
@@ -59,7 +57,7 @@ function initSocketConnection() {
       }
     });
   } catch (e) {
-    console.warn('Socket.io yüklenemedi, polling fallback aktif.');
+    console.warn('Socket.io yüklenemedi.');
   }
 }
 
@@ -75,7 +73,7 @@ async function loadLocations() {
   populateFilterCityChips();
 }
 
-// ----------------- GOD MODE PERDE & TEMA YÖNETİMİ -----------------
+// ----------------- GOD MODE / HAYALET MOD & TEMA -----------------
 function toggleGodMode(show) {
   const curtain = document.getElementById('godModeCurtain');
   if (show) {
@@ -93,7 +91,7 @@ function applyPremiumTheme(isPremium) {
   }
 }
 
-// ----------------- KAYIT / PROFİL ŞEHİR & İLÇE -----------------
+// ----------------- KAYIT / PROFİL -----------------
 function populateCityChips(filterText = '') {
   const container = document.getElementById('cityChipGrid');
   if (!container) return;
@@ -152,7 +150,6 @@ function selectCity(city, btnElem, preselectedDistrict = null) {
   });
 }
 
-// ----------------- GELİŞMİŞ FİLTRELEME & LİMİT KONTROLÜ -----------------
 function populateFilterCityChips() {
   const container = document.getElementById('filterCityChips');
   if (!container) return;
@@ -220,6 +217,14 @@ function setFilterRole(role, elem) {
 }
 
 async function openFilterModal() {
+  // Hayalet Modda ödemeden muaf test
+  if (windowIsAdmin) {
+    document.getElementById('filterModal')?.classList.remove('hidden');
+    populateFilterCityChips();
+    populateFilterDistrictChips();
+    return;
+  }
+
   try {
     const res = await fetch('/api/filter/check-limit', {
       method: 'POST',
@@ -231,7 +236,7 @@ async function openFilterModal() {
     if (badge) badge.innerText = data.remaining;
 
     if (!data.allowed) {
-      if (confirm('Ücretsiz filtre hakkınız bitti! Telegram Yıldızları ⭐ ile devam etmek ister misiniz?')) {
+      if (confirm('Ücretsiz filtre hakkınız bitti! 25 Yıldız ⭐ karşılığında ek 3 filtre hakkı almak ister misiniz?')) {
         buyPremiumOrStars('filter_pack');
         return;
       }
@@ -255,8 +260,7 @@ function applyFilters() {
   loadExploreCards();
 }
 
-// Telegram Stars Fatura Satın Alma Tetikleyicisi
-async function buyPremiumOrStars(productType = 'premium') {
+async function buyPremiumOrStars(productType = 'premium_weekly') {
   try {
     const res = await fetch('/api/billing/create-invoice', {
       method: 'POST',
@@ -274,7 +278,6 @@ async function buyPremiumOrStars(productType = 'premium') {
   }
 }
 
-// ----------------- GENEL YETKİ VE PROFİL KONTROLÜ -----------------
 async function checkUserProfile() {
   try {
     const res = await fetch(`/api/profile/${window.currentUserId}?username=${window.currentUsername}`);
@@ -285,14 +288,16 @@ async function checkUserProfile() {
 
     if (windowIsAdmin) {
       document.getElementById('ytNavBtn')?.classList.remove('hidden');
+      document.getElementById('godModeToggleBtn')?.classList.remove('hidden');
     } else {
       document.getElementById('ytNavBtn')?.classList.add('hidden');
+      document.getElementById('godModeToggleBtn')?.classList.add('hidden');
     }
 
     if (data.exists && data.profile) {
       currentProfile = data.profile;
       fillProfileForm(currentProfile);
-      applyPremiumTheme(currentProfile.isPremium);
+      applyPremiumTheme(currentProfile.isPremium || windowIsAdmin); // YTler test için pembe simli temadan muaf/dahil
       document.getElementById('appNav')?.classList.remove('hidden');
       switchTab('explore');
       loadExploreCards();
@@ -399,7 +404,7 @@ async function handleFormSubmit(event) {
     const data = await res.json();
     if (data.success) {
       currentProfile = data.profile;
-      applyPremiumTheme(currentProfile.isPremium);
+      applyPremiumTheme(currentProfile.isPremium || windowIsAdmin);
       document.getElementById('appNav')?.classList.remove('hidden');
       switchTab('explore');
       loadExploreCards();
@@ -438,7 +443,7 @@ async function deleteMyAccount() {
 
 function switchTab(tabId) {
   if (tabId === 'adminPanel' && !windowIsAdmin) {
-    alert('⚠️ Bu porta sadece Kurucu ve YT üyeleri girebilir!');
+    alert('⚠️ Üyeler YT paneline giremez!');
     switchTab('explore');
     return;
   }
@@ -471,11 +476,11 @@ function openProfileEdit() {
   switchTab('register');
 }
 
-// ----------------- KEŞFET & KARTLAR -----------------
+// ----------------- KEŞFET (YAKIN KONUM ÖNCELİKLİ) -----------------
 async function loadExploreCards() {
   const stage = document.getElementById('activeCard');
   if (!stage) return;
-  stage.innerHTML = '<div class="card-loader">Altın kader ağları taranıyor...</div>';
+  stage.innerHTML = '<div class="card-loader">Yakındaki kader ağları taranıyor...</div>';
   try {
     const res = await fetch(`/api/cards?userId=${window.currentUserId}&city=${encodeURIComponent(filterCity)}&district=${encodeURIComponent(filterDistrict)}&role=${encodeURIComponent(filterRole)}&minAge=${filterMinAge}&maxAge=${filterMaxAge}`);
     const data = await res.json();
@@ -498,7 +503,7 @@ function renderCurrentCard() {
   }
   const user = cardsList[currentCardIndex];
   const photo = user.photos?.[0] || '';
-  const distanceText = user.distanceKm !== null ? ` • 📍 ${user.distanceKm} km uzakta` : '';
+  const distanceText = user.distanceKm !== 9999 ? ` • 📍 ${user.distanceKm} km uzakta` : '';
   const premiumBadge = user.isPremium ? ' <span class="premium-glow-badge">🌟</span>' : '';
   
   cardElem.innerHTML = `
@@ -574,7 +579,7 @@ async function triggerCardSwipe(action) {
   renderCurrentCard();
 }
 
-// ----------------- MESAJLAR & GERÇEK ZAMANLI SIFIR GECİKME -----------------
+// ----------------- MESAJLAR & SIFIR GECİKME -----------------
 async function checkUnreadMessages() {
   try {
     const res = await fetch(`/api/chats?userId=${window.currentUserId}`);
@@ -811,7 +816,7 @@ async function reportCurrentPartner() {
     });
     const data = await res.json();
     if (data.success) {
-      alert('⚠️ Şikayetiniz YT ekibine iletildi.');
+      alert('⚠️ Şikayetiniz YT ekibine ve loglara iletildi.');
       selectedMessageForReport = null;
     }
   } catch (e) {
@@ -819,7 +824,7 @@ async function reportCurrentPartner() {
   }
 }
 
-// ----------------- YÖNETİCİ (YT) PANELİ & HAYALET TEST SÜİTİ -----------------
+// ----------------- YENİ PEMBE SİMLİ KRİSTAL YT PANELİ & YÖNETİM -----------------
 async function loadAdminDashboard() {
   try {
     const res = await fetch(`/api/admin/dashboard-data?userId=${window.currentUserId}&username=${window.currentUsername}`);
@@ -828,48 +833,107 @@ async function loadAdminDashboard() {
       document.getElementById('ytStatTotal').innerText = data.stats.total;
       document.getElementById('ytStatActive').innerText = data.stats.active;
 
+      if (data.isFounder) {
+        document.getElementById('founderPricingSection')?.classList.remove('hidden');
+      }
+
+      // Şikayet Bildirimleri
+      const repContainer = document.getElementById('adminReportsContainer');
+      if (repContainer && data.reports) {
+        repContainer.innerHTML = '';
+        if (data.reports.length > 0) {
+          const heading = document.createElement('h3');
+          heading.style.cssText = 'color:#ff4757; font-size:13px; margin-bottom:6px;';
+          heading.innerText = `🚨 Bildirilen Şikayetler (${data.reports.length})`;
+          repContainer.appendChild(heading);
+
+          data.reports.forEach(r => {
+            const card = document.createElement('div');
+            card.style.cssText = 'background:rgba(255,71,87,0.1); border:1px solid rgba(255,71,87,0.3); padding:8px; border-radius:10px; font-size:11px; margin-bottom:4px; color:#fff;';
+            card.innerHTML = `<strong>Şikayet Edilen:</strong> <span style="color:#ff4757;">${r.targetNickname}</span> | <strong>Eden:</strong> ${r.reporterNickname}<br><strong>Sebep:</strong> ${r.reason} (${r.date})`;
+            repContainer.appendChild(card);
+          });
+        }
+      }
+
+      // Sistem İşlem Logları
+      const logsList = document.getElementById('adminLogsList');
+      if (logsList && data.logs) {
+        logsList.innerHTML = '';
+        data.logs.forEach(l => {
+          const div = document.createElement('div');
+          div.style.marginBottom = '3px';
+          div.innerHTML = `<span style="color:#ff69b4;">[${new Date(l.timestamp).toLocaleTimeString()}]</span> <strong>${l.adminName}</strong>: ${l.action} -> <span style="color:#d4af37;">${l.targetInfo}</span>`;
+          logsList.appendChild(div);
+        });
+      }
+
+      // Üye Listesi & 3 Adımlı Kısıtlama Masası
       const uList = document.getElementById('adminUserCards');
       if (uList && data.users) {
-        uList.innerHTML = '<h3 style="color:#d4af37; font-size:14px; margin-bottom:8px;">👥 Üye Listesi & Hayalet Test Süiti</h3>';
+        uList.innerHTML = '';
         data.users.forEach(u => {
           const isAdmin = data.admins?.includes(u.telegramId) || data.admins?.includes(u.username);
           const tgTag = u.username ? `@${u.username}` : `ID:${u.telegramId}`;
           const card = document.createElement('div');
-          card.style.cssText = 'background:#1c1b29; padding:10px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; font-size:13px; margin-bottom:6px;';
+          card.style.cssText = 'background:rgba(255,255,255,0.04); border:1px solid rgba(255,105,180,0.2); padding:10px; border-radius:12px; font-size:12px; margin-bottom:6px;';
           card.innerHTML = `
-            <div>
+            <div style="margin-bottom:6px;">
               <strong>${u.nickname}</strong> (${u.role}) - <span style="color:#d4af37;">${u.city}</span> ${isAdmin ? '<span style="color:#2ed573;">[YT]</span>' : ''}<br>
-              <span style="font-size:11px; color:#888;">Telegram: <strong style="color:#fff;">${tgTag}</strong></span>
+              <span style="font-size:11px; color:#aaa;">Telegram: <strong style="color:#fff;">${tgTag}</strong> | Kısıt Seviyesi: <strong style="color:#ff4757;">${u.restrictionLevel || 0}</strong></span>
             </div>
-            <div style="display:flex; gap:6px;">
-              ${windowIsFounder ? `<button onclick="toggleAdmin('${u.telegramId}')" style="background:${isAdmin ? '#e58e26' : '#3c6382'}; color:#fff; border:none; padding:6px 10px; border-radius:8px; cursor:pointer; font-weight:700;">${isAdmin ? 'YT Al' : 'YT Yap'}</button>` : ''}
-              <button onclick="toggleBanUser('${u.telegramId}')" style="background:${u.isBanned ? '#2ed573' : '#ff4757'}; color:#fff; border:none; padding:6px 10px; border-radius:8px; cursor:pointer; font-weight:700;">${u.isBanned ? 'Aç' : 'Banla'}</button>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+              <select onchange="changeRestriction('${u.telegramId}', this.value)" style="background:#13121d; color:#fff; border:1px solid #ff69b4; padding:4px; border-radius:6px; font-size:11px;">
+                <option value="0" ${u.restrictionLevel===0?'selected':''}>Seviye 0 (Serbest)</option>
+                <option value="1" ${u.restrictionLevel===1?'selected':''}>Seviye 1 (Uyarı)</option>
+                <option value="2" ${u.restrictionLevel===2?'selected':''}>Seviye 2 (Geçici Kısıt)</option>
+                <option value="3" ${u.restrictionLevel===3?'selected':''}>Seviye 3 (Tam Ban)</option>
+              </select>
+              <button onclick="setPremiumWeeks('${u.telegramId}')" style="background:#d4af37; color:#000; border:none; padding:5px 8px; border-radius:6px; font-weight:700; font-size:11px; cursor:pointer;">Prem. Ver (Hafta)</button>
+              ${windowIsFounder ? `<button onclick="toggleAdmin('${u.telegramId}')" style="background:${isAdmin ? '#e58e26' : '#3c6382'}; color:#fff; border:none; padding:5px 8px; border-radius:6px; font-weight:700; font-size:11px; cursor:pointer;">${isAdmin ? 'YT Al' : 'YT Yap'}</button>` : ''}
             </div>
           `;
           uList.appendChild(card);
         });
-
-        if (data.reports && data.reports.length > 0) {
-          const repHeading = document.createElement('h3');
-          repHeading.style.cssText = 'color:#ff4757; font-size:14px; margin:16px 0 8px 0;';
-          repHeading.innerText = `🚨 Bildirilen Şikayetler (${data.reports.length})`;
-          uList.appendChild(repHeading);
-
-          data.reports.forEach(r => {
-            const repCard = document.createElement('div');
-            repCard.style.cssText = 'background:#241923; border:1px solid rgba(255,71,87,0.3); padding:10px; border-radius:12px; font-size:12px; margin-bottom:6px; color:#fff;';
-            repCard.innerHTML = `
-              <div><strong>Şikayet Edilen:</strong> <span style="color:#ff4757;">${r.targetNickname}</span></div>
-              <div><strong>Şikayet Eden:</strong> ${r.reporterNickname}</div>
-              <div><strong>Sebep/Mesaj:</strong> ${r.reason}</div>
-              <div style="font-size:10px; color:#aaa; margin-top:4px;">Tarih: ${r.date}</div>
-            `;
-            uList.appendChild(repCard);
-          });
-        }
       }
     }
   } catch (e) {}
+}
+
+async function changeRestriction(targetTelegramId, level) {
+  await fetch('/api/admin/restrict-user', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ targetTelegramId, level: Number(level), adminId: window.currentUserId, adminName: window.currentUsername })
+  });
+  loadAdminDashboard();
+}
+
+async function setPremiumWeeks(targetTelegramId) {
+  let weeks = prompt('Kaç hafta Premium tanımlansın?', '1');
+  if (!weeks) return;
+  await fetch('/api/admin/set-premium-duration', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ targetTelegramId, weeks: Number(weeks), adminId: window.currentUserId, adminName: window.currentUsername })
+  });
+  alert(`${weeks} hafta premium tanımlandı.`);
+  loadAdminDashboard();
+}
+
+async function updatePricing(key) {
+  let priceInputId = key === 'premium_weekly' ? 'priceWeeklyInput' : 'priceFiltersInput';
+  let val = document.getElementById(priceInputId)?.value;
+  if (!val) return;
+
+  const res = await fetch('/api/admin/update-pricing', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: window.currentUserId, username: window.currentUsername, key, priceStars: Number(val) })
+  });
+  const data = await res.json();
+  alert(data.message);
+  loadAdminDashboard();
 }
 
 async function toggleAdmin(targetId) {
@@ -884,14 +948,5 @@ async function toggleAdmin(targetId) {
   });
   const data = await res.json();
   alert(data.message);
-  loadAdminDashboard();
-}
-
-async function toggleBanUser(targetTelegramId) {
-  await fetch('/api/admin/toggle-ban', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ targetTelegramId, userId: window.currentUserId, username: window.currentUsername })
-  });
   loadAdminDashboard();
 }
