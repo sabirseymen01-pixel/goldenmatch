@@ -164,11 +164,29 @@
 
       <div id="messageStream" class="chat-stream"></div>
 
-      <!-- WhatsApp Tarzı Medya ve Ses Gönderme Paneli -->
+      <!-- Profesyonel Gold Simgeli Medya ve Ses Gönderme Paneli -->
       <form class="chat-composer" onsubmit="sendChatMessage(event)">
         <input type="file" id="chatMediaInput" accept="image/*" style="display:none" onchange="onChatMediaSelected(event)">
-        <button type="button" class="media-attach-btn" onclick="document.getElementById('chatMediaInput').click()" title="Fotoğraf Ekle">📷</button>
-        <button type="button" id="recordAudioBtn" class="media-attach-btn" onclick="toggleAudioRecording()" title="Sesli Mesaj">🎤</button>
+        
+        <!-- Galeri / Görsel Simgesi -->
+        <button type="button" class="chat-action-btn" onclick="document.getElementById('chatMediaInput').click()" title="Fotoğraf Gönder">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <rect x="3" y="3" width="18" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/>
+            <path d="M21 15L16 10L5 21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        <!-- Sesli Mesaj Simgesi -->
+        <button type="button" id="recordAudioBtn" class="chat-action-btn chat-voice-btn" onclick="toggleAudioRecording()" title="Sesli Mesaj Gönder">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21 4H3C1.9 4 1 4.9 1 6V15C1 16.1 1.9 17 3 17H7L11 21V17H21C22.1 17 23 16.1 23 15V6C23 4.9 22.1 4 21 4Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            <rect x="10.5" y="7" width="3" height="5" rx="1.5" fill="currentColor"/>
+            <path d="M8 10.5C8 12.2 9.3 13.5 11 13.5H13C14.7 13.5 16 12.2 16 10.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <line x1="12" y1="13.5" x2="12" y2="15.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+
         <input type="text" id="chatInput" placeholder="Mesajınızı fısıldayın..." autocomplete="off">
         <button type="submit" class="composer-btn">➤</button>
       </form>
