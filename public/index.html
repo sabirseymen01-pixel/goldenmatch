@@ -6,7 +6,7 @@
   <title>GoldenMatch ✨</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="/socket.io/socket.io.js"></script>
-  <link rel="stylesheet" href="style.css?v=2026.6">
+  <link rel="stylesheet" href="style.css?v=2026.7">
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -25,12 +25,12 @@
       </div>
     </div>
 
-    <!-- ÜST BAŞLIK (Sadece Logo ve Sağ Üstte @breskavica İmzası) -->
+    <!-- ÜST BAŞLIK (Tam Ortada Elmastan Kristal Logo ve Sağda @breskavica) -->
     <header id="appNav" class="app-nav hidden">
-      <div class="brand-logo" onclick="switchTab('explore')">
-        <span class="gold-text">GOLDEN</span>MATCH
+      <div class="brand-logo-center" onclick="switchTab('explore')">
+        <span class="diamond-crystal-logo">GOLDEN MATCH</span>
       </div>
-      <div class="nav-actions">
+      <div class="nav-actions-right">
         <span class="founder-signature">@breskavica</span>
       </div>
     </header>
@@ -38,7 +38,7 @@
     <!-- 1. PROFİL KAYIT -->
     <main id="registerView" class="view-screen">
       <div class="screen-header">
-        <h1 class="gold-text">GOLDENMATCH</h1>
+        <h1 class="diamond-crystal-logo" style="font-size:22px; margin-bottom:6px;">GOLDEN MATCH</h1>
         <p class="subtitle">Kutsal profilini ve konumunu mühürle.</p>
       </div>
 
@@ -298,7 +298,7 @@
       </div>
     </div>
 
-    <!-- 🌟 AKILLI ŞEFFAF CAM LEVHA GÖREV ÇUĞUĞU (ALT DOCK) -->
+    <!-- 🌟 3 BOYUTLU KRİSTALİZE GOLD & CAM LEVHA AKILLI GÖREV ÇUĞUĞU (ALT DOCK) -->
     <nav id="glassDock" class="glass-dock hidden">
       <button id="godModeToggleBtn" class="dock-btn hidden" onclick="triggerGodModeTarot()" title="God Mode & Tarot">⚡</button>
       <button id="ytNavBtn" class="dock-btn yt-badge hidden" onclick="switchTab('adminPanel')" title="YT Paneli">👑 YT</button>
@@ -319,6 +319,6 @@
 
   </div>
 
-  <script src="app.js?v=2026.6"></script>
+  <script src="app.js?v=2026.7"></script>
 </body>
 </html>
