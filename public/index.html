@@ -6,7 +6,7 @@
   <title>GoldenMatch ✨</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="/socket.io/socket.io.js"></script>
-  <link rel="stylesheet" href="style.css?v=2026.7">
+  <link rel="stylesheet" href="style.css?v=2026.8">
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -25,7 +25,7 @@
       </div>
     </div>
 
-    <!-- ÜST BAŞLIK (Tam Ortada Elmastan Kristal Logo ve Sağda @breskavica) -->
+    <!-- ÜST BAŞLIK (Tam Ortada Mat Kristal Logo ve Sağda @breskavica İmzası) -->
     <header id="appNav" class="app-nav hidden">
       <div class="brand-logo-center" onclick="switchTab('explore')">
         <span class="diamond-crystal-logo">GOLDEN MATCH</span>
@@ -38,11 +38,11 @@
     <!-- 1. PROFİL KAYIT -->
     <main id="registerView" class="view-screen">
       <div class="screen-header">
-        <h1 class="diamond-crystal-logo" style="font-size:22px; margin-bottom:6px;">GOLDEN MATCH</h1>
+        <h1 class="diamond-crystal-logo" style="font-size:20px; margin-bottom:6px;">GOLDEN MATCH</h1>
         <p class="subtitle">Kutsal profilini ve konumunu mühürle.</p>
       </div>
 
-      <div id="premiumBanner" style="background:rgba(212,175,55,0.08); border:1px solid rgba(255,215,0,0.3); padding:16px; border-radius:18px; margin-bottom:16px; text-align:center; backdrop-filter:blur(10px);">
+      <div id="premiumBanner">
         <h3 class="gold-text" style="font-family:'Cinzel',serif; font-size:16px; margin-bottom:6px;">🌟 Haftalık Premium Üyelik</h3>
         <p style="font-size:12px; color:#bfaed6; margin-bottom:12px;">Sınırsız keşif ve konum önceliği için hemen yükseltin.</p>
         <button type="button" class="primary-btn gold-glow" onclick="buyPremiumOrStars('premium_weekly')" style="width:100%; padding:12px; font-size:13px;">⭐ Haftalık Premium Al (100 Yıldız)</button>
@@ -186,59 +186,77 @@
       </form>
     </main>
 
-    <!-- 5. YT YÖNETİM MASASI -->
-    <main id="adminPanelView" class="view-screen hidden" style="background: rgba(30,24,48,0.7); backdrop-filter:blur(15px); border: 1.5px solid rgba(255,215,0,0.3); border-radius:20px;">
+    <!-- 5. YT YÖNETİM MASASI & ÖZEL DİKEY PORTLAR -->
+    <main id="adminPanelView" class="view-screen hidden" style="background: rgba(25,18,40,0.85); backdrop-filter:blur(25px); position:relative; padding-left: 64px;">
+      
+      <!-- 🌟 YT Paneline Özel Pembe-Mor Simli Dikey Görev Çubuğu -->
+      <nav class="yt-vertical-dock">
+        <button class="yt-dock-btn active" onclick="switchYtPort('users')" title="👥 Üyeler Portu">👥</button>
+        <button class="yt-dock-btn" onclick="switchYtPort('admins')" title="👑 Adminler Portu">👑</button>
+        <button class="yt-dock-btn" onclick="switchYtPort('billing')" title="⭐ Premium & Yıldız Portu">⭐</button>
+        <button class="yt-dock-btn" onclick="switchYtPort('reports')" title="🚨 Şikayetler Portu">🚨</button>
+        <button class="yt-dock-btn" onclick="switchYtPort('logs')" title="📜 Sistem Logları">📜</button>
+      </nav>
+
       <div class="sub-header">
-        <h2 class="gold-text">👑 YT Yönetim Masası</h2>
+        <h2 class="diamond-crystal-logo">👑 YT Yönetim Masası</h2>
         <button class="ghost-btn" onclick="switchTab('explore')">Çıkış</button>
       </div>
 
       <div class="stats-cards" style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px;">
-        <div class="stat-pill" style="background:rgba(255,215,0,0.06); border:1px solid rgba(255,215,0,0.2); padding:10px; border-radius:12px; text-align:center;"><span>Toplam Üye</span><br><strong id="ytStatTotal" style="color:#f3e5ab;">0</strong></div>
-        <div class="stat-pill" style="background:rgba(255,215,0,0.06); border:1px solid rgba(255,215,0,0.2); padding:10px; border-radius:12px; text-align:center;"><span>Aktif Üye</span><br><strong id="ytStatActive" style="color:#2ed573;">0</strong></div>
+        <div class="stat-pill" style="background:rgba(255,105,180,0.08); border:1.5px solid rgba(255,105,180,0.3); padding:10px; border-radius:16px; text-align:center;"><span>Toplam Üye</span><br><strong id="ytStatTotal" style="color:#ff69b4;">0</strong></div>
+        <div class="stat-pill" style="background:rgba(46,213,115,0.08); border:1.5px solid rgba(46,213,115,0.3); padding:10px; border-radius:16px; text-align:center;"><span>Aktif Üye</span><br><strong id="ytStatActive" style="color:#2ed573;">0</strong></div>
       </div>
 
-      <div style="background:rgba(255,215,0,0.04); border:1.5px solid rgba(255,215,0,0.3); padding:12px; border-radius:14px; margin-bottom:14px; backdrop-filter:blur(10px);">
-        <h3 style="color:#f3e5ab; font-size:13px; margin-bottom:6px;">⚡ Kutsal Gün Seçimi</h3>
-        <p style="font-size:11px; color:#bfaed6; margin-bottom:8px;">Haftanın dilediğiniz gününü Kutsal Gün / Otomasyon günü olarak sabitleyin.</p>
-        <div style="display:flex; gap:8px;">
-          <select id="godModeDaySelect" style="flex:1; background:#1b1926; color:#fff; border:1.5px solid rgba(255,215,0,0.4); padding:8px; border-radius:8px; font-size:11px;">
-            <option value="1">Pazartesi</option>
-            <option value="2">Salı</option>
-            <option value="3">Çarşamba</option>
-            <option value="4">Perşembe</option>
-            <option value="5">Cuma</option>
-            <option value="6">Cumartesi</option>
-            <option value="0">Pazar</option>
-          </select>
-          <button onclick="saveGodModeAutomation()" style="background:linear-gradient(135deg, #f3e5ab, #c5a059); color:#0b0a10; border:none; padding:8px 12px; border-radius:8px; font-weight:700; cursor:pointer; font-size:11px;">Günü Mühürle</button>
+      <!-- PORT 1: ÜYELER PORTU -->
+      <div id="ytPortUsers" class="yt-port-section active">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <h3 style="color:#ff69b4; font-size:13px;">👥 Tüm Golden Match Kullanıcıları</h3>
+        </div>
+        <div id="adminUserCards" style="max-height:380px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
+      </div>
+
+      <!-- PORT 2: ADMİNLER (YT) PORTU -->
+      <div id="ytPortAdmins" class="yt-port-section">
+        <h3 style="color:#2ed573; font-size:13px; margin-bottom:8px;">👑 Adminler & Kurucu Eşleme Takibi</h3>
+        <p style="font-size:11px; color:#bfaed6; margin-bottom:10px;">Hangi Telegram hesabının hangi Golden Match hesabını kurduğu bilgileri:</p>
+        <div id="adminListContainer" style="max-height:380px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
+      </div>
+
+      <!-- PORT 3: PREMİUM & YILDIZ SATIN ALIMLARI PORTU -->
+      <div id="ytPortBilling" class="yt-port-section">
+        <div id="founderPricingSection" class="admin-card-box hidden">
+          <h3 style="color:#f3e5ab; font-size:13px; margin-bottom:8px;">⭐ Telegram Yıldız Fiyatlandırma Yönetimi</h3>
+          <div style="display:flex; gap:8px; margin-bottom:8px;">
+            <input type="number" id="priceWeeklyInput" placeholder="Haftalık Premium Yıldız" style="flex:1;">
+            <button onclick="updatePricing('premium_weekly')" class="primary-btn" style="padding:8px 12px; font-size:12px; width:auto;">Ayarla</button>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <input type="number" id="priceFiltersInput" placeholder="3'lü Filtre Paketi Yıldız" style="flex:1;">
+            <button onclick="updatePricing('filter_pack')" class="primary-btn" style="padding:8px 12px; font-size:12px; width:auto;">Ayarla</button>
+          </div>
+        </div>
+        <div id="adminPurchasedUsersList" class="admin-card-box">
+          <h3 style="color:#f3e5ab; font-size:13px; margin-bottom:6px;">🌟 Aktif Premium Aboneler & Süreleri</h3>
+          <div id="premiumSubscribersList" style="font-size:12px; color:#bbb;">Yükleniyor...</div>
         </div>
       </div>
 
-      <div id="founderPricingSection" class="hidden" style="background:rgba(255,215,0,0.06); border:1.5px solid rgba(255,215,0,0.4); padding:12px; border-radius:14px; margin-bottom:14px; backdrop-filter:blur(10px);">
-        <h3 style="color:#f3e5ab; font-size:13px; margin-bottom:8px;">⭐ Telegram Yıldız Fiyatlandırma (Kurucu)</h3>
-        <div style="display:flex; gap:8px; margin-bottom:6px;">
-          <input type="number" id="priceWeeklyInput" placeholder="Haftalık Premium Yıldız" style="flex:1; background:rgba(255,255,255,0.05); border:1.5px solid rgba(255,215,0,0.3); padding:8px; border-radius:8px; color:#fff; font-size:12px;">
-          <button onclick="updatePricing('premium_weekly')" style="background:linear-gradient(135deg, #f3e5ab, #c5a059); color:#0b0a10; border:none; padding:8px 12px; border-radius:8px; font-weight:700; cursor:pointer;">Ayarla</button>
-        </div>
-        <div style="display:flex; gap:8px;">
-          <input type="number" id="priceFiltersInput" placeholder="3'lü Filtre Paketi Yıldız" style="flex:1; background:rgba(255,255,255,0.05); border:1.5px solid rgba(255,215,0,0.3); padding:8px; border-radius:8px; color:#fff; font-size:12px;">
-          <button onclick="updatePricing('filter_pack')" style="background:linear-gradient(135deg, #f3e5ab, #c5a059); color:#0b0a10; border:none; padding:8px 12px; border-radius:8px; font-weight:700; cursor:pointer;">Ayarla</button>
-        </div>
+      <!-- PORT 4: ŞİKAYETLER PORTU -->
+      <div id="ytPortReports" class="yt-port-section">
+        <h3 style="color:#ff4757; font-size:13px; margin-bottom:8px;">🚨 Bildirilen Kullanıcı Şikayetleri</h3>
+        <div id="adminReportsContainer"></div>
       </div>
 
-      <div id="adminReportsContainer" style="margin-bottom:14px;"></div>
-
-      <div style="margin-bottom:14px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-          <h3 style="color:#f3e5ab; font-size:13px;">📜 Sistem İşlem Logları</h3>
-          <button onclick="clearSystemLogs()" style="background:#ff4757; color:#fff; border:none; padding:4px 8px; border-radius:6px; font-size:10px; cursor:pointer; font-weight:700;">Logları Temizle</button>
+      <!-- PORT 5: GENEL SİSTEM LOGLARI PORTU -->
+      <div id="ytPortLogs" class="yt-port-section">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <h3 style="color:#f3e5ab; font-size:13px;">📜 Tüm Golden Match İşlem Logları</h3>
+          <button onclick="clearSystemLogs()" style="background:#ff4757; color:#fff; border:none; padding:4px 8px; border-radius:8px; font-size:10px; cursor:pointer; font-weight:700;">Logları Temizle</button>
         </div>
-        <div id="adminLogsList" style="max-height:160px; overflow-y:auto; background:rgba(0,0,0,0.4); border:1.5px solid rgba(255,215,0,0.2); border-radius:12px; padding:8px; font-size:11px; color:#bfaed6;"></div>
+        <div id="adminLogsList" style="max-height:380px; overflow-y:auto; background:rgba(0,0,0,0.4); border:1.5px solid rgba(255,215,0,0.2); border-radius:16px; padding:10px; font-size:11px; color:#bfaed6;"></div>
       </div>
 
-      <div id="adminUserCards" class="admin-scroll-list" style="max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; margin-bottom:14px;"></div>
-      <div id="adminListContainer" class="admin-scroll-list" style="max-height:200px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
     </main>
 
     <!-- ORTAK DİNAMİK SEÇİM MODALI (Sheet) -->
@@ -249,7 +267,7 @@
           <button class="icon-close" onclick="closeSelectionModal()">✕</button>
         </div>
         <div id="modalSearchWrapper" style="margin-bottom:12px;">
-          <input type="text" id="modalSearchInput" onkeyup="filterModalItems()" placeholder="🔍 Ara..." style="width:100%; background:rgba(255,255,255,0.06); border:1.5px solid rgba(255,215,0,0.3); border-radius:12px; padding:12px; color:#fff; font-size:13px; outline:none;">
+          <input type="text" id="modalSearchInput" onkeyup="filterModalItems()" placeholder="🔍 Ara..." style="width:100%; background:rgba(255,255,255,0.06); border:1.5px solid rgba(255,215,0,0.3); border-radius:18px; padding:12px; color:#fff; font-size:13px; outline:none;">
         </div>
         <div class="selection-chip-grid" id="modalChipContainer"></div>
       </div>
@@ -260,19 +278,17 @@
       <div class="modal-sheet">
         <div class="sheet-header"><h3>Gelişmiş Filtreler</h3><button class="icon-close" onclick="closeFilterModal()">✕</button></div>
         
-        <div style="background:rgba(255,215,0,0.08); border:1.5px solid rgba(255,215,0,0.35); padding:10px; border-radius:10px; margin-bottom:12px; font-size:12px; color:#f3e5ab; text-align:center;">
+        <div style="background:rgba(212,175,55,0.08); border:1.5px solid rgba(255,215,0,0.35); padding:10px; border-radius:16px; margin-bottom:12px; font-size:12px; color:#f3e5ab; text-align:center;">
           ✨ Günlük Ücretsiz Filtre Hakkı: <strong id="filterRemainingBadge">3 / 3</strong> <br>
           <button onclick="buyPremiumOrStars('filter_pack')" style="background:transparent; border:none; color:#f3e5ab; text-decoration:underline; cursor:pointer; margin-top:4px; font-size:11px;">⭐ 25 Yıldız ile Ek 3 Filtre Hakkı Al</button>
         </div>
 
-        <!-- Filtre Şehir Tetikleyicisi -->
         <div class="form-group" style="margin-bottom:12px;">
           <label>Şehir Filtresi</label>
           <button type="button" class="dropdown-trigger-btn" id="filterSelectedCityBtn" onclick="openSelectionModal('filterCity')">Tüm Şehirler</button>
           <input type="hidden" id="filterCityInput" value="Hepsi">
         </div>
 
-        <!-- Filtre İlçe Tetikleyicisi -->
         <div class="form-group" style="margin-bottom:12px;">
           <label>İlçe / Semt Filtresi</label>
           <button type="button" class="dropdown-trigger-btn" id="filterSelectedDistrictBtn" onclick="openSelectionModal('filterDistrict')">Tüm İlçeler</button>
@@ -282,12 +298,11 @@
         <div class="form-group" style="margin-bottom:12px;">
           <label>Yaş Aralığı: <span id="ageRangeLabel" style="color:#f3e5ab;">18 - 99</span></label>
           <div style="display:flex; gap:10px; align-items:center;">
-            <input type="number" id="filterMinAge" value="18" min="18" max="99" style="width:50%; background:rgba(255,255,255,0.06); border:1.5px solid rgba(255,215,0,0.3); border-radius:10px; padding:10px; color:#fff;" placeholder="Min Yaş">
-            <input type="number" id="filterMaxAge" value="99" min="18" max="99" style="width:50%; background:rgba(255,255,255,0.06); border:1.5px solid rgba(255,215,0,0.3); border-radius:10px; padding:10px; color:#fff;" placeholder="Max Yaş">
+            <input type="number" id="filterMinAge" value="18" min="18" max="99" style="width:50%; background:rgba(255,255,255,0.06); border:1.5px solid rgba(255,215,0,0.3); border-radius:14px; padding:10px; color:#fff;" placeholder="Min Yaş">
+            <input type="number" id="filterMaxAge" value="99" min="18" max="99" style="width:50%; background:rgba(255,255,255,0.06); border:1.5px solid rgba(255,215,0,0.3); border-radius:14px; padding:10px; color:#fff;" placeholder="Max Yaş">
           </div>
         </div>
 
-        <!-- Filtre Rol Tetikleyicisi -->
         <div class="form-group" style="margin-bottom:16px;">
           <label>Rol / Yönelim Filtresi</label>
           <button type="button" class="dropdown-trigger-btn" id="filterSelectedRoleBtn" onclick="openSelectionModal('filterRole')">Hepsi</button>
@@ -319,6 +334,6 @@
 
   </div>
 
-  <script src="app.js?v=2026.7"></script>
+  <script src="app.js?v=2026.8"></script>
 </body>
 </html>
