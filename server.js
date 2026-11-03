@@ -93,6 +93,7 @@ const UserSchema = new mongoose.Schema({
   isVerified: { type: Boolean, default: false },
   restrictionLevel: { type: Number, default: 0 },
   isBanned: { type: Boolean, default: false },
+  bannedUntil: { type: Date, default: null }, // 🌟 Saat bazlı ihlal (Timeout) bitiş süresi
   isDeactivated: { type: Boolean, default: false },
   isPremium: { type: Boolean, default: false },
   premiumExpiresAt: { type: Date, default: null },
@@ -264,6 +265,11 @@ app.get('/api/profile/:id', async (req, res) => {
       await UserModel.updateOne({ telegramId: tid }, { isPremium: false, premiumExpiresAt: null });
       profile.isPremium = false;
     }
+    // İhlal süresi bittiyse otomatik temizle
+    if (profile.bannedUntil && new Date() > new Date(profile.bannedUntil)) {
+      await UserModel.updateOne({ telegramId: tid }, { bannedUntil: null, restrictionLevel: 0, isBanned: false });
+      profile.bannedUntil = null;
+    }
     return res.json({ exists: true, profile, isAdmin, isFounder: founder });
   }
   return res.json({ exists: false, isAdmin, isFounder: founder });
@@ -275,8 +281,8 @@ app.post('/api/profile', async (req, res) => {
     if (!telegramId || !city || !role) return res.status(400).json({ success: false, message: 'Eksik bilgi.' });
 
     const existingUser = await UserModel.findOne({ telegramId: String(telegramId) });
-    if (existingUser && existingUser.isBanned) {
-      return res.status(403).json({ success: false, message: 'Hesabınız kısıtlanmış/banlanmıştır.' });
+    if (existingUser && (existingUser.isBanned || (existingUser.bannedUntil && new Date() < new Date(existingUser.bannedUntil)))) {
+      return res.status(403).json({ success: false, message: 'Hesabınız kısıtlanmış/uzaklaştırılmıştır.' });
     }
 
     if (photos && photos.length > 0) {
@@ -351,6 +357,7 @@ app.get('/api/cards', async (req, res) => {
   let query = { 
     telegramId: { $ne: currentUserId, $nin: Array.from(likedUserIds) }, 
     isBanned: false,
+    $or: [{ bannedUntil: null }, { bannedUntil: { $lt: new Date() } }],
     restrictionLevel: { $lt: 3 },
     isDeactivated: false,
     age: { $gte: minAge, $lte: maxAge }
@@ -397,7 +404,7 @@ app.post('/api/like', async (req, res) => {
   res.json({ success: true, isMatch: false });
 });
 
-// --- OPTİMİZE EDİLMİŞ TEK SORGULU CHATS ROUTE ---
+// --- OPTİMİZE EDİLMİŞ CHATS ROUTE ---
 app.get('/api/chats', async (req, res) => {
   try {
     const userId = String(req.query.userId);
@@ -444,6 +451,7 @@ app.get('/api/chats', async (req, res) => {
   }
 });
 
+// 🌟 HIZLANDIRILMIŞ VE LİMİTLENMİŞ MESAJ ENDPOINT'İ (Geç Yüklenme Çözümü)
 app.get('/api/chats/:matchId', async (req, res) => {
   const match = await MatchModel.findOne({ matchId: req.params.matchId });
   const userId = String(req.query.userId);
@@ -462,6 +470,9 @@ app.get('/api/chats/:matchId', async (req, res) => {
   const partner = await UserModel.findOne({ telegramId: partnerId }).lean();
   const bothRevealed = match.paravan1 && match.paravan2;
 
+  // Sadece son 50 mesajı alarak yükü ve yüklenme süresini minimize ediyoruz
+  const limitedMessages = match.messages.slice(-50);
+
   res.json({
     success: true,
     matchId: match.matchId,
@@ -473,7 +484,7 @@ app.get('/api/chats/:matchId', async (req, res) => {
       isPremium: partner?.isPremium || false
     },
     bothRevealed,
-    messages: match.messages
+    messages: limitedMessages
   });
 });
 
@@ -526,7 +537,7 @@ app.post('/api/report', async (req, res) => {
   res.json({ success: true, message: 'Şikayet iletildi ve YT paneline kaydedildi.' });
 });
 
-// ================= YÖNETİCİ PANELİ & AYRIŞTIRILMIŞ LOG API =================
+// ================= YÖNETİCİ PANELİ & LOG API =================
 async function checkAdminAuth(req, res, next) {
   const requesterId = req.headers['x-user-id'] || req.query.userId;
   const requesterUsername = req.headers['x-user-name'] || req.query.username;
@@ -576,49 +587,26 @@ app.get('/api/admin/dashboard-data', checkAdminAuth, async (req, res) => {
   });
 });
 
-app.post('/api/admin/set-godmode-day', checkAdminAuth, async (req, res) => {
-  const { dayOfWeek, adminId, adminName } = req.body;
-  await PricingConfigModel.findOneAndUpdate(
-    { key: 'godmode_active_day' },
-    { key: 'godmode_active_day', priceStars: Number(dayOfWeek) },
-    { upsert: true, new: true }
-  );
-  await logSystemAction(adminId, adminName, 'Kutsal Mod Günü Güncellendi', `Seçilen Gün: ${dayOfWeek}`);
-  res.json({ success: true, message: 'Kutsal Mod günü mühürlendi.' });
-});
-
-app.get('/api/godmode/status', async (req, res) => {
-  const config = await PricingConfigModel.findOne({ key: 'godmode_active_day' });
-  const targetDay = config ? config.priceStars : 3;
-  const currentDay = new Date().getDay();
-  const isActive = (currentDay === targetDay);
-
-  res.json({
-    success: true,
-    activeGodMode: isActive,
-    activeDay: targetDay,
-    message: isActive ? '🔥 Kutsal Mod Aktif!' : '⏳ Kutsal Mod bekleniyor.'
-  });
-});
-
-app.post('/api/admin/restrict-user', checkAdminAuth, async (req, res) => {
-  const { targetTelegramId, level, adminId, adminName } = req.body;
+// 🌟 Saat Bazlı İhlal (Timeout) Endpoint'i
+app.post('/api/admin/timeout-user', checkAdminAuth, async (req, res) => {
+  const { targetTelegramId, hours, adminId, adminName } = req.body;
   const user = await UserModel.findOne({ telegramId: String(targetTelegramId) });
   if (!user) return res.status(404).json({ success: false });
 
-  user.restrictionLevel = Number(level) || 0;
-  if (user.restrictionLevel === 3) user.isBanned = true;
-  else user.isBanned = false;
+  const banUntil = new Date();
+  banUntil.setHours(banUntil.getHours() + Number(hours || 24));
 
+  user.bannedUntil = banUntil;
+  user.restrictionLevel = 2; // Geçici kısıt
   await user.save();
 
-  await logSystemAction(adminId, adminName, `Kullanıcı Kısıtlama Seviyesi Değiştirildi (Seviye ${level})`, `${user.nickname} (ID: ${targetTelegramId})`, {
+  await logSystemAction(adminId, adminName, `Üyeye ${hours} Saat İhlal Süresi Verildi`, `${user.nickname} (ID: ${targetTelegramId})`, {
     telegramId: user.telegramId,
     username: user.username,
     nickname: user.nickname
   });
 
-  res.json({ success: true, restrictionLevel: user.restrictionLevel });
+  res.json({ success: true, bannedUntil: banUntil });
 });
 
 app.post('/api/admin/set-premium-duration', checkAdminAuth, async (req, res) => {
