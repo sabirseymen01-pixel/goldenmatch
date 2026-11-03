@@ -20,6 +20,7 @@ let activePartnerId = null;
 let socket = null;
 let windowIsAdmin = false;
 let windowIsFounder = false;
+let isGhostModeActive = false;
 let selectedMessageForReport = null;
 
 let filterCity = 'Hepsi';
@@ -220,7 +221,7 @@ function closeSelectionModal() {
 
 // ----------------- FİLTRE MOTORU -----------------
 async function openFilterModal() {
-  if (windowIsAdmin) {
+  if (windowIsAdmin || isGhostModeActive) {
     document.getElementById('filterModal')?.classList.remove('hidden');
     return;
   }
@@ -290,6 +291,11 @@ async function checkUserProfile() {
       document.getElementById('ytNavBtn')?.classList.add('hidden');
     }
 
+    // İhlal / Uzaklaştırma (Ban / Timeout) Kontrolü
+    if (data.profile?.bannedUntil && new Date(data.profile.bannedUntil) > new Date()) {
+      showBanCurtain(data.profile.bannedUntil);
+    }
+
     if (data.exists && data.profile) {
       currentProfile = data.profile;
       fillProfileForm(currentProfile);
@@ -304,6 +310,49 @@ async function checkUserProfile() {
   } catch (err) {
     switchTab('register');
   }
+}
+
+// ----------------- GHOST MODE (HAYALET MOD) FONKSİYONU -----------------
+function toggleGhostMode() {
+  isGhostModeActive = !isGhostModeActive;
+  const btn = document.getElementById('ghostModeTriggerBtn');
+  if (isGhostModeActive) {
+    btn.style.background = 'linear-gradient(135deg, #2ed573, #1e90ff)';
+    btn.innerText = 'Hayalet Mod Aktif (Sınırsız Premium)';
+    alert('👻 Hayalet Mod etkinleştirildi! Artık tüm premium özellikleri ücretsiz test edebilirsiniz.');
+  } else {
+    btn.style.background = 'linear-gradient(135deg, #8a2be2, #ff69b4)';
+    btn.innerText = 'Hayalet Modu Aktifleştir';
+    alert('Hayalet Mod kapatıldı.');
+  }
+}
+
+// ----------------- SAAT BAZLI İHLAL PERDESİ -----------------
+function showBanCurtain(bannedUntilStr) {
+  const curtain = document.getElementById('banCurtainOverlay');
+  const timerElem = document.getElementById('banCountdownTimer');
+  if (!curtain || !timerElem) return;
+
+  curtain.classList.remove('hidden');
+  const targetTime = new Date(bannedUntilStr).getTime();
+
+  const interval = setInterval(() => {
+    const now = new Date().getTime();
+    const diff = targetTime - now;
+
+    if (diff <= 0) {
+      clearInterval(interval);
+      curtain.classList.add('hidden');
+      location.reload();
+      return;
+    }
+
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    timerElem.innerText = `Kalan İhlal Süresi: ${hours}s ${minutes}d ${seconds}s`;
+  }, 1000);
 }
 
 function fillProfileForm(p) {
@@ -512,7 +561,7 @@ function renderCurrentCard() {
   const user = cardsList[currentCardIndex];
   const photo = user.photos?.[0] || '';
   const distanceText = user.distanceKm !== 9999 ? ` • 📍 ${user.distanceKm} km uzakta` : '';
-  const premiumBadge = user.isPremium ? ' <span class="premium-glow-badge">🌟</span>' : '';
+  const premiumBadge = (user.isPremium || isGhostModeActive) ? ' <span class="premium-glow-badge">🌟</span>' : '';
   
   cardElem.innerHTML = `
     <img src="${photo}" style="width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0; pointer-events:none;" alt="">
@@ -636,7 +685,6 @@ async function loadInboxChats() {
   }
 }
 
-// --- OPTİMİZE EDİLMİŞ ANINDA AÇILAN CHAT ODASI (Optimistic UI) ---
 async function openChatRoom(matchId, partner) {
   activeMatchId = matchId;
   activePartnerId = partner.telegramId;
@@ -866,7 +914,7 @@ async function loadAdminDashboard() {
         document.getElementById('founderPricingSection')?.classList.remove('hidden');
       }
 
-      // 1. ÜYELER PORTU
+      // 1. ÜYELER PORTU (Saat Bazlı İhlal / Uzaklaştırma Ayarlama)
       const uList = document.getElementById('adminUserCards');
       if (uList && data.users) {
         uList.innerHTML = '';
@@ -880,24 +928,18 @@ async function loadAdminDashboard() {
           card.innerHTML = `
             <div style="margin-bottom:6px;">
               <strong>${u.nickname}</strong> (${u.role}) - <span style="color:#f3e5ab;">${u.city}</span><br>
-              <span style="font-size:11px; color:#aaa;">Telegram: <strong style="color:#fff;">${tgTag}</strong> (ID: ${u.telegramId}) | Kısıt Seviyesi: <strong style="color:#ff4757;">${u.restrictionLevel || 0}</strong></span>
+              <span style="font-size:11px; color:#aaa;">Telegram: <strong style="color:#fff;">${tgTag}</strong> (ID: ${u.telegramId})</span>
             </div>
             <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-              <select onchange="changeRestriction('${u.telegramId}', this.value)" style="background:#13121d; color:#fff; border:1px solid #f3e5ab; padding:4px; border-radius:8px; font-size:11px;">
-                <option value="0" ${u.restrictionLevel===0?'selected':''}>Serbest</option>
-                <option value="1" ${u.restrictionLevel===1?'selected':''}>Uyarı</option>
-                <option value="2" ${u.restrictionLevel===2?'selected':''}>Geçici Kısıt</option>
-                <option value="3" ${u.restrictionLevel===3?'selected':''}>Tam Ban</option>
-              </select>
+              <button onclick="setMemberTimeout('${u.telegramId}')" style="background:#ff4757; color:#fff; border:none; padding:5px 8px; border-radius:8px; font-weight:700; font-size:11px; cursor:pointer;">⏱️ İhlal / Süre Ver (Saat)</button>
               <button onclick="setPremiumWeeks('${u.telegramId}')" style="background:#f3e5ab; color:#000; border:none; padding:5px 8px; border-radius:8px; font-weight:700; font-size:11px; cursor:pointer;">Prem. Ver</button>
-              ${windowIsFounder ? `<button onclick="toggleAdmin('${u.telegramId}')" style="background:#3c6382; color:#fff; border:none; padding:5px 8px; border-radius:8px; font-weight:700; font-size:11px; cursor:pointer;">YT Yap</button>` : ''}
             </div>
           `;
           uList.appendChild(card);
         });
       }
 
-      // 2. ADMİNLER PORTU
+      // 2. ADMİNLER PORTU (Admin Ekle / Çıkar)
       const adminListContainer = document.getElementById('adminListContainer');
       if (adminListContainer && data.adminsList) {
         adminListContainer.innerHTML = '';
@@ -949,7 +991,7 @@ async function loadAdminDashboard() {
         }
       }
 
-      // 5. GENEL SİSTEM LOGLARI PORTU
+      // 5. SİSTEM LOGLARI PORTU
       const logsList = document.getElementById('adminLogsList');
       if (logsList && data.logs) {
         logsList.innerHTML = '';
@@ -969,12 +1011,16 @@ async function loadAdminDashboard() {
   } catch (e) {}
 }
 
-async function changeRestriction(targetTelegramId, level) {
-  await fetch('/api/admin/restrict-user', {
+// Saat bazlı ihlal / uzaklaştırma verme
+async function setMemberTimeout(targetTelegramId) {
+  let hours = prompt('Kaç saat ihlal (uzaklaştırma) verilsin?', '24');
+  if (!hours) return;
+  await fetch('/api/admin/timeout-user', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ targetTelegramId, level: Number(level), adminId: window.currentUserId, adminName: window.currentUsername })
+    body: JSON.stringify({ targetTelegramId, hours: Number(hours), adminId: window.currentUserId, adminName: window.currentUsername })
   });
+  alert(`Üyeye ${hours} saat ihlal cezası verildi.`);
   loadAdminDashboard();
 }
 
