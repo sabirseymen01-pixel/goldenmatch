@@ -118,7 +118,6 @@ button:active, .choice-chip:active, .action-circle:active {
   position: relative;
 }
 
-/* Logoyu Kesin Olarak Tam Ortaya Sabitleme */
 .brand-logo-center {
   position: absolute;
   left: 50%;
@@ -129,7 +128,6 @@ button:active, .choice-chip:active, .action-circle:active {
   pointer-events: auto;
 }
 
-/* 🌟 Mat Kristal Gold Logo Tasarımı (Çakışmasız, Zarif) */
 .diamond-crystal-logo {
   font-family: 'Cinzel', serif;
   font-size: 15px;
@@ -151,7 +149,6 @@ button:active, .choice-chip:active, .action-circle:active {
   z-index: 2;
 }
 
-/* Sağ Üst @breskavica İmzası (Küçültülmüş, Şık ve Uygun) */
 .founder-signature {
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 10px;
@@ -175,7 +172,6 @@ button:active, .choice-chip:active, .action-circle:active {
 /* 🌟 PROFİL VE FİLTRE PORTLARI: YUMUŞAK, ESTETİK VE KAVİSLİ (NON-RECTANGULAR) */
 /* ========================================================================== */
 
-/* Profil Fotoğraf Slotları (Yumuşak Köşeli Kavisli Form) */
 .photo-slot {
   aspect-ratio: 3/4;
   background: rgba(255, 255, 255, 0.04);
@@ -199,7 +195,6 @@ button:active, .choice-chip:active, .action-circle:active {
   box-shadow: 0 0 20px rgba(212, 175, 55, 0.25);
 }
 
-/* Form Kutuları, Inputlar ve Seçim Kapsülleri (Yumuşak Hatlı) */
 .form-group input, 
 .form-group textarea, 
 .dropdown-trigger-btn {
@@ -221,7 +216,6 @@ button:active, .choice-chip:active, .action-circle:active {
   box-shadow: 0 0 12px rgba(255, 215, 0, 0.3);
 }
 
-/* Butonlar ve Banner Alanları (Kusursuz Kavisler) */
 .primary-btn {
   background: linear-gradient(135deg, #f3e5ab, #c5a059);
   color: #0b0a10;
@@ -246,7 +240,6 @@ button:active, .choice-chip:active, .action-circle:active {
   backdrop-filter: blur(12px);
 }
 
-/* Modaller ve Sheet Kutuları */
 .selection-modal-sheet, .modal-sheet {
   width: 100% !important;
   background: rgba(26, 21, 38, 0.92) !important;
@@ -275,7 +268,87 @@ button:active, .choice-chip:active, .action-circle:active {
 }
 
 /* ========================================================================== */
-/* 🌟 3 BOYUTLU KRİSTALİZE GOLD & CAM LEVHA AKILLI GÖREV ÇUĞUĞU (WINDOWS STYLE) */
+/* 🌟 YT YÖNETİM MASASI ÜST CAM LEVHA YATAY GÖREV ÇUĞUĞU (SADECE YT PANELİNDE) */
+/* ========================================================================== */
+
+.yt-top-dock {
+  display: none !important;
+}
+
+#adminPanelView.view-screen:not(.hidden) .yt-top-dock {
+  display: flex !important;
+  width: 100% !important;
+  height: 54px !important;
+  background: linear-gradient(135deg, rgba(138, 43, 226, 0.65) 0%, rgba(255, 105, 180, 0.6) 100%) !important;
+  backdrop-filter: blur(25px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(25px) saturate(180%) !important;
+  
+  border: 1.5px solid rgba(255, 105, 180, 0.6) !important;
+  border-radius: 18px !important;
+  box-shadow: 
+    0 10px 30px rgba(0, 0, 0, 0.6),
+    inset 0 1px 2px rgba(255, 255, 255, 0.4),
+    inset 0 -2px 6px rgba(255, 105, 180, 0.4) !important;
+    
+  justify-content: space-around !important;
+  align-items: center !important;
+  padding: 0 8px !important;
+  margin-bottom: 16px !important;
+  z-index: 100 !important;
+  flex-shrink: 0 !important;
+}
+
+.yt-top-dock .yt-dock-tab {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1.5px solid rgba(255, 215, 0, 0.4) !important;
+  color: #f3e5ab !important;
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  position: relative !important;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.2), 0 4px 10px rgba(0,0,0,0.3) !important;
+  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+.yt-top-dock .yt-dock-tab:hover, 
+.yt-top-dock .yt-dock-tab.active {
+  transform: translateY(-3px) scale(1.1) !important;
+  background: linear-gradient(135deg, #ff69b4, #d4af37) !important;
+  color: #0b0a10 !important;
+  border-color: #fff !important;
+  box-shadow: 0 0 15px rgba(255, 105, 180, 0.8), inset 0 1px 2px rgba(255,255,255,0.8) !important;
+}
+
+.yt-top-dock .yt-dock-tab svg {
+  stroke: currentColor !important;
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.yt-port-section {
+  display: none;
+  animation: fadeIniOS 0.3s ease forwards;
+}
+
+.yt-port-section.active {
+  display: block;
+}
+
+.admin-card-box {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid rgba(255, 105, 180, 0.25);
+  border-radius: 18px;
+  padding: 14px;
+  margin-bottom: 10px;
+  backdrop-filter: blur(12px);
+}
+
+/* ========================================================================== */
+/* 🌟 3 BOYUTLU KRİSTALİZE GOLD & CAM LEVHA AKILLI GÖREV ÇUĞUĞU (ALT DOCK) */
 /* ========================================================================== */
 
 .glass-dock {
