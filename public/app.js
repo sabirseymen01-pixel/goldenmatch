@@ -699,7 +699,7 @@ async function openChatRoom(matchId, partner) {
   document.getElementById('chatPartnerName').innerText = partner.nickname;
   
   const stream = document.getElementById('messageStream');
-  if (stream) stream.innerHTML = '<div style="text-align:center; color:#777; font-size:11px; padding:10px;">Sohbet yükleniyor...</div>';
+  if (stream) stream.innerHTML = '<div style="text-align:center; color:#f3e5ab; font-size:11px; padding:12px;">⚡ Sohbet yükleniyor...</div>';
 
   if (socket) socket.emit('join_chat', matchId);
 
@@ -718,7 +718,7 @@ async function openChatRoom(matchId, partner) {
       }
     }
   } catch (e) {
-    if (stream) stream.innerHTML = '<div style="text-align:center; color:#ff4757; font-size:11px;">Mesajlar yüklenemedi.</div>';
+    if (stream) stream.innerHTML = '<div style="text-align:center; color:#ff4757; font-size:11px;">Bağlantı kurulamadı.</div>';
   }
 }
 
@@ -748,7 +748,7 @@ function renderMessagesOptimized(messages) {
   stream.innerHTML = '';
   
   if (!messages || !messages.length) {
-    stream.innerHTML = '<div style="text-align:center; color:#888; font-size:11px; padding:20px;">İlk mesajı fısıldayarak buzları eritin... ✨</div>';
+    stream.innerHTML = '<div style="text-align:center; color:#bfaed6; font-size:11px; padding:20px;">İlk mesajı fısıldayarak buzları eritin... ✨</div>';
     return;
   }
 
