@@ -268,7 +268,7 @@ button:active, .choice-chip:active, .action-circle:active {
 }
 
 /* ========================================================================== */
-/* 🌟 YT YÖNETİM MASASI ÜST CAM LEVHA YATAY GÖREV ÇUĞUĞU (SADECE YT PANELİNDE) */
+/* 🌟 YT YÖNETİM MASASI ÜST CAM LEVHA YATAY GÖREV ÇUĞUĞU (LOGOSAL SVG)      */
 /* ========================================================================== */
 
 .yt-top-dock {
@@ -345,6 +345,27 @@ button:active, .choice-chip:active, .action-circle:active {
   padding: 14px;
   margin-bottom: 10px;
   backdrop-filter: blur(12px);
+}
+
+/* ========================================================================== */
+/* 🌟 ŞEFFAF KIRMIZI İHLAL (UZAKLAŞTIRMA) PERDE EKRANI                       */
+/* ========================================================================== */
+
+#banCurtainOverlay {
+  position: fixed !important;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(220, 20, 60, 0.35);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 999999 !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
 }
 
 /* ========================================================================== */
@@ -884,19 +905,4 @@ button:active, .choice-chip:active, .action-circle:active {
   height: 22px;
   fill: #f3e5ab;
   stroke: #f3e5ab;
-}
-
-.god-mode-overlay {
-  position: fixed !important;
-  top: 0; left: 0; right: 0; bottom: 0;
-  width: 100vw;
-  height: 100vh;
-  background: radial-gradient(circle, rgba(255,215,0,0.35) 0%, rgba(15,10,28,0.95) 80%);
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
-  z-index: 4000;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
 }
