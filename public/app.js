@@ -218,84 +218,6 @@ function closeSelectionModal() {
   document.getElementById('dynamicSelectionModal')?.classList.add('hidden');
 }
 
-// ----------------- GOD MODE & TAROT KARTLARI MOTORU -----------------
-async function triggerGodModeTarot() {
-  const curtain = document.getElementById('godModeCurtain');
-  const tarotContainer = document.getElementById('tarotCardsContainer');
-  if (!curtain || !tarotContainer) return;
-
-  curtain.classList.remove('hidden');
-  tarotContainer.innerHTML = '<div style="color:#f3e5ab; font-size:12px;">🎴 4 adet ilahi tarot cam kartı karıştırılıyor...</div>';
-
-  try {
-    const res = await fetch(`/api/cards?userId=${window.currentUserId}&city=Hepsi&district=Hepsi&role=Hepsi&minAge=18&maxAge=99`);
-    const data = await res.json();
-    
-    setTimeout(() => {
-      tarotContainer.innerHTML = '';
-      if (!data.success || !data.cards.length) {
-        tarotContainer.innerHTML = '<div style="color:#ff4757; font-size:12px;">Eşleşecek kimse bulunamadı.</div>';
-        return;
-      }
-
-      const selectedCards = data.cards.slice(0, 4);
-      selectedCards.forEach((user, idx) => {
-        const card = document.createElement('div');
-        card.style.cssText = `
-          width: 75px; height: 110px; background: linear-gradient(135deg, rgba(255,215,0,0.2), rgba(155,89,182,0.2));
-          border: 1.5px solid #f3e5ab; border-radius: 12px; display: flex; flex-direction: column; align-items: center;
-          justify-content: center; cursor: pointer; position: relative; overflow: hidden; box-shadow: 0 0 15px rgba(255,215,0,0.4);
-        `;
-        card.innerHTML = `
-          <div style="font-size:16px;">🌷</div>
-          <img src="${user.photos?.[0] || ''}" style="width:40px; height:40px; border-radius:50%; object-fit:cover; border:1px solid #f3e5ab; margin:4px 0;" alt="">
-          <span style="font-size:10px; color:#fff; font-weight:700;">${user.nickname}</span>
-        `;
-        card.onclick = async () => {
-          await triggerCardSwipeWithUser('like', user.telegramId);
-          alert(`✨ Tarot Kartı Seçildi! ${user.nickname} ile anında eşleştiniz.`);
-          toggleGodMode(false);
-          switchTab('inbox');
-        };
-        tarotContainer.appendChild(card);
-      });
-    }, 800);
-  } catch (e) {
-    tarotContainer.innerHTML = '<div style="color:#ff4757;">Tarot motoru hatası.</div>';
-  }
-}
-
-function toggleGodMode(show) {
-  const curtain = document.getElementById('godModeCurtain');
-  if (show) triggerGodModeTarot();
-  else curtain?.classList.add('hidden');
-}
-
-async function triggerCardSwipeWithUser(action, toUserId) {
-  try {
-    await fetch('/api/like', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fromUserId: window.currentUserId, toUserId, action })
-    });
-  } catch (e) {}
-}
-
-async function saveGodModeAutomation() {
-  let day = document.getElementById('godModeDaySelect')?.value;
-  try {
-    const res = await fetch('/api/admin/set-godmode-day', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dayOfWeek: Number(day), adminId: window.currentUserId, adminName: window.currentUsername })
-    });
-    const data = await res.json();
-    alert(data.message || 'Kutsal Mod günü mühürlendi.');
-  } catch (e) {
-    alert('Gün mühürlenemedi.');
-  }
-}
-
 // ----------------- FİLTRE MOTORU -----------------
 async function openFilterModal() {
   if (windowIsAdmin) {
@@ -364,10 +286,8 @@ async function checkUserProfile() {
 
     if (windowIsAdmin) {
       document.getElementById('ytNavBtn')?.classList.remove('hidden');
-      document.getElementById('godModeToggleBtn')?.classList.remove('hidden');
     } else {
       document.getElementById('ytNavBtn')?.classList.add('hidden');
-      document.getElementById('godModeToggleBtn')?.classList.add('hidden');
     }
 
     if (data.exists && data.profile) {
@@ -921,15 +841,17 @@ async function reportCurrentPartner() {
   } catch (e) {}
 }
 
-// ----------------- YT YÖNETİM MASASI & DİKEY DOCK PORTLARI -----------------
+// ----------------- YT YÖNETİM MASASI & ÜST DOCK PORT GEÇİŞLERİ -----------------
 function switchYtPort(portName) {
   document.querySelectorAll('.yt-port-section').forEach(sec => sec.classList.remove('active'));
-  document.querySelectorAll('.yt-vertical-dock .yt-dock-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelectorAll('.yt-top-dock .yt-dock-tab').forEach(btn => btn.classList.remove('active'));
 
   const targetSec = document.getElementById(`ytPort${portName.charAt(0).toUpperCase() + portName.slice(1)}`);
   if (targetSec) targetSec.classList.add('active');
 
-  event.currentTarget.classList.add('active');
+  if (event && event.currentTarget) {
+    event.currentTarget.classList.add('active');
+  }
 }
 
 async function loadAdminDashboard() {
@@ -944,7 +866,7 @@ async function loadAdminDashboard() {
         document.getElementById('founderPricingSection')?.classList.remove('hidden');
       }
 
-      // 1. ÜYELER PORTU (Tüm Golden Match Kullanıcıları)
+      // 1. ÜYELER PORTU
       const uList = document.getElementById('adminUserCards');
       if (uList && data.users) {
         uList.innerHTML = '';
@@ -975,7 +897,7 @@ async function loadAdminDashboard() {
         });
       }
 
-      // 2. ADMİNLER (YT) PORTU (Hangi TG hesabının hangi Golden Match hesabını kurduğu)
+      // 2. ADMİNLER PORTU
       const adminListContainer = document.getElementById('adminListContainer');
       if (adminListContainer && data.adminsList) {
         adminListContainer.innerHTML = '';
@@ -994,7 +916,7 @@ async function loadAdminDashboard() {
         });
       }
 
-      // 3. PREMİUM & YILDIZ SATIN ALIMLARI PORTU
+      // 3. PREMİUM & YILDIZ PORTU
       const premList = document.getElementById('premiumSubscribersList');
       if (premList && data.users) {
         const premiumUsers = data.users.filter(u => u.isPremium);
