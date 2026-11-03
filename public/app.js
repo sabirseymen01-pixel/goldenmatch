@@ -291,7 +291,7 @@ async function checkUserProfile() {
       document.getElementById('ytNavBtn')?.classList.add('hidden');
     }
 
-    // İhlal / Uzaklaştırma (Ban / Timeout) Kontrolü
+    // Saat bazlı ihlal (Ban / Timeout) kontrolü
     if (data.profile?.bannedUntil && new Date(data.profile.bannedUntil) > new Date()) {
       showBanCurtain(data.profile.bannedUntil);
     }
@@ -312,17 +312,21 @@ async function checkUserProfile() {
   }
 }
 
-// ----------------- GHOST MODE (HAYALET MOD) FONKSİYONU -----------------
+// ----------------- GHOST MODE (HAYALET MOD) -----------------
 function toggleGhostMode() {
   isGhostModeActive = !isGhostModeActive;
   const btn = document.getElementById('ghostModeTriggerBtn');
   if (isGhostModeActive) {
-    btn.style.background = 'linear-gradient(135deg, #2ed573, #1e90ff)';
-    btn.innerText = 'Hayalet Mod Aktif (Sınırsız Premium)';
+    if (btn) {
+      btn.style.background = 'linear-gradient(135deg, #2ed573, #1e90ff)';
+      btn.innerText = 'Hayalet Mod Aktif (Sınırsız Premium)';
+    }
     alert('👻 Hayalet Mod etkinleştirildi! Artık tüm premium özellikleri ücretsiz test edebilirsiniz.');
   } else {
-    btn.style.background = 'linear-gradient(135deg, #8a2be2, #ff69b4)';
-    btn.innerText = 'Hayalet Modu Aktifleştir';
+    if (btn) {
+      btn.style.background = 'linear-gradient(135deg, #8a2be2, #ff69b4)';
+      btn.innerText = 'Hayalet Modu Aktifleştir';
+    }
     alert('Hayalet Mod kapatıldı.');
   }
 }
@@ -685,6 +689,7 @@ async function loadInboxChats() {
   }
 }
 
+// --- OPTİMİZE EDİLMİŞ ANINDA AÇILAN CHAT ODASI (0 Gecikme & DocumentFragment) ---
 async function openChatRoom(matchId, partner) {
   activeMatchId = matchId;
   activePartnerId = partner.telegramId;
@@ -694,19 +699,15 @@ async function openChatRoom(matchId, partner) {
   document.getElementById('chatPartnerName').innerText = partner.nickname;
   
   const stream = document.getElementById('messageStream');
-  if (stream) stream.innerHTML = '<div style="text-align:center; color:#777; font-size:11px; padding:10px;">Bağlantı kuruluyor...</div>';
+  if (stream) stream.innerHTML = '<div style="text-align:center; color:#777; font-size:11px; padding:10px;">Sohbet yükleniyor...</div>';
 
   if (socket) socket.emit('join_chat', matchId);
-  await fetchMessages();
-}
 
-async function fetchMessages() {
-  if (!activeMatchId) return;
   try {
-    const res = await fetch(`/api/chats/${activeMatchId}?userId=${window.currentUserId}`);
+    const res = await fetch(`/api/chats/${matchId}?userId=${window.currentUserId}`);
     const data = await res.json();
     if (data.success) {
-      renderMessages(data.messages);
+      renderMessagesOptimized(data.messages);
       const paravanStatus = document.getElementById('chatParavanStatus');
       const paravanBtn = document.getElementById('paravanBtn');
       if (data.bothRevealed) {
@@ -716,7 +717,9 @@ async function fetchMessages() {
         if (paravanStatus) paravanStatus.innerText = '🎭 Anonim Paravan Sohbeti';
       }
     }
-  } catch (e) {}
+  } catch (e) {
+    if (stream) stream.innerHTML = '<div style="text-align:center; color:#ff4757; font-size:11px;">Mesajlar yüklenemedi.</div>';
+  }
 }
 
 function appendIncomingMessage(msg) {
@@ -728,7 +731,7 @@ function appendIncomingMessage(msg) {
   
   let contentHtml = `<span>${msg.text || ''}</span>`;
   if (msg.type === 'image' && msg.mediaUrl) {
-    contentHtml = `<img src="${msg.mediaUrl}" alt="Fotoğraf">`;
+    contentHtml = `<img src="${msg.mediaUrl}" alt="Fotoğraf" loading="lazy">`;
   } else if (msg.type === 'audio' && msg.mediaUrl) {
     contentHtml = `<audio controls src="${msg.mediaUrl}" style="max-width:200px; height:32px;"></audio>`;
   }
@@ -739,12 +742,17 @@ function appendIncomingMessage(msg) {
   stream.scrollTop = stream.scrollHeight;
 }
 
-function renderMessages(messages) {
+function renderMessagesOptimized(messages) {
   const stream = document.getElementById('messageStream');
   if (!stream) return;
   stream.innerHTML = '';
-  const fragment = document.createDocumentFragment();
+  
+  if (!messages || !messages.length) {
+    stream.innerHTML = '<div style="text-align:center; color:#888; font-size:11px; padding:20px;">İlk mesajı fısıldayarak buzları eritin... ✨</div>';
+    return;
+  }
 
+  const fragment = document.createDocumentFragment();
   messages.forEach(msg => {
     const isMe = msg.senderId === window.currentUserId;
     const bubble = document.createElement('div');
@@ -754,12 +762,12 @@ function renderMessages(messages) {
     }
     bubble.onclick = () => {
       selectedMessageForReport = msg.text || msg.mediaUrl;
-      renderMessages(messages);
+      renderMessagesOptimized(messages);
     };
 
     let contentHtml = `<span>${msg.text || ''}</span>`;
     if (msg.type === 'image' && msg.mediaUrl) {
-      contentHtml = `<img src="${msg.mediaUrl}" alt="Fotoğraf">`;
+      contentHtml = `<img src="${msg.mediaUrl}" alt="Fotoğraf" loading="lazy">`;
     } else if (msg.type === 'audio' && msg.mediaUrl) {
       contentHtml = `<audio controls src="${msg.mediaUrl}" style="max-width:200px; height:32px;"></audio>`;
     }
@@ -902,47 +910,54 @@ function switchYtPort(portName) {
   }
 }
 
+// --- OPTİMİZE EDİLMİŞ 0 GECİKME YÜKLEME (YT PANEL) ---
 async function loadAdminDashboard() {
+  const uList = document.getElementById('adminUserCards');
+  if (uList) uList.innerHTML = '<div class="card-loader">Yönetim verileri taranıyor...</div>';
+
   try {
     const res = await fetch(`/api/admin/dashboard-data?userId=${window.currentUserId}&username=${window.currentUsername}`);
     const data = await res.json();
     if (data.success) {
-      document.getElementById('ytStatTotal').innerText = data.stats.total;
-      document.getElementById('ytStatActive').innerText = data.stats.active;
+      document.getElementById('ytStatTotal').innerText = data.stats.total || 0;
+      document.getElementById('ytStatActive').innerText = data.stats.active || 0;
 
       if (data.isFounder) {
         document.getElementById('founderPricingSection')?.classList.remove('hidden');
       }
 
-      // 1. ÜYELER PORTU (Saat Bazlı İhlal / Uzaklaştırma Ayarlama)
-      const uList = document.getElementById('adminUserCards');
+      // 1. ÜYELER PORTU (Fragment Optimizasyonu)
       if (uList && data.users) {
         uList.innerHTML = '';
         if (!data.users.length) {
           uList.innerHTML = '<div style="font-size:11px; color:#888;">Kayıtlı üye bulunmuyor.</div>';
+        } else {
+          const fragment = document.createDocumentFragment();
+          data.users.forEach(u => {
+            const tgTag = u.username ? `@${u.username}` : `ID:${u.telegramId}`;
+            const card = document.createElement('div');
+            card.className = 'admin-card-box';
+            card.innerHTML = `
+              <div style="margin-bottom:6px;">
+                <strong>${u.nickname}</strong> (${u.role}) - <span style="color:#f3e5ab;">${u.city}</span><br>
+                <span style="font-size:11px; color:#aaa;">Telegram: <strong style="color:#fff;">${tgTag}</strong> (ID: ${u.telegramId})</span>
+              </div>
+              <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                <button onclick="setMemberTimeout('${u.telegramId}')" style="background:#ff4757; color:#fff; border:none; padding:5px 8px; border-radius:8px; font-weight:700; font-size:11px; cursor:pointer;">⏱️ İhlal / Süre Ver (Saat)</button>
+                <button onclick="setPremiumWeeks('${u.telegramId}')" style="background:#f3e5ab; color:#000; border:none; padding:5px 8px; border-radius:8px; font-weight:700; font-size:11px; cursor:pointer;">Prem. Ver</button>
+              </div>
+            `;
+            fragment.appendChild(card);
+          });
+          uList.appendChild(fragment);
         }
-        data.users.forEach(u => {
-          const tgTag = u.username ? `@${u.username}` : `ID:${u.telegramId}`;
-          const card = document.createElement('div');
-          card.className = 'admin-card-box';
-          card.innerHTML = `
-            <div style="margin-bottom:6px;">
-              <strong>${u.nickname}</strong> (${u.role}) - <span style="color:#f3e5ab;">${u.city}</span><br>
-              <span style="font-size:11px; color:#aaa;">Telegram: <strong style="color:#fff;">${tgTag}</strong> (ID: ${u.telegramId})</span>
-            </div>
-            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-              <button onclick="setMemberTimeout('${u.telegramId}')" style="background:#ff4757; color:#fff; border:none; padding:5px 8px; border-radius:8px; font-weight:700; font-size:11px; cursor:pointer;">⏱️ İhlal / Süre Ver (Saat)</button>
-              <button onclick="setPremiumWeeks('${u.telegramId}')" style="background:#f3e5ab; color:#000; border:none; padding:5px 8px; border-radius:8px; font-weight:700; font-size:11px; cursor:pointer;">Prem. Ver</button>
-            </div>
-          `;
-          uList.appendChild(card);
-        });
       }
 
-      // 2. ADMİNLER PORTU (Admin Ekle / Çıkar)
+      // 2. ADMİNLER PORTU
       const adminListContainer = document.getElementById('adminListContainer');
       if (adminListContainer && data.adminsList) {
         adminListContainer.innerHTML = '';
+        const adminFragment = document.createDocumentFragment();
         data.adminsList.forEach(a => {
           const tgTag = a.username ? `@${a.username}` : `ID:${a.telegramId}`;
           const card = document.createElement('div');
@@ -954,8 +969,9 @@ async function loadAdminDashboard() {
             </div>
             ${windowIsFounder && String(a.telegramId) !== window.currentUserId ? `<button onclick="toggleAdmin('${a.telegramId}')" style="background:#ff4757; color:#fff; border:none; padding:5px 8px; border-radius:8px; font-weight:700; font-size:11px; cursor:pointer;">YT Yetkisini Al</button>` : ''}
           `;
-          adminListContainer.appendChild(card);
+          adminFragment.appendChild(card);
         });
+        adminListContainer.appendChild(adminFragment);
       }
 
       // 3. PREMİUM & YILDIZ PORTU
@@ -966,12 +982,14 @@ async function loadAdminDashboard() {
           premList.innerHTML = 'Aktif premium aboneliği olan kullanıcı bulunmuyor.';
         } else {
           premList.innerHTML = '';
+          const premFragment = document.createDocumentFragment();
           premiumUsers.forEach(u => {
             const div = document.createElement('div');
             div.style.cssText = 'padding:6px 0; border-bottom:1px solid rgba(255,215,0,0.1); font-size:12px;';
             div.innerHTML = `⭐ <strong>${u.nickname}</strong> (ID: ${u.telegramId}) - Bitiş: <span style="color:#2ed573;">${u.premiumUntil ? new Date(u.premiumUntil).toLocaleDateString('tr-TR') : 'Sınırsız'}</span>`;
-            premList.appendChild(div);
+            premFragment.appendChild(div);
           });
+          premList.appendChild(premFragment);
         }
       }
 
@@ -982,20 +1000,24 @@ async function loadAdminDashboard() {
         if (data.reports.length === 0) {
           repContainer.innerHTML = '<div style="font-size:11px; color:#888;">Bildirilen şikayet bulunmuyor.</div>';
         } else {
+          const repFragment = document.createDocumentFragment();
           data.reports.forEach(r => {
             const card = document.createElement('div');
             card.style.cssText = 'background:rgba(255,71,87,0.1); border:1.5px solid rgba(255,71,87,0.3); padding:10px; border-radius:14px; font-size:11px; margin-bottom:6px; color:#fff;';
             card.innerHTML = `<strong>Şikayet Edilen:</strong> <span style="color:#ff4757;">${r.targetNickname}</span> | <strong>Eden:</strong> ${r.reporterNickname}<br><strong>Sebep:</strong> ${r.reason} (${r.date})`;
-            repContainer.appendChild(card);
+            repFragment.appendChild(card);
           });
+          repContainer.appendChild(repFragment);
         }
       }
 
-      // 5. SİSTEM LOGLARI PORTU
+      // 5. SİSTEM LOGLARI PORTU (Aşırı yükü önlemek için son 50 log)
       const logsList = document.getElementById('adminLogsList');
       if (logsList && data.logs) {
         logsList.innerHTML = '';
-        data.logs.forEach(l => {
+        const recentLogs = data.logs.slice(-50).reverse();
+        const logFragment = document.createDocumentFragment();
+        recentLogs.forEach(l => {
           const div = document.createElement('div');
           div.style.cssText = 'background:rgba(0,0,0,0.3); padding:8px; border-radius:10px; margin-bottom:6px; font-size:11px;';
           const timeStr = new Date(l.timestamp).toLocaleString('tr-TR');
@@ -1004,11 +1026,14 @@ async function loadAdminDashboard() {
             matchDetail = `<br><span style="color:#ff69b4;">Target Üye:</span> ${l.targetAccountName || 'Bilinmeyen'} (ID: ${l.targetUserTgId || 'yok'})`;
           }
           div.innerHTML = `<span style="color:#f3e5ab;">[${timeStr}]</span> <strong>Admin:</strong> ${l.adminName} <br><strong>İşlem:</strong> <span style="color:#fff;">${l.action}</span> -> ${l.targetInfo}${matchDetail}`;
-          logsList.appendChild(div);
+          logFragment.appendChild(div);
         });
+        logsList.appendChild(logFragment);
       }
     }
-  } catch (e) {}
+  } catch (e) {
+    if (uList) uList.innerHTML = '<div style="color:#ff4757; font-size:11px;">Yönetim verileri yüklenemedi.</div>';
+  }
 }
 
 // Saat bazlı ihlal / uzaklaştırma verme
