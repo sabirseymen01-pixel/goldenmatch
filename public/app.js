@@ -921,7 +921,17 @@ async function reportCurrentPartner() {
   } catch (e) {}
 }
 
-// ----------------- YT YÖNETİM MASASI -----------------
+// ----------------- YT YÖNETİM MASASI & DİKEY DOCK PORTLARI -----------------
+function switchYtPort(portName) {
+  document.querySelectorAll('.yt-port-section').forEach(sec => sec.classList.remove('active'));
+  document.querySelectorAll('.yt-vertical-dock .yt-dock-btn').forEach(btn => btn.classList.remove('active'));
+
+  const targetSec = document.getElementById(`ytPort${portName.charAt(0).toUpperCase() + portName.slice(1)}`);
+  if (targetSec) targetSec.classList.add('active');
+
+  event.currentTarget.classList.add('active');
+}
+
 async function loadAdminDashboard() {
   try {
     const res = await fetch(`/api/admin/dashboard-data?userId=${window.currentUserId}&username=${window.currentUsername}`);
@@ -934,85 +944,103 @@ async function loadAdminDashboard() {
         document.getElementById('founderPricingSection')?.classList.remove('hidden');
       }
 
-      const repContainer = document.getElementById('adminReportsContainer');
-      if (repContainer && data.reports) {
-        repContainer.innerHTML = '';
-        if (data.reports.length > 0) {
-          const heading = document.createElement('h3');
-          heading.style.cssText = 'color:#ff4757; font-size:13px; margin-bottom:6px;';
-          heading.innerText = `🚨 Bildirilen Şikayetler (${data.reports.length})`;
-          repContainer.appendChild(heading);
-
-          data.reports.forEach(r => {
-            const card = document.createElement('div');
-            card.style.cssText = 'background:rgba(255,71,87,0.1); border:1px solid rgba(255,71,87,0.3); padding:8px; border-radius:10px; font-size:11px; margin-bottom:4px; color:#fff;';
-            card.innerHTML = `<strong>Şikayet Edilen:</strong> <span style="color:#ff4757;">${r.targetNickname}</span> | <strong>Eden:</strong> ${r.reporterNickname}<br><strong>Sebep:</strong> ${r.reason} (${r.date})`;
-            repContainer.appendChild(card);
-          });
-        }
-      }
-
-      const logsList = document.getElementById('adminLogsList');
-      if (logsList && data.logs) {
-        logsList.innerHTML = '';
-        data.logs.forEach(l => {
-          const div = document.createElement('div');
-          div.style.cssText = 'background:rgba(0,0,0,0.2); padding:6px; border-radius:8px; margin-bottom:4px; font-size:11px;';
-          const timeStr = new Date(l.timestamp).toLocaleString('tr-TR');
-          let matchDetail = '';
-          if (l.targetAccountName || l.targetUserTgId) {
-            matchDetail = `<br><span style="color:#ff69b4;">Target Üye:</span> ${l.targetAccountName || 'Bilinmeyen'} (@${l.targetUsername || 'yok'}, ID: ${l.targetUserTgId || 'yok'})`;
-          }
-          div.innerHTML = `<span style="color:#f3e5ab;">[${timeStr}]</span> <strong>Admin:</strong> ${l.adminName} <br><strong>İşlem:</strong> <span style="color:#fff;">${l.action}</span> -> ${l.targetInfo}${matchDetail}`;
-          logsList.appendChild(div);
-        });
-      }
-
+      // 1. ÜYELER PORTU (Tüm Golden Match Kullanıcıları)
       const uList = document.getElementById('adminUserCards');
       if (uList && data.users) {
-        uList.innerHTML = '<h3 style="color:#f3e5ab; font-size:13px; margin-bottom:6px;">👥 Üyeler Portu</h3>';
+        uList.innerHTML = '';
         if (!data.users.length) {
-          uList.innerHTML += '<div style="font-size:11px; color:#888;">Kayıtlı normal üye bulunmuyor.</div>';
+          uList.innerHTML = '<div style="font-size:11px; color:#888;">Kayıtlı üye bulunmuyor.</div>';
         }
         data.users.forEach(u => {
           const tgTag = u.username ? `@${u.username}` : `ID:${u.telegramId}`;
           const card = document.createElement('div');
-          card.style.cssText = 'background:rgba(255,255,255,0.04); border:1px solid rgba(255,215,0,0.2); padding:10px; border-radius:12px; font-size:12px; margin-bottom:6px;';
+          card.className = 'admin-card-box';
           card.innerHTML = `
             <div style="margin-bottom:6px;">
               <strong>${u.nickname}</strong> (${u.role}) - <span style="color:#f3e5ab;">${u.city}</span><br>
-              <span style="font-size:11px; color:#aaa;">Telegram: <strong style="color:#fff;">${tgTag}</strong> | Kısıt Seviyesi: <strong style="color:#ff4757;">${u.restrictionLevel || 0}</strong></span>
+              <span style="font-size:11px; color:#aaa;">Telegram: <strong style="color:#fff;">${tgTag}</strong> (ID: ${u.telegramId}) | Kısıt Seviyesi: <strong style="color:#ff4757;">${u.restrictionLevel || 0}</strong></span>
             </div>
             <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-              <select onchange="changeRestriction('${u.telegramId}', this.value)" style="background:#13121d; color:#fff; border:1px solid #f3e5ab; padding:4px; border-radius:6px; font-size:11px;">
-                <option value="0" ${u.restrictionLevel===0?'selected':''}>Seviye 0 (Serbest)</option>
-                <option value="1" ${u.restrictionLevel===1?'selected':''}>Seviye 1 (Uyarı)</option>
-                <option value="2" ${u.restrictionLevel===2?'selected':''}>Seviye 2 (Geçici Kısıt)</option>
-                <option value="3" ${u.restrictionLevel===3?'selected':''}>Seviye 3 (Tam Ban)</option>
+              <select onchange="changeRestriction('${u.telegramId}', this.value)" style="background:#13121d; color:#fff; border:1px solid #f3e5ab; padding:4px; border-radius:8px; font-size:11px;">
+                <option value="0" ${u.restrictionLevel===0?'selected':''}>Serbest</option>
+                <option value="1" ${u.restrictionLevel===1?'selected':''}>Uyarı</option>
+                <option value="2" ${u.restrictionLevel===2?'selected':''}>Geçici Kısıt</option>
+                <option value="3" ${u.restrictionLevel===3?'selected':''}>Tam Ban</option>
               </select>
-              <button onclick="setPremiumWeeks('${u.telegramId}')" style="background:#f3e5ab; color:#000; border:none; padding:5px 8px; border-radius:6px; font-weight:700; font-size:11px; cursor:pointer;">Prem. Ver (Hafta)</button>
-              ${windowIsFounder ? `<button onclick="toggleAdmin('${u.telegramId}')" style="background:#3c6382; color:#fff; border:none; padding:5px 8px; border-radius:6px; font-weight:700; font-size:11px; cursor:pointer;">YT Yap</button>` : ''}
+              <button onclick="setPremiumWeeks('${u.telegramId}')" style="background:#f3e5ab; color:#000; border:none; padding:5px 8px; border-radius:8px; font-weight:700; font-size:11px; cursor:pointer;">Prem. Ver</button>
+              ${windowIsFounder ? `<button onclick="toggleAdmin('${u.telegramId}')" style="background:#3c6382; color:#fff; border:none; padding:5px 8px; border-radius:8px; font-weight:700; font-size:11px; cursor:pointer;">YT Yap</button>` : ''}
             </div>
           `;
           uList.appendChild(card);
         });
       }
 
+      // 2. ADMİNLER (YT) PORTU (Hangi TG hesabının hangi Golden Match hesabını kurduğu)
       const adminListContainer = document.getElementById('adminListContainer');
       if (adminListContainer && data.adminsList) {
-        adminListContainer.innerHTML = '<h3 style="color:#2ed573; font-size:13px; margin-bottom:6px; margin-top:14px;">👑 Adminler (YT) Portu</h3>';
+        adminListContainer.innerHTML = '';
         data.adminsList.forEach(a => {
           const tgTag = a.username ? `@${a.username}` : `ID:${a.telegramId}`;
           const card = document.createElement('div');
-          card.style.cssText = 'background:rgba(46,213,115,0.05); border:1px solid rgba(46,213,115,0.3); padding:10px; border-radius:12px; font-size:12px; margin-bottom:6px;';
+          card.className = 'admin-card-box';
           card.innerHTML = `
             <div style="margin-bottom:6px;">
               <strong>${a.nickname || 'Admin'}</strong> - <span style="color:#2ed573;">[Yönetici]</span><br>
-              <span style="font-size:11px; color:#aaa;">Telegram: <strong style="color:#fff;">${tgTag}</strong></span>
+              <span style="font-size:11px; color:#aaa;">Telegram Hesap: <strong style="color:#fff;">${tgTag}</strong> (TG ID: ${a.telegramId})</span>
             </div>
-            ${windowIsFounder && String(a.telegramId) !== window.currentUserId ? `<button onclick="toggleAdmin('${a.telegramId}')" style="background:#ff4757; color:#fff; border:none; padding:5px 8px; border-radius:6px; font-weight:700; font-size:11px; cursor:pointer;">YT Yetkisini Al</button>` : ''}
+            ${windowIsFounder && String(a.telegramId) !== window.currentUserId ? `<button onclick="toggleAdmin('${a.telegramId}')" style="background:#ff4757; color:#fff; border:none; padding:5px 8px; border-radius:8px; font-weight:700; font-size:11px; cursor:pointer;">YT Yetkisini Al</button>` : ''}
           `;
           adminListContainer.appendChild(card);
+        });
+      }
+
+      // 3. PREMİUM & YILDIZ SATIN ALIMLARI PORTU
+      const premList = document.getElementById('premiumSubscribersList');
+      if (premList && data.users) {
+        const premiumUsers = data.users.filter(u => u.isPremium);
+        if (!premiumUsers.length) {
+          premList.innerHTML = 'Aktif premium aboneliği olan kullanıcı bulunmuyor.';
+        } else {
+          premList.innerHTML = '';
+          premiumUsers.forEach(u => {
+            const div = document.createElement('div');
+            div.style.cssText = 'padding:6px 0; border-bottom:1px solid rgba(255,215,0,0.1); font-size:12px;';
+            div.innerHTML = `⭐ <strong>${u.nickname}</strong> (ID: ${u.telegramId}) - Bitiş: <span style="color:#2ed573;">${u.premiumUntil ? new Date(u.premiumUntil).toLocaleDateString('tr-TR') : 'Sınırsız'}</span>`;
+            premList.appendChild(div);
+          });
+        }
+      }
+
+      // 4. ŞİKAYETLER PORTU
+      const repContainer = document.getElementById('adminReportsContainer');
+      if (repContainer && data.reports) {
+        repContainer.innerHTML = '';
+        if (data.reports.length === 0) {
+          repContainer.innerHTML = '<div style="font-size:11px; color:#888;">Bildirilen şikayet bulunmuyor.</div>';
+        } else {
+          data.reports.forEach(r => {
+            const card = document.createElement('div');
+            card.style.cssText = 'background:rgba(255,71,87,0.1); border:1.5px solid rgba(255,71,87,0.3); padding:10px; border-radius:14px; font-size:11px; margin-bottom:6px; color:#fff;';
+            card.innerHTML = `<strong>Şikayet Edilen:</strong> <span style="color:#ff4757;">${r.targetNickname}</span> | <strong>Eden:</strong> ${r.reporterNickname}<br><strong>Sebep:</strong> ${r.reason} (${r.date})`;
+            repContainer.appendChild(card);
+          });
+        }
+      }
+
+      // 5. GENEL SİSTEM LOGLARI PORTU
+      const logsList = document.getElementById('adminLogsList');
+      if (logsList && data.logs) {
+        logsList.innerHTML = '';
+        data.logs.forEach(l => {
+          const div = document.createElement('div');
+          div.style.cssText = 'background:rgba(0,0,0,0.3); padding:8px; border-radius:10px; margin-bottom:6px; font-size:11px;';
+          const timeStr = new Date(l.timestamp).toLocaleString('tr-TR');
+          let matchDetail = '';
+          if (l.targetAccountName || l.targetUserTgId) {
+            matchDetail = `<br><span style="color:#ff69b4;">Target Üye:</span> ${l.targetAccountName || 'Bilinmeyen'} (ID: ${l.targetUserTgId || 'yok'})`;
+          }
+          div.innerHTML = `<span style="color:#f3e5ab;">[${timeStr}]</span> <strong>Admin:</strong> ${l.adminName} <br><strong>İşlem:</strong> <span style="color:#fff;">${l.action}</span> -> ${l.targetInfo}${matchDetail}`;
+          logsList.appendChild(div);
         });
       }
     }
