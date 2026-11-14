@@ -6,8 +6,14 @@ const mongoose = require('mongoose');
 const rateLimit = require('express-rate-limit');
 const { Telegraf, Markup } = require('telegraf');
 const http = require('http');
+const crypto = require('crypto');
+const EventEmitter = require('events');
 const { LOCATIONS_DATA, calculateExactDistance } = require('./cities');
 const { verifyImageSafety } = require('./nsfwCheck');
+
+// --- SİNİR SİSTEMİ (EVENT BUS) ---
+class BotEventBus extends EventEmitter {}
+const botBus = new BotEventBus();
 
 let Server;
 try {
@@ -20,7 +26,7 @@ const app = express();
 const server = http.createServer(app);
 
 app.set('trust proxy', 1);
-app.get('/health', (req, res) => res.status(200).send('GOLDENMATCH_OK'));
+app.get('/health', (req, res) => res.status(200).send('GOLDEN_ENTERPRISE_OK'));
 
 let io = null;
 if (Server) {
@@ -30,11 +36,15 @@ if (Server) {
   });
 }
 
-// --- SIFIR GECİKME GERÇEK ZAMANLI MESAJ SOKETLERİ ---
+// --- REAL-TIME SOCKET.IO KATMANI ---
 if (io) {
   io.on('connection', (socket) => {
     socket.on('join_chat', (matchId) => {
       if (matchId) socket.join(matchId);
+    });
+
+    socket.on('join_war_room', (roomKey) => {
+      if (roomKey) socket.join(`war_room_${roomKey}`);
     });
 
     socket.on('send_message', (data) => {
@@ -68,13 +78,16 @@ app.use(express.static(path.join(__dirname, 'public'), {
   }
 }));
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://breskavica:05527330103Ss@cluster0.z1oe54g.mongodb.net/goldenmatch?retryWrites=true&w=majority&appName=Cluster0';
+const MONGO_URI = process.env.MONGO_URI;
 
-mongoose.connect(MONGO_URI)
-  .then(() => console.log('✅ MongoDB Atlas & Yüksek Performans İndeksleri Aktif!'))
+mongoose.connect(MONGO_URI, {
+  maxPoolSize: 25,
+  minPoolSize: 5
+})
+  .then(() => console.log('✅ MongoDB Atlas & Kurumsal Bağlantı Havuzu Aktif!'))
   .catch(err => console.error('❌ MongoDB Bağlantı Hatası:', err));
 
-// --- ŞEMALAR VE İNDEKSLEME ---
+// ================= MONGODB ENTERPRISE ŞEMALARI =================
 const UserSchema = new mongoose.Schema({
   telegramId: { type: String, required: true, unique: true, index: true },
   username: { type: String, index: true },
@@ -93,7 +106,7 @@ const UserSchema = new mongoose.Schema({
   isVerified: { type: Boolean, default: false },
   restrictionLevel: { type: Number, default: 0 },
   isBanned: { type: Boolean, default: false },
-  bannedUntil: { type: Date, default: null }, // 🌟 Saat bazlı ihlal (Timeout) bitiş süresi
+  bannedUntil: { type: Date, default: null },
   isDeactivated: { type: Boolean, default: false },
   isPremium: { type: Boolean, default: false },
   premiumExpiresAt: { type: Date, default: null },
@@ -128,6 +141,26 @@ const MatchSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now, index: true }
 });
 
+// Çoklu Grup Konfigürasyonu ve Granüler Yetki Şeması (Per-Group RBAC)
+const GroupConfigSchema = new mongoose.Schema({
+  groupId: { type: String, required: true, unique: true, index: true }, // -100...
+  groupName: { type: String, required: true },
+  groupPhotoUrl: { type: String, default: '' },
+  settings: {
+    welcomeMessage: { type: String, default: "Aramıza hoş geldin! 🎉" },
+    buttonText: { type: String, default: "Mini App'e Git" },
+    buttonLink: { type: String, default: "https://t.me/GoldenMatchBot" },
+    isLocked: { type: Boolean, default: false }
+  },
+  staffPermissions: [{
+    adminId: String,
+    adminUsername: String,
+    canBan: { type: Boolean, default: false },
+    canMute: { type: Boolean, default: false },
+    canLock: { type: Boolean, default: false }
+  }]
+}, { timestamps: true });
+
 const SystemLogSchema = new mongoose.Schema({
   id: String,
   adminId: String,
@@ -138,6 +171,7 @@ const SystemLogSchema = new mongoose.Schema({
   targetUserTgId: String,
   targetUsername: String,
   targetAccountName: String,
+  groupId: { type: String, default: 'global' },
   timestamp: { type: Date, default: Date.now }
 });
 
@@ -164,6 +198,7 @@ const AdminSchema = new mongoose.Schema({
 const UserModel = mongoose.model('User', UserSchema);
 const LikeModel = mongoose.model('Like', LikeSchema);
 const MatchModel = mongoose.model('Match', MatchSchema);
+const GroupConfig = mongoose.model('GroupConfig', GroupConfigSchema);
 const SystemLogModel = mongoose.model('SystemLog', SystemLogSchema);
 const ReportModel = mongoose.model('Report', ReportSchema);
 const PricingConfigModel = mongoose.model('PricingConfig', PricingConfigSchema);
@@ -190,7 +225,7 @@ function isFounder(telegramId, username) {
   return tid === FOUNDER_ID || uname === FOUNDER_USERNAME;
 }
 
-async function logSystemAction(adminId, adminName, action, targetInfo, matchData = {}) {
+async function logSystemAction(adminId, adminName, action, targetInfo, matchData = {}, groupId = 'global') {
   try {
     await SystemLogModel.create({
       id: Date.now().toString(),
@@ -201,25 +236,62 @@ async function logSystemAction(adminId, adminName, action, targetInfo, matchData
       targetMatchId: matchData.matchId || '',
       targetUserTgId: matchData.telegramId || '',
       targetUsername: matchData.username || '',
-      targetAccountName: matchData.nickname || ''
+      targetAccountName: matchData.nickname || '',
+      groupId
     });
   } catch (e) {}
 }
 
-const BOT_TOKEN = process.env.BOT_TOKEN;
-const WEBAPP_URL = 'https://goldenmatch.onrender.com';
-const bot = BOT_TOKEN ? new Telegraf(BOT_TOKEN) : null;
+// ================= GÜVENLİK & YETKİ MİMARİSİ =================
+function verifyTelegramInitData(req, res, next) {
+  const initData = req.headers['x-telegram-init-data'];
+  const botToken = process.env.GUARDIAN_BOT_TOKEN || process.env.BOT_TOKEN;
 
-if (bot) {
-  bot.start((ctx) => {
+  if (!initData) {
+    return res.status(401).json({ success: false, message: 'Kimlik doğrulama verisi eksik.' });
+  }
+
+  try {
+    const urlParams = new URLSearchParams(initData);
+    const hash = urlParams.get('hash');
+    urlParams.delete('hash');
+
+    const paramsList = Array.from(urlParams.entries()).sort(([a], [b]) => a.localeCompare(b));
+    const dataCheckString = paramsList.map(([key, val]) => `${key}=${val}`).join('\n');
+
+    const secretKey = crypto.createHmac('sha256', 'WebAppData').update(botToken);
+    const calculatedHash = crypto.createHmac('sha256', secretKey.digest()).update(dataCheckString).digest('hex');
+
+    if (calculatedHash === hash) {
+      const userParam = urlParams.get('user');
+      req.user = userParam ? JSON.parse(userParam) : null;
+      return next();
+    }
+  } catch (e) {
+    return res.status(403).json({ success: false, message: 'Geçersiz imza imzası.' });
+  }
+
+  return res.status(403).json({ success: false, message: 'Yetkilendirme başarısız.' });
+}
+
+// ================= ÇİFT BOT ENTEGRASYONU (KATYA & GUARDIAN) =================
+const KATYA_TOKEN = process.env.KATYA_BOT_TOKEN || process.env.BOT_TOKEN;
+const GUARDIAN_TOKEN = process.env.GUARDIAN_BOT_TOKEN || process.env.BOT_TOKEN;
+
+const WEBAPP_URL = 'https://goldenmatch.onrender.com';
+const katyaBot = KATYA_TOKEN ? new Telegraf(KATYA_TOKEN) : null;
+const guardianBot = GUARDIAN_TOKEN ? new Telegraf(GUARDIAN_TOKEN) : null;
+
+if (katyaBot) {
+  katyaBot.start((ctx) => {
     ctx.reply(
       `Merhaba ${ctx.from.first_name}! ✨\n\nGoldenMatch meclisine hoş geldin. Keşfe başlamak için dokun:`,
       Markup.inlineKeyboard([Markup.button.webApp("🔥 GoldenMatch'i Aç", WEBAPP_URL)])
     );
   });
 
-  bot.on('pre_checkout_query', (ctx) => ctx.answerPreCheckoutQuery(true));
-  bot.on('successful_payment', async (ctx) => {
+  katyaBot.on('pre_checkout_query', (ctx) => ctx.answerPreCheckoutQuery(true));
+  katyaBot.on('successful_payment', async (ctx) => {
     const payload = ctx.message.successful_payment.invoice_payload;
     const userId = ctx.from.id.toString();
     
@@ -238,10 +310,54 @@ if (bot) {
     }
   });
 
-  bot.launch({ dropPendingUpdates: true }).catch(err => {
-    if (err.code !== 409) console.warn('Bot uyarısı:', err.message);
+  katyaBot.launch({ dropPendingUpdates: true }).catch(err => {
+    if (err.code !== 409) console.warn('Katya Bot uyarısı:', err.message);
   });
 }
+
+if (guardianBot) {
+  // Otomatik Grup Keşfi (Auto-Discovery & Tenant Registration)
+  guardianBot.on('my_chat_member', async (ctx) => {
+    const status = ctx.chatMember.new_chat_member.status;
+    if (status === 'member' || status === 'administrator') {
+      const chat = ctx.chat;
+      try {
+        let photoUrl = '';
+        try {
+          const chatPhoto = await ctx.telegram.getChat(chat.id);
+          if (chatPhoto.photo) {
+            const fileId = chatPhoto.photo.small_file_id;
+            const fileLink = await ctx.telegram.getFileLink(fileId);
+            photoUrl = fileLink.href;
+          }
+        } catch (e) {}
+
+        await GroupConfig.findOneAndUpdate(
+          { groupId: String(chat.id) },
+          { groupName: chat.title || 'Golden Group', groupPhotoUrl: photoUrl },
+          { upsert: true, new: true }
+        );
+        console.log(`✨ Yeni Grup Keşfedildi ve Port Açıldı: ${chat.title} (${chat.id})`);
+      } catch (e) { console.error("Grup kayıt hatası:", e); }
+    }
+  });
+
+  guardianBot.launch({ dropPendingUpdates: true }).catch(err => {
+    if (err.code !== 409) console.warn('Guardian Bot uyarısı:', err.message);
+  });
+}
+
+// Sinir Sistemi Olay Dinleyicisi (Botlar Arası Köprü)
+botBus.on('securityAlert', async (alertData) => {
+  if (FOUNDER_ID && katyaBot) {
+    try {
+      await katyaBot.telegram.sendMessage(
+        FOUNDER_ID, 
+        `🚨 [SİPER UYARISI / İÇ TEHDİT]\nGrup ID: ${alertData.groupId}\nŞüpheli İşlem: ${alertData.reason}`
+      );
+    } catch (e) {}
+  }
+});
 
 // ================= API ROTALARI =================
 app.get('/api/locations', (req, res) => {
@@ -265,7 +381,6 @@ app.get('/api/profile/:id', async (req, res) => {
       await UserModel.updateOne({ telegramId: tid }, { isPremium: false, premiumExpiresAt: null });
       profile.isPremium = false;
     }
-    // İhlal süresi bittiyse otomatik temizle
     if (profile.bannedUntil && new Date() > new Date(profile.bannedUntil)) {
       await UserModel.updateOne({ telegramId: tid }, { bannedUntil: null, restrictionLevel: 0, isBanned: false });
       profile.bannedUntil = null;
@@ -319,7 +434,7 @@ app.post('/api/profile', async (req, res) => {
 
 app.post('/api/billing/create-invoice', async (req, res) => {
   const { userId, productType } = req.body;
-  if (!bot) return res.status(400).json({ success: false, message: 'Bot aktif değil.' });
+  if (!katyaBot) return res.status(400).json({ success: false, message: 'Bot aktif değil.' });
 
   try {
     let config = await PricingConfigModel.findOne({ key: productType });
@@ -327,7 +442,7 @@ app.post('/api/billing/create-invoice', async (req, res) => {
     let title = productType === 'premium_weekly' ? '🌟 GoldenMatch Haftalık Premium' : '✨ Ek 3 Filtre Hakkı';
     let payload = productType === 'premium_weekly' ? 'golden_match_premium_weekly' : 'golden_match_filters';
 
-    const invoiceLink = await bot.telegram.createInvoiceLink({
+    const invoiceLink = await katyaBot.telegram.createInvoiceLink({
       title,
       description: 'GoldenMatch ilahi ayrıcalıklar paketi.',
       payload,
@@ -404,7 +519,6 @@ app.post('/api/like', async (req, res) => {
   res.json({ success: true, isMatch: false });
 });
 
-// --- OPTİMİZE EDİLMİŞ CHATS ROUTE ---
 app.get('/api/chats', async (req, res) => {
   try {
     const userId = String(req.query.userId);
@@ -451,7 +565,6 @@ app.get('/api/chats', async (req, res) => {
   }
 });
 
-// 🌟 HIZLANDIRILMIŞ VE LİMİTLENMİŞ MESAJ ENDPOINT'İ (Geç Yüklenme Çözümü)
 app.get('/api/chats/:matchId', async (req, res) => {
   const match = await MatchModel.findOne({ matchId: req.params.matchId });
   const userId = String(req.query.userId);
@@ -469,8 +582,6 @@ app.get('/api/chats/:matchId', async (req, res) => {
   const partnerId = match.user1 === userId ? match.user2 : match.user1;
   const partner = await UserModel.findOne({ telegramId: partnerId }).lean();
   const bothRevealed = match.paravan1 && match.paravan2;
-
-  // Sadece son 50 mesajı alarak yükü ve yüklenme süresini minimize ediyoruz
   const limitedMessages = match.messages.slice(-50);
 
   res.json({
@@ -537,7 +648,7 @@ app.post('/api/report', async (req, res) => {
   res.json({ success: true, message: 'Şikayet iletildi ve YT paneline kaydedildi.' });
 });
 
-// ================= YÖNETİCİ PANELİ & LOG API =================
+// ================= YÖNETİCİ PANELİ & WAR ROOM API =================
 async function checkAdminAuth(req, res, next) {
   const requesterId = req.headers['x-user-id'] || req.query.userId;
   const requesterUsername = req.headers['x-user-name'] || req.query.username;
@@ -551,6 +662,7 @@ app.get('/api/admin/dashboard-data', checkAdminAuth, async (req, res) => {
   const reportsList = await ReportModel.find().sort({ _id: -1 }).lean();
   const systemLogs = await SystemLogModel.find().sort({ timestamp: -1 }).limit(100).lean();
   const pricingConfigs = await PricingConfigModel.find().lean();
+  const allGroups = await GroupConfig.find().lean();
   const allAdmins = await AdminModel.find().lean();
   const adminIdsSet = new Set(allAdmins.map(a => String(a.target)));
   adminIdsSet.add(FOUNDER_ID);
@@ -576,10 +688,12 @@ app.get('/api/admin/dashboard-data', checkAdminAuth, async (req, res) => {
     stats: {
       total: userList.length,
       active: userList.filter(u => !u.isBanned && u.restrictionLevel === 0).length,
-      reportsCount: reportsList.length
+      reportsCount: reportsList.length,
+      groupsCount: allGroups.length
     },
     users: regularUsersList,
     adminsList: adminsList,
+    groups: allGroups,
     reports: reportsList,
     logs: systemLogs,
     pricing: pricingConfigs,
@@ -587,9 +701,8 @@ app.get('/api/admin/dashboard-data', checkAdminAuth, async (req, res) => {
   });
 });
 
-// 🌟 Saat Bazlı İhlal (Timeout) Endpoint'i
 app.post('/api/admin/timeout-user', checkAdminAuth, async (req, res) => {
-  const { targetTelegramId, hours, adminId, adminName } = req.body;
+  const { targetTelegramId, hours, adminId, adminName, groupId } = req.body;
   const user = await UserModel.findOne({ telegramId: String(targetTelegramId) });
   if (!user) return res.status(404).json({ success: false });
 
@@ -597,20 +710,20 @@ app.post('/api/admin/timeout-user', checkAdminAuth, async (req, res) => {
   banUntil.setHours(banUntil.getHours() + Number(hours || 24));
 
   user.bannedUntil = banUntil;
-  user.restrictionLevel = 2; // Geçici kısıt
+  user.restrictionLevel = 2;
   await user.save();
 
   await logSystemAction(adminId, adminName, `Üyeye ${hours} Saat İhlal Süresi Verildi`, `${user.nickname} (ID: ${targetTelegramId})`, {
     telegramId: user.telegramId,
     username: user.username,
     nickname: user.nickname
-  });
+  }, groupId || 'global');
 
   res.json({ success: true, bannedUntil: banUntil });
 });
 
 app.post('/api/admin/set-premium-duration', checkAdminAuth, async (req, res) => {
-  const { targetTelegramId, weeks, adminId, adminName } = req.body;
+  const { targetTelegramId, weeks, adminId, adminName, groupId } = req.body;
   const user = await UserModel.findOne({ telegramId: String(targetTelegramId) });
   if (!user) return res.status(404).json({ success: false });
 
@@ -625,7 +738,7 @@ app.post('/api/admin/set-premium-duration', checkAdminAuth, async (req, res) => 
     telegramId: user.telegramId,
     username: user.username,
     nickname: user.nickname
-  });
+  }, groupId || 'global');
 
   res.json({ success: true, message: `${weeks} hafta premium tanımlandı.` });
 });
@@ -674,5 +787,5 @@ app.post('/api/admin/toggle-admin', async (req, res) => {
 
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`GoldenMatch Sunucusu ${PORT} portunda performans optimizasyonuyla aktif.`);
+  console.log(`👑 Golden Enterprise Server ${PORT} portunda çift bot ve çoklu grup mimarisiyle aktif.`);
 });
